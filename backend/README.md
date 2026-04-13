@@ -50,13 +50,14 @@ make check      # Run all checks: lint + typecheck + test + security
 ```
 app/
   ├── api/          # API routes and endpoints
-  ├── core/         # Core configuration and app factory
+  ├── core/         # Core infra: database and shared internals
   ├── models/       # SQLAlchemy database models
   ├── repo/         # Repository/DAL layer
   ├── schemas/      # Pydantic request/response schemas
   ├── service/      # Business logic services
   ├── utils/        # Utility functions and helpers
-  └── main.py       # Application entry point
+  ├── config.py     # Pydantic v2 settings
+  └── main.py       # Application entry point and basic endpoints
 
 alembic/           # Database migrations
   ├── versions/     # Migration scripts
@@ -142,7 +143,7 @@ All tools are pre-configured in `pyproject.toml`:
 - **Service Layer** (`service/`): Business logic
 - **Repository Layer** (`repo/`): Database access (ORM abstraction)
 - **Model Layer** (`models/`): SQLAlchemy ORM definitions
-- **Core** (`core/`): Configuration, app factory, settings
+- **Core** (`core/`): Infrastructure internals (e.g. database)
 - **Utils** (`utils/`): Shared utilities and helpers
 
 This structure promotes clean code, testability, and maintainability.

@@ -2,13 +2,12 @@
 import pytest
 from fastapi.testclient import TestClient
 
-from app.core.app import create_app
+from app.main import app
 
 
 @pytest.fixture
 def client() -> TestClient:
     """Create test client."""
-    app = create_app()
     return TestClient(app)
 
 

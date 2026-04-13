@@ -1,5 +1,4 @@
-"""HRK Backend Application - App Factory"""
-from app.core.config import Settings
-from app.core.app import create_app
+"""HRK Backend application package."""
+from app.config import Settings, settings
 
-__all__ = ["create_app", "Settings"]
+__all__ = ["Settings", "settings"]

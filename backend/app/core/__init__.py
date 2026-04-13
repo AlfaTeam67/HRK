@@ -1,4 +1,4 @@
-"""Core configuration module."""
-from app.core.config import Settings, settings
+"""Core backend components."""
+from app.core.database import AsyncSessionLocal, engine, get_db
 
-__all__ = ["Settings", "settings"]
+__all__ = ["engine", "AsyncSessionLocal", "get_db"]
