@@ -55,8 +55,8 @@ const NAV_MAIN = [
 ]
 const NAV_AI    = [{ to: '/assistant', label: 'Chat z asystentem', icon: IcoAI,      end: false }]
 const NAV_ADMIN = [
-  { to: '/settings', label: 'Ustawienia', icon: IcoSettings, end: false },
-  { to: '/reports',  label: 'Raporty',    icon: IcoReports,  end: false },
+  { to: '/access',  label: 'Dostępy i role', icon: IcoSettings, end: false },
+  { to: '/reports', label: 'Raporty',        icon: IcoReports,  end: false },
 ]
 
 function NavItem({ to, label, icon: Icon, badge = 0, end = false }: {

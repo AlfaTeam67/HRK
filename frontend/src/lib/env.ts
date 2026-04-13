@@ -1,9 +1,10 @@
-const apiUrl = import.meta.env.VITE_API_URL
+const DEFAULT_API_URL = '/api'
+const configuredApiUrl = import.meta.env.VITE_API_URL?.trim()
 
-if (!apiUrl) {
-  throw new Error('Missing VITE_API_URL environment variable.')
+if (!configuredApiUrl) {
+  console.warn('Missing VITE_API_URL environment variable. Falling back to "' + DEFAULT_API_URL + '".')
 }
 
 export const env = {
-  apiUrl,
+  apiUrl: configuredApiUrl || DEFAULT_API_URL,
 }

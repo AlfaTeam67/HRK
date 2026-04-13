@@ -179,6 +179,7 @@ export function AdvisorPage() {
           {/* Input */}
           <div style={{ padding: '12px 16px', borderTop: '1px solid #f2f0ed', display: 'flex', gap: 8 }}>
             <input
+              name="assistant-question"
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && sendMessage(input)}
