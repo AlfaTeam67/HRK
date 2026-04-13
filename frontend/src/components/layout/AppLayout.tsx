@@ -1,20 +1,16 @@
 import { Outlet } from 'react-router-dom'
 
-import { AppFooter } from '@/components/layout/AppFooter'
-import { AppHeader } from '@/components/layout/AppHeader'
 import { AppSidebar } from '@/components/layout/AppSidebar'
 
 export function AppLayout() {
   return (
-    <div className="min-h-screen bg-background text-foreground">
-      <AppHeader />
-      <div className="grid min-h-[calc(100vh-120px)] grid-cols-[220px_1fr]">
-        <AppSidebar />
-        <main className="p-6">
+    <div className="flex min-h-screen bg-[#f0f2f5]">
+      <AppSidebar />
+      <div className="flex flex-1 flex-col min-w-0">
+        <main className="flex-1 p-6 overflow-auto">
           <Outlet />
         </main>
       </div>
-      <AppFooter />
     </div>
   )
 }

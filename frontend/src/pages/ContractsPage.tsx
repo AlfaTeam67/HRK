@@ -1,220 +1,141 @@
-import { Badge } from '@/components/ui/badge'
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card'
-
-type BadgeTone = 'default' | 'secondary' | 'outline'
-
-const kpiCards: Array<{ label: string; value: number; hint: string; tone: BadgeTone }> = [
-  { label: 'Kończą się w 30 dni', value: 3, hint: 'Wysoki priorytet', tone: 'default' },
-  { label: 'Kończą się w 60 dni', value: 7, hint: 'Przygotuj ofertę', tone: 'secondary' },
-  { label: 'Kończą się w 90 dni', value: 12, hint: 'Wczesny kontakt', tone: 'outline' },
-  { label: 'Waloryzacje przeterminowane', value: 2, hint: 'Wymagana eskalacja', tone: 'default' },
+/* ─── Mock data (inline) ─────────────────────────────────────── */
+const kpis = [
+  { label: 'KOŃCZĄ SIĘ W 30 DNI',        value: '3',  sub: 'Wysoki priorytet',   color: '#e85c04' },
+  { label: 'KOŃCZĄ SIĘ W 60 DNI',        value: '7',  sub: 'Przygotuj ofertę',   color: '#d69e2e' },
+  { label: 'KOŃCZĄ SIĘ W 90 DNI',        value: '12', sub: 'Wczesny kontakt',    color: '#3182ce' },
+  { label: 'AKTYWNYCH UMÓW',             value: '18', sub: 'Łącznie w systemie', color: '#38a169' },
 ]
 
-const renewalPipeline = [
-  { stage: 'Identyfikacja ryzyka', count: 5, value: '1,1 mln PLN' },
-  { stage: 'Analiza i propozycja', count: 8, value: '2,4 mln PLN' },
-  { stage: 'Negocjacje', count: 4, value: '1,8 mln PLN' },
-  { stage: 'Akceptacja klienta', count: 3, value: '0,9 mln PLN' },
+const escalations = [
+  { priority: 'Pilne'  , title: 'Empik: brak decyzji o waloryzacji',       detail: 'Termin aneksu mija za 4 dni. Wymagany akcept dyrektora sprzedaży.', color: '#e85c04' },
+  { priority: 'Wysoki' , title: 'MediaMarkt: ryzyko wypowiedzenia',          detail: 'Klient zgłosił zastrzeżenia do stawek. Zaplanować call zarządczy.', color: '#d69e2e' },
+  { priority: 'Średni' , title: 'TechNova: potwierdzić okno wypowiedzenia',  detail: 'Dwie wersje SLA w dokumentacji, wymagana korekta.',                color: '#3182ce' },
 ]
 
 const contracts = [
-  {
-    client: 'Empik Sp. z o.o.',
-    contract: 'HRK/EMP/2024/07',
-    status: 'Do odnowienia',
-    endDate: '2026-05-12',
-    noticeWindow: '30 dni',
-    owner: 'Anna Kowalska',
-    tone: 'default' as BadgeTone,
-  },
-  {
-    client: 'TechNova S.A.',
-    contract: 'HRK/TN/2025/03',
-    status: 'Aktywna',
-    endDate: '2026-06-18',
-    noticeWindow: '60 dni',
-    owner: 'Marek Nowak',
-    tone: 'secondary' as BadgeTone,
-  },
-  {
-    client: 'MediCare Group',
-    contract: 'HRK/MC/2023/11',
-    status: 'Wypowiedzenie',
-    endDate: '2026-05-02',
-    noticeWindow: '30 dni',
-    owner: 'Karolina Lis',
-    tone: 'outline' as BadgeTone,
-  },
-  {
-    client: 'Retail One',
-    contract: 'HRK/RO/2024/09',
-    status: 'Aktywna',
-    endDate: '2026-08-20',
-    noticeWindow: '90 dni',
-    owner: 'Anna Kowalska',
-    tone: 'secondary' as BadgeTone,
-  },
+  { id: 'HRK/EMP/2024/07', client: 'Empik Sp. z o.o.',  type: 'HR ramowa',         status: 'Do odnowienia', statusType: 'warn',    end: '2026-05-12', notice: '30 dni', owner: 'M. Janowska', val: 'Wymaga decyzji',  valType: 'urgent'  },
+  { id: 'HRK/ROS/2025/01', client: 'Rossmann Polska',   type: 'Obsługa kadrowa',   status: 'Aktywna',       statusType: 'good',    end: '2026-07-30', notice: '60 dni', owner: 'M. Janowska', val: 'Zaplanowana',     valType: 'good'    },
+  { id: 'HRK/MED/2023/11', client: 'MediaMarkt',        type: 'PPK + płace',       status: 'Wypowiedzenie', statusType: 'danger',  end: '2026-05-02', notice: '30 dni', owner: 'M. Nowak',    val: 'Brak akceptacji', valType: 'urgent'  },
+  { id: 'HRK/BIE/2024/03', client: 'Biedronka',         type: 'HR ramowa',         status: 'Aktywna',       statusType: 'good',    end: '2026-09-01', notice: '90 dni', owner: 'A. Kowalski', val: 'Gotowa',          valType: 'good'    },
+  { id: 'HRK/LID/2024/08', client: 'Lidl Polska',       type: 'Administracja',     status: 'Aktywna',       statusType: 'good',    end: '2026-08-15', notice: '90 dni', owner: 'K. Lis',      val: 'Gotowa',          valType: 'good'    },
+  { id: 'HRK/TN/2025/03',  client: 'TechNova S.A.',     type: 'Outsourcing IT HR', status: 'Aktywna',       statusType: 'good',    end: '2026-06-18', notice: '60 dni', owner: 'M. Nowak',    val: 'W trakcie',       valType: 'warning' },
 ]
 
-const valorizationRules = [
-  {
-    contract: 'HRK/EMP/2024/07',
-    index: 'CPI GUS',
-    threshold: 'min. 4%',
-    effectiveDate: '2026-06-01',
-    lastChange: '+5,2% (2025-06-01)',
-  },
-  {
-    contract: 'HRK/TN/2025/03',
-    index: 'CPI GUS',
-    threshold: 'min. 3%',
-    effectiveDate: '2026-07-01',
-    lastChange: '+3,4% (2025-07-01)',
-  },
-  {
-    contract: 'HRK/MC/2023/11',
-    index: 'CPI + koszyk branżowy',
-    threshold: 'min. 5%',
-    effectiveDate: '2026-05-15',
-    lastChange: '+0,0% (brak akceptacji)',
-  },
-]
+/* ─── Style helpers ──────────────────────────────────────────── */
+const card: React.CSSProperties = {
+  background: 'white', borderRadius: 8,
+  border: '1px solid #e3e0db', boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+}
 
-const escalationQueue = [
-  {
-    priority: 'Pilne',
-    title: 'Empik: brak decyzji o waloryzacji',
-    detail: 'Termin aneksu mija za 4 dni. Wymagany akcept dyrektora sprzedaży.',
-  },
-  {
-    priority: 'Wysoki',
-    title: 'MediCare: ryzyko wypowiedzenia',
-    detail: 'Klient zgłosił zastrzeżenia do stawek. Zaplanować call zarządczy.',
-  },
-  {
-    priority: 'Średni',
-    title: 'TechNova: potwierdzić okno wypowiedzenia',
-    detail: 'W dokumentacji występują dwie wersje SLA, wymagana korekta w CRM.',
-  },
-]
+const STATUS_S: Record<string, { bg: string; color: string }> = {
+  'Do odnowienia': { bg: '#fff5f0', color: '#c94f02' },
+  'Aktywna':       { bg: '#f0fff4', color: '#276749' },
+  'Wypowiedzenie': { bg: '#fef3c7', color: '#92400e' },
+}
 
+const VAL_S: Record<string, { bg: string; color: string }> = {
+  urgent:  { bg: '#fff5f0', color: '#c94f02' },
+  warning: { bg: '#fffbeb', color: '#92400e' },
+  good:    { bg: '#f0fff4', color: '#276749' },
+}
+
+/* ─── Component ──────────────────────────────────────────────── */
 export function ContractsPage() {
   return (
-    <div className="space-y-6">
-      <div className="space-y-2">
-        <h1 className="text-2xl font-semibold tracking-tight">Umowy i waloryzacja</h1>
-        <p className="text-sm text-muted-foreground">
-          Widok demonstracyjny cyklu życia umowy, alertów 90/60/30 i historii zmian stawek.
-        </p>
+    <div style={{ maxWidth: 1200, margin: '0 auto' }}>
+      {/* Header */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+        <div>
+          <h1 style={{ fontSize: 22, fontWeight: 700, color: '#1a1714', margin: 0, marginBottom: 2 }}>Umowy</h1>
+          <p style={{ fontSize: 12.5, color: '#9e9389', margin: 0 }}>Cykl życia umów, alerty 30/60/90 dni i statusy negocjacji.</p>
+        </div>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button style={{ background: 'white', border: '1px solid #e3e0db', borderRadius: 6, padding: '7px 14px', fontSize: 13, fontWeight: 500, color: '#6b6b6b', cursor: 'pointer' }}>
+            Eksportuj
+          </button>
+          <button style={{ background: '#e85c04', border: 'none', borderRadius: 6, padding: '7px 16px', color: 'white', fontSize: 13, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Nowa umowa
+          </button>
+        </div>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-4">
-        {kpiCards.map((item) => (
-          <Card key={item.label} size="sm">
-            <CardHeader>
-              <CardTitle className="text-sm">{item.label}</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              <div className="text-3xl font-semibold">{item.value}</div>
-              <Badge variant={item.tone}>{item.hint}</Badge>
-            </CardContent>
-          </Card>
+      {/* KPI cards */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 14, marginBottom: 20 }}>
+        {kpis.map((kpi) => (
+          <div key={kpi.label} style={{ ...card, padding: '16px 18px', borderTop: `3px solid ${kpi.color}` }}>
+            <div style={{ fontSize: 10, fontWeight: 700, color: '#9e9389', letterSpacing: '0.07em', marginBottom: 8 }}>{kpi.label}</div>
+            <div style={{ fontSize: 30, fontWeight: 800, color: '#1a1714', lineHeight: 1, marginBottom: 6 }}>{kpi.value}</div>
+            <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 4, fontWeight: 600, background: kpi.color + '18', color: kpi.color }}>{kpi.sub}</span>
+          </div>
         ))}
       </div>
 
-      <div className="grid gap-6 xl:grid-cols-3">
-        <Card className="xl:col-span-2">
-          <CardHeader>
-            <CardTitle>Pipeline odnowień</CardTitle>
-            <CardDescription>Lejek szans na utrzymanie kontraktów.</CardDescription>
-          </CardHeader>
-          <CardContent className="grid gap-3 md:grid-cols-2">
-            {renewalPipeline.map((item) => (
-              <div key={item.stage} className="rounded-lg border border-border/70 px-3 py-2 text-sm">
-                <p className="font-medium">{item.stage}</p>
-                <p className="text-muted-foreground">{item.count} umów · {item.value}</p>
-              </div>
-            ))}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Kolejka eskalacji</CardTitle>
-            <CardDescription>Alerty wymagające decyzji menedżerskiej.</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {escalationQueue.map((item) => (
-              <div key={item.title} className="rounded-lg border border-border/70 bg-muted/20 px-3 py-2">
-                <div className="mb-1 flex items-center justify-between gap-2">
-                  <p className="text-sm font-medium">{item.title}</p>
-                  <Badge variant={item.priority === 'Pilne' ? 'default' : item.priority === 'Wysoki' ? 'secondary' : 'outline'}>
-                    {item.priority}
-                  </Badge>
-                </div>
-                <p className="text-xs text-muted-foreground">{item.detail}</p>
-              </div>
-            ))}
-          </CardContent>
-        </Card>
+      {/* Escalation queue */}
+      <div style={{ ...card, padding: '16px 18px', marginBottom: 16 }}>
+        <div style={{ fontSize: 13, fontWeight: 700, color: '#1a1714', marginBottom: 12 }}>Kolejka eskalacji</div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 12 }}>
+          {escalations.map((esc) => (
+            <div key={esc.title} style={{ borderRadius: 6, padding: '12px 14px', background: '#fafaf9', border: '1px solid #f2f0ed', borderLeft: `3px solid ${esc.color}` }}>
+              <span style={{ fontSize: 10, fontWeight: 700, padding: '1px 8px', borderRadius: 20, background: esc.color + '18', color: esc.color, display: 'inline-block', marginBottom: 6 }}>
+                {esc.priority}
+              </span>
+              <div style={{ fontSize: 12.5, fontWeight: 700, color: '#1a1714', marginBottom: 4 }}>{esc.title}</div>
+              <div style={{ fontSize: 11, color: '#9e9389', lineHeight: 1.4 }}>{esc.detail}</div>
+            </div>
+          ))}
+        </div>
       </div>
 
-      <div className="grid gap-6 xl:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>Lista umów</CardTitle>
-            <CardDescription>Status, termin i okno wypowiedzenia.</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            <div className="grid grid-cols-[1.2fr_1fr_auto] gap-2 px-3 text-xs font-medium uppercase text-muted-foreground">
-              <span>Klient / umowa</span>
-              <span>Termin końca</span>
-              <span>Status</span>
-            </div>
-            {contracts.map((item) => (
-              <div
-                key={item.contract}
-                className="grid grid-cols-[1.2fr_1fr_auto] items-center gap-2 rounded-lg border border-border/70 px-3 py-2 text-sm"
-              >
-                <div>
-                  <p className="font-medium">{item.client}</p>
-                  <p className="text-xs text-muted-foreground">{item.contract} · opiekun: {item.owner}</p>
-                </div>
-                <div>
-                  <p>{item.endDate}</p>
-                  <p className="text-xs text-muted-foreground">Okno: {item.noticeWindow}</p>
-                </div>
-                <Badge variant={item.tone}>{item.status}</Badge>
-              </div>
-            ))}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Reguły i historia waloryzacji</CardTitle>
-            <CardDescription>CPI/GUS, progi oraz data wejścia w życie.</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {valorizationRules.map((rule) => (
-              <div key={rule.contract} className="rounded-lg border border-border/70 px-3 py-2 text-sm">
-                <div className="flex items-center justify-between gap-2">
-                  <p className="font-medium">{rule.contract}</p>
-                  <Badge variant="outline">{rule.index}</Badge>
-                </div>
-                <p className="text-muted-foreground">Próg: {rule.threshold}</p>
-                <p className="text-muted-foreground">Wejście: {rule.effectiveDate}</p>
-                <p className="text-muted-foreground">Ostatnia zmiana: {rule.lastChange}</p>
-              </div>
-            ))}
-          </CardContent>
-        </Card>
+      {/* Contracts table */}
+      <div style={{ ...card, overflow: 'hidden' }}>
+        <div style={{ padding: '14px 18px', borderBottom: '1px solid #f2f0ed', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div style={{ fontSize: 14, fontWeight: 700, color: '#1a1714' }}>Lista umów</div>
+          <div style={{ position: 'relative' }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9e9389" strokeWidth="2" style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)' }}>
+              <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+            </svg>
+            <input placeholder="Szukaj umowy…" style={{ border: '1px solid #e3e0db', borderRadius: 6, padding: '6px 10px 6px 32px', fontSize: 13, outline: 'none', color: '#1a1714', background: '#fafaf9', width: 200 }} />
+          </div>
+        </div>
+        <div style={{ padding: '0 18px 18px' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+            <thead>
+              <tr>
+                {['KLIENT / UMOWA','TYP','STATUS','TERMIN KOŃCA','OKNO','WALORYZACJA','OPIEKUN'].map(col => (
+                  <th key={col} style={{ textAlign: 'left', fontSize: 10, fontWeight: 700, color: '#9e9389', letterSpacing: '0.06em', padding: '12px 8px 10px', borderBottom: '1px solid #f2f0ed' }}>{col}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {contracts.map((c, i) => (
+                <tr key={c.id} style={{ borderBottom: i < contracts.length - 1 ? '1px solid #f9f8f6' : 'none', cursor: 'pointer' }}
+                  onMouseEnter={e => (e.currentTarget.style.background = '#fafaf9')}
+                  onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                >
+                  <td style={{ padding: '11px 8px 11px 0' }}>
+                    <div style={{ fontWeight: 700, color: '#1a1714' }}>{c.client}</div>
+                    <div style={{ fontSize: 11, color: '#9e9389', marginTop: 1 }}>{c.id}</div>
+                  </td>
+                  <td style={{ padding: '11px 8px', color: '#4b5563' }}>{c.type}</td>
+                  <td style={{ padding: '11px 8px' }}>
+                    <span style={{ fontSize: 11, padding: '3px 10px', borderRadius: 20, fontWeight: 600, background: STATUS_S[c.status]?.bg ?? '#f2f0ed', color: STATUS_S[c.status]?.color ?? '#374151' }}>
+                      {c.status}
+                    </span>
+                  </td>
+                  <td style={{ padding: '11px 8px', color: '#4b5563', fontSize: 12 }}>{c.end}</td>
+                  <td style={{ padding: '11px 8px', color: '#9e9389', fontSize: 12 }}>{c.notice}</td>
+                  <td style={{ padding: '11px 8px' }}>
+                    <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 4, fontWeight: 600, background: VAL_S[c.valType]?.bg ?? '#f2f0ed', color: VAL_S[c.valType]?.color ?? '#374151' }}>
+                      {c.val}
+                    </span>
+                  </td>
+                  <td style={{ padding: '11px 0', color: '#9e9389', fontSize: 12 }}>{c.owner}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   )
