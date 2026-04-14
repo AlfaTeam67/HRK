@@ -21,11 +21,9 @@ const pipeline = [
   { stage: 'Akceptacja klienta',   count: 3, value: '0,9 mln PLN', color: '#38a169' },
 ]
 
+import { cardStyle as card } from '@/lib/styles'
+
 /* ─── Helpers ────────────────────────────────────────────────── */
-const card: React.CSSProperties = {
-  background: 'white', borderRadius: 8,
-  border: '1px solid #e3e0db', boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
-}
 const VAL_S: Record<string, { bg: string; color: string }> = {
   urgent:  { bg: '#fff5f0', color: '#c94f02' },
   warning: { bg: '#fffbeb', color: '#92400e' },

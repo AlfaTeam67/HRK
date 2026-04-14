@@ -1,4 +1,7 @@
 import { useState } from 'react'
+import type { CSSProperties } from 'react'
+
+import { cardStyle } from '@/lib/styles'
 
 /* ─── Mock data (inline) ─────────────────────────────────────── */
 const clients = [
@@ -47,10 +50,10 @@ const clientNotes: Record<number, Array<{ date: string; author: string; text: st
   5: [{ date: '20.02.2026', author: 'M. Nowak', text: 'Klient złożył zastrzeżenia do stawek – wymagany call zarządczy.' }],
 }
 
-const card: React.CSSProperties = { background: 'white', borderRadius: 8, border: '1px solid #e3e0db', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }
+const card: CSSProperties = cardStyle
 
 /* ─── Component ──────────────────────────────────────────────── */
-export function PortfolioPage() {
+export function ClientsPage() {
   const [selectedId, setSelectedId] = useState<number>(clients[0].id)
   const [activeTab, setActiveTab] = useState<'info' | 'contracts' | 'notes'>('info')
   const selected = clients.find((c) => c.id === selectedId)!
@@ -82,19 +85,30 @@ export function PortfolioPage() {
               <input
                 name="client-search"
                 placeholder="Szukaj klienta…"
+                readOnly
+                aria-label="Wyszukiwarka klientów (demo)"
                 style={{ width: '100%', border: '1px solid #e3e0db', borderRadius: 6, padding: '7px 10px 7px 32px', fontSize: 13, outline: 'none', boxSizing: 'border-box', color: '#1a1714', background: '#fafaf9' }}
               />
             </div>
           </div>
-          {clients.map((client) => (
-            <div key={client.id} onClick={() => { setSelectedId(client.id); setActiveTab('info') }} style={{ padding: '11px 14px', borderBottom: '1px solid #f9f8f6', cursor: 'pointer', background: selectedId === client.id ? '#fff8f4' : 'white', borderLeft: selectedId === client.id ? '3px solid #e85c04' : '3px solid transparent', transition: 'all 0.1s' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 3 }}>
-                <span style={{ fontSize: 13, fontWeight: 700, color: '#1a1714' }}>{client.name}</span>
-                <span style={{ fontSize: 10, padding: '2px 7px', borderRadius: 20, fontWeight: 600, background: client.riskType === 'good' ? '#f0fff4' : '#fff5f0', color: client.riskType === 'good' ? '#276749' : '#c94f02' }}>{client.risk}</span>
-              </div>
-              <div style={{ fontSize: 11, color: '#9e9389' }}>{client.segment} · {client.employees} prac. · {client.owner.split(' ')[1]}</div>
-            </div>
-          ))}
+          <div role="listbox" aria-label="Lista klientów">
+            {clients.map((client) => (
+              <button
+                key={client.id}
+                type="button"
+                role="option"
+                aria-selected={selectedId === client.id}
+                onClick={() => { setSelectedId(client.id); setActiveTab('info') }}
+                style={{ width: '100%', textAlign: 'left', border: 'none', padding: '11px 14px', borderBottom: '1px solid #f9f8f6', cursor: 'pointer', background: selectedId === client.id ? '#fff8f4' : 'white', borderLeft: selectedId === client.id ? '3px solid #e85c04' : '3px solid transparent', transition: 'all 0.1s' }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 3 }}>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: '#1a1714' }}>{client.name}</span>
+                  <span style={{ fontSize: 10, padding: '2px 7px', borderRadius: 20, fontWeight: 600, background: client.riskType === 'good' ? '#f0fff4' : '#fff5f0', color: client.riskType === 'good' ? '#276749' : '#c94f02' }}>{client.risk}</span>
+                </div>
+                <div style={{ fontSize: 11, color: '#9e9389' }}>{client.segment} · {client.employees} prac. · {client.owner.split(' ')[1]}</div>
+              </button>
+            ))}
+          </div>
         </div>
 
         {/* Detail */}

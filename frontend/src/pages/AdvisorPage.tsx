@@ -1,4 +1,7 @@
-import { useState, useRef, useEffect } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import type { CSSProperties } from 'react'
+
+import { cardStyle } from '@/lib/styles'
 
 /* ─── Mock data (inline) ─────────────────────────────────────── */
 type MessageRole = 'user' | 'assistant'
@@ -59,7 +62,7 @@ const aiCapabilities = [
 
 const clientOptions = ['Empik Sp. z o.o.', 'Rossmann Polska', 'Biedronka', 'Lidl Polska', 'MediaMarkt']
 
-let nextId = 6
+const card: CSSProperties = cardStyle
 
 /* ─── Component ──────────────────────────────────────────────── */
 export function AdvisorPage() {
@@ -67,29 +70,39 @@ export function AdvisorPage() {
   const [input, setInput] = useState('')
   const [isTyping, setIsTyping] = useState(false)
   const [activeClient, setActiveClient] = useState('Empik Sp. z o.o.')
+  const nextIdRef = useRef(6)
+  const timeoutIdsRef = useRef<number[]>([])
   const scrollRef = useRef<HTMLDivElement>(null)
+  const clientContextSelectId = 'client-context'
 
   useEffect(() => {
     if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight
   }, [messages, isTyping])
 
+  useEffect(() => {
+    return () => {
+      timeoutIdsRef.current.forEach((timeoutId) => window.clearTimeout(timeoutId))
+      timeoutIdsRef.current = []
+    }
+  }, [])
+
   const sendMessage = (text: string) => {
     if (!text.trim()) return
     const now = new Date().toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' })
-    setMessages((prev) => [...prev, { id: nextId++, role: 'user', content: text, ts: now }])
+    setMessages((prev) => [...prev, { id: nextIdRef.current++, role: 'user', content: text, ts: now }])
     setInput('')
     setIsTyping(true)
-    setTimeout(() => {
+    const timeoutId = window.setTimeout(() => {
       setMessages((prev) => [...prev, {
-        id: nextId++, role: 'assistant', ts: new Date().toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' }),
+        id: nextIdRef.current++, role: 'assistant', ts: new Date().toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' }),
         content: `Analizuję dane dla klienta **${activeClient}**...\n\nNa podstawie dokumentów w systemie: to pytanie dotyczy kluczowych informacji kontraktowych. W środowisku produkcyjnym ta odpowiedź byłaby oparta o rzeczywiste dokumenty klienta z indeksu RAG.`,
         sources: [{ title: 'Baza CRM HRK', page: 'wyszukiwanie semantyczne' }],
       }])
       setIsTyping(false)
+      timeoutIdsRef.current = timeoutIdsRef.current.filter((id) => id !== timeoutId)
     }, 1800)
+    timeoutIdsRef.current.push(timeoutId)
   }
-
-  const card: React.CSSProperties = { background: 'white', borderRadius: 8, border: '1px solid #e3e0db', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }
 
   return (
     <div style={{ maxWidth: 1200, margin: '0 auto', height: 'calc(100vh - 48px)', display: 'flex', flexDirection: 'column' }}>
@@ -101,8 +114,10 @@ export function AdvisorPage() {
             <p style={{ fontSize: 12.5, color: '#9e9389', margin: 0 }}>Kontekstowy asystent oparty o dokumenty klienta, umowy i historię współpracy.</p>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span style={{ fontSize: 12, color: '#9e9389' }}>Kontekst:</span>
-            <select value={activeClient} onChange={(e) => setActiveClient(e.target.value)} style={{ border: '1px solid #e3e0db', borderRadius: 6, padding: '6px 12px', fontSize: 13, fontWeight: 600, color: '#1a1714', background: 'white', cursor: 'pointer', outline: 'none' }}>
+            <label htmlFor={clientContextSelectId} style={{ fontSize: 12, color: '#9e9389' }}>
+              Kontekst:
+            </label>
+            <select id={clientContextSelectId} value={activeClient} onChange={(e) => setActiveClient(e.target.value)} style={{ border: '1px solid #e3e0db', borderRadius: 6, padding: '6px 12px', fontSize: 13, fontWeight: 600, color: '#1a1714', background: 'white', cursor: 'pointer', outline: 'none' }}>
               {clientOptions.map((c) => <option key={c}>{c}</option>)}
             </select>
             <div style={{ background: '#e85c04', color: 'white', fontSize: 10, fontWeight: 800, padding: '3px 10px', borderRadius: 20, letterSpacing: '0.06em' }}>AI AKTYWNY</div>
@@ -215,7 +230,7 @@ export function AdvisorPage() {
               { label: 'Klient',    value: activeClient        },
               { label: 'Dokumenty', value: '7 w indeksie'      },
               { label: 'Notatki',   value: '12 rekordów'       },
-              { label: 'Model',     value: 'GPT-4o (RAG)'      },
+              { label: 'Model',     value: 'phi-3.5 (Ollama)'  },
             ].map((item) => (
               <div key={item.label} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginBottom: 5 }}>
                 <span style={{ color: '#9e9389' }}>{item.label}</span>

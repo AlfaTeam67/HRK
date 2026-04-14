@@ -1,10 +1,13 @@
 import { useState } from 'react'
+import type { CSSProperties } from 'react'
+
+import { useActiveDirectory } from '@/features/auth/hooks/useActiveDirectory'
+import { cardStyle } from '@/lib/styles'
 
 /* ─── Mock data (inline) ─────────────────────────────────────── */
-const kpis = [
+const STATIC_KPIS = [
   { label: 'UŻYTKOWNICY',    value: '5',  sub: '4 aktywnych',                       color: '#3182ce' },
   { label: 'ROLE SYSTEMOWE', value: '4',  sub: 'Admin, Standard, ReadOnly, Limited', color: '#6b3fa0' },
-  { label: 'SSO / AD',       value: 'ON', sub: 'Keycloak · LDAP sync',              color: '#38a169' },
   { label: 'MFA',            value: 'ON', sub: '5/5 użytkowników',                  color: '#e85c04' },
 ]
 
@@ -27,14 +30,16 @@ const LEVEL_COLOR: Record<string, string> = {
   Admin: '#6b3fa0', Standard: '#2b6cb0', ReadOnly: '#276749', Limited: '#92400e',
 }
 
-const card: React.CSSProperties = {
-  background: 'white', borderRadius: 8,
-  border: '1px solid #e3e0db', boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
-}
-
 /* ─── Component ──────────────────────────────────────────────── */
 export function SettingsPage() {
   const [activeTab, setActiveTab] = useState<'users' | 'roles'>('users')
+  const ad = useActiveDirectory()
+  const card: CSSProperties = cardStyle
+
+  const kpis = [
+    ...STATIC_KPIS,
+    { label: 'SSO / AD', value: ad.isConfigured ? 'ON' : 'OFF', sub: `${ad.provider} · ${ad.domain}`, color: ad.isConfigured ? '#38a169' : '#e85c04' },
+  ]
 
   return (
     <div style={{ maxWidth: 1200, margin: '0 auto' }}>

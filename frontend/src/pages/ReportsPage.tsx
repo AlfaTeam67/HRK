@@ -28,10 +28,7 @@ const BADGE: Record<typeof log[number]['type'], { bg: string; color: string; lab
   view:    { bg: '#f0fff4', color: '#276749', label: 'Odczyt'    },
 }
 
-const card: React.CSSProperties = {
-  background: 'white', borderRadius: 8,
-  border: '1px solid #e3e0db', boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
-}
+import { cardStyle as card } from '@/lib/styles'
 
 /* ─── Component ──────────────────────────────────────────────── */
 export function ReportsPage() {
@@ -83,6 +80,8 @@ export function ReportsPage() {
             <input
               name="audit-log-search"
               placeholder="Szukaj w logu…"
+              readOnly
+              aria-label="Wyszukiwarka logu audytowego (demo)"
               style={{ border: '1px solid #e3e0db', borderRadius: 6, padding: '6px 10px 6px 32px', fontSize: 13, outline: 'none', color: '#1a1714', background: '#fafaf9', width: 200 }}
             />
           </div>

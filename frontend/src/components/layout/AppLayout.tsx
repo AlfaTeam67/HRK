@@ -4,7 +4,7 @@ import { AppSidebar } from '@/components/layout/AppSidebar'
 
 export function AppLayout() {
   return (
-    <div className="flex min-h-screen bg-[#f0f2f5]">
+    <div className="flex min-h-screen bg-background">
       <AppSidebar />
       <div className="flex flex-1 flex-col min-w-0">
         <main className="flex-1 p-6 overflow-auto">

@@ -1,3 +1,7 @@
+import type { CSSProperties } from 'react'
+
+import { cardStyle } from '@/lib/styles'
+
 /* ─── Mock data (inline) ─────────────────────────────────────── */
 const kpis = [
   { label: 'AKTYWNYCH KLIENTÓW', value: '12', trend: '+2 nowych w tym kwartale', trendUp: true },
@@ -29,21 +33,21 @@ const activity = [
 ]
 
 /* ─── Style maps ─────────────────────────────────────────────── */
-const ALERT_STYLE: Record<AlertType, React.CSSProperties> = {
+const ALERT_STYLE: Record<AlertType, CSSProperties> = {
   urgent:  { background: '#fff5f0', border: '1px solid #fdd5b8', borderLeft: '3px solid #e85c04', borderRadius: 6, padding: '9px 14px', marginBottom: 6 },
   warning: { background: '#fffbeb', border: '1px solid #fef3c7', borderLeft: '3px solid #d69e2e', borderRadius: 6, padding: '9px 14px', marginBottom: 6 },
   info:    { background: '#ebf8ff', border: '1px solid #bee3f8', borderLeft: '3px solid #3182ce', borderRadius: 6, padding: '9px 14px', marginBottom: 6 },
   neutral: { background: '#f0fff4', border: '1px solid #c6f6d5', borderLeft: '3px solid #38a169', borderRadius: 6, padding: '9px 14px', marginBottom: 6 },
 }
 
-const BADGE_STYLE: Record<typeof activity[number]['type'], React.CSSProperties> = {
+const BADGE_STYLE: Record<typeof activity[number]['type'], CSSProperties> = {
   Spotkanie:   { background: '#fff5f0', color: '#c94f02', fontSize: 11, padding: '2px 8px', borderRadius: 4, fontWeight: 600 },
   Dokument:    { background: '#fef3c7', color: '#92400e', fontSize: 11, padding: '2px 8px', borderRadius: 4, fontWeight: 600 },
   Notatka:     { background: '#f3f4f6', color: '#374151', fontSize: 11, padding: '2px 8px', borderRadius: 4, fontWeight: 600 },
   Weryfikacja: { background: '#f0fff4', color: '#276749', fontSize: 11, padding: '2px 8px', borderRadius: 4, fontWeight: 600 },
 }
 
-const card: React.CSSProperties = { background: 'white', borderRadius: 8, border: '1px solid #e3e0db', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }
+const card: CSSProperties = cardStyle
 
 /* ─── Component ──────────────────────────────────────────────── */
 export function DashboardPage() {

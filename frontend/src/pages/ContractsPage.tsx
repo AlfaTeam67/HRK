@@ -21,12 +21,9 @@ const contracts = [
   { id: 'HRK/TN/2025/03',  client: 'TechNova S.A.',     type: 'Outsourcing IT HR', status: 'Aktywna',       statusType: 'good',    end: '2026-06-18', notice: '60 dni', owner: 'M. Nowak',    val: 'W trakcie',       valType: 'warning' },
 ]
 
-/* ─── Style helpers ──────────────────────────────────────────── */
-const card: React.CSSProperties = {
-  background: 'white', borderRadius: 8,
-  border: '1px solid #e3e0db', boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
-}
+import { cardStyle as card } from '@/lib/styles'
 
+/* ─── Style helpers ──────────────────────────────────────────── */
 const STATUS_S: Record<string, { bg: string; color: string }> = {
   'Do odnowienia': { bg: '#fff5f0', color: '#c94f02' },
   'Aktywna':       { bg: '#f0fff4', color: '#276749' },
@@ -98,6 +95,8 @@ export function ContractsPage() {
             <input
               name="contract-search"
               placeholder="Szukaj umowy…"
+              readOnly
+              aria-label="Wyszukiwarka umów (demo)"
               style={{ border: '1px solid #e3e0db', borderRadius: 6, padding: '6px 10px 6px 32px', fontSize: 13, outline: 'none', color: '#1a1714', background: '#fafaf9', width: 200 }}
             />
           </div>
