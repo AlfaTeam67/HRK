@@ -1,0 +1,116 @@
+services:
+  # ── PostgreSQL + pgvector ──────────────────────────────────────────────────
+  db:
+    image: pgvector/pgvector:pg17
+    container_name: hrk-db
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-hrk}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-hrk_secret}
+      POSTGRES_DB: ${POSTGRES_DB:-hrk_db}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    networks:
+      - hrk-network
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${POSTGRES_USER:-hrk} -d ${POSTGRES_DB:-hrk_db}",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  # ── MinIO (S3-compatible storage) ──────────────────────────────────────────
+  minio:
+    image: minio/minio:latest
+    container_name: hrk-minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${S3_ACCESS_KEY:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${S3_SECRET_KEY:-minioadmin}
+    volumes:
+      - minio_data:/data
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    networks:
+      - hrk-network
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "curl -sf http://localhost:9000/minio/health/live || exit 1",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+  # ── MinIO bucket initialiser (runs once, then exits) ──────────────────────
+  minio-init:
+    image: minio/mc:latest
+    container_name: hrk-minio-init
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: >
+      /bin/sh -c "
+        set -e &&
+        mc alias set local http://minio:9000 $${MINIO_ROOT_USER} $${MINIO_ROOT_PASSWORD} &&
+        mc mb --ignore-existing local/$${S3_BUCKET:-hrk-documents} &&
+        echo 'Bucket ready.'
+      "
+    environment:
+      MINIO_ROOT_USER: ${S3_ACCESS_KEY:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${S3_SECRET_KEY:-minioadmin}
+      S3_BUCKET: ${S3_BUCKET:-hrk-documents}
+    networks:
+      - hrk-network
+    restart: "no"
+
+  # ── FastAPI backend ────────────────────────────────────────────────────────
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: hrk-api
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-hrk}:${POSTGRES_PASSWORD:-hrk_secret}@db:5432/${POSTGRES_DB:-hrk_db}
+      S3_ENDPOINT: http://minio:9000
+      S3_BUCKET: ${S3_BUCKET:-hrk-documents}
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY:-minioadmin}
+      S3_SECRET_KEY: ${S3_SECRET_KEY:-minioadmin}
+      S3_REGION: ${S3_REGION:-us-east-1}
+      FE_DOMAIN: ${FE_DOMAIN:-http://localhost:4173}
+      DEBUG: ${DEBUG:-false}
+    ports:
+      - "8000:8000"
+    networks:
+      - hrk-network
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/health')\"",
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    depends_on:
+      db:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
+  minio_data:
+
+networks:
+  hrk-network:
+    driver: bridge
