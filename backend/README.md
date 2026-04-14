@@ -12,7 +12,7 @@ FastAPI-based backend for HRK application with complete project structure.
 
 ## Docker (recommended)
 
-Copy the env file and start the full stack:
+Copy the env file and start the backend stack:
 
 ```bash
 cp .env.example .env
@@ -27,7 +27,6 @@ This starts:
 | PostgreSQL + pgvector | localhost:5432 |
 | MinIO S3 API | http://localhost:9000 |
 | MinIO Console | http://localhost:9001 |
-| Frontend | http://localhost:4173 |
 
 The `minio-init` container automatically creates the `hrk-documents` bucket on first start.
 

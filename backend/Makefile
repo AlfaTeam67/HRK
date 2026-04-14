@@ -17,7 +17,7 @@ help:
 	@echo "  make check          - Run all checks (lint + typecheck + test + security)"
 	@echo ""
 	@echo "  Docker:"
-	@echo "  make docker-up      - Start full stack (API + DB + MinIO + frontend)"
+	@echo "  make docker-up      - Start backend stack (API + DB + MinIO)"
 	@echo "  make docker-down    - Stop and remove containers"
 	@echo "  make docker-build   - Rebuild all images"
 	@echo "  make docker-logs    - Tail API logs"
@@ -72,6 +72,4 @@ docker-migrate:
 	docker compose exec api alembic upgrade head
 
 minio-init:
-	docker compose exec minio mc alias set local http://localhost:9000 $${S3_ACCESS_KEY:-minioadmin} $${S3_SECRET_KEY:-minioadmin}
-	docker compose exec minio mc mb --ignore-existing local/$${S3_BUCKET:-hrk-documents}
-	@echo "MinIO bucket '$${S3_BUCKET:-hrk-documents}' is ready."
+	docker compose run --rm minio-init

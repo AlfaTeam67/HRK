@@ -34,7 +34,7 @@ make migrate        # Apply alembic migrations (alembic upgrade head)
 make makemigration  # Generate new migration (alembic revision --autogenerate)
 
 # Docker (full stack)
-make docker-up      # Start API + DB (pgvector) + MinIO + frontend
+make docker-up      # Start API + DB (pgvector) + MinIO
 make docker-down    # Stop all containers
 make docker-build   # Rebuild images
 make docker-logs    # Tail API container logs
