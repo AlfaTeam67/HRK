@@ -8,6 +8,42 @@ FastAPI-based backend for HRK application with complete project structure.
 
 - Python 3.12+
 - Poetry
+- Docker + Docker Compose (for full stack)
+
+## Docker (recommended)
+
+Copy the env file and start the backend stack:
+
+```bash
+cp .env.example .env
+make docker-up
+```
+
+This starts:
+| Service | URL |
+|---|---|
+| FastAPI API | http://localhost:8000 |
+| API docs (debug) | http://localhost:8000/docs |
+| PostgreSQL + pgvector | localhost:5432 |
+| MinIO S3 API | http://localhost:9000 |
+| MinIO Console | http://localhost:9001 |
+
+The `minio-init` container automatically creates the `hrk-documents` bucket on first start.
+
+Apply migrations after the stack is up:
+
+```bash
+make docker-migrate
+```
+
+### Useful Docker commands
+
+```bash
+make docker-down    # Stop all containers
+make docker-build   # Rebuild images after Dockerfile changes
+make docker-logs    # Tail API logs
+make minio-init     # Re-create MinIO bucket manually if needed
+```
 
 ### Installation
 
