@@ -4,9 +4,9 @@
 
 ![Status](https://img.shields.io/badge/status-in%20progress-2563eb)
 ![Team](https://img.shields.io/badge/team-AlfaTeam-7c3aed)
-![Backend](https://img.shields.io/badge/backend-Python%20API-10b981)
-![Database](https://img.shields.io/badge/database-PostgreSQL%20%2B%20JSONB-0ea5e9)
-![AI](https://img.shields.io/badge/AI-phi--3.5%20%40%20Ollama-f59e0b)
+![Backend](https://img.shields.io/badge/backend-FastAPI-10b981)
+![Database](https://img.shields.io/badge/database-PostgreSQL%20%2B%20pgvector%20%2B%20JSONB-0ea5e9)
+![AI](https://img.shields.io/badge/AI-Gemma%204%20%2B%20RAG%20%40%20Ollama-f59e0b)
 
 ## ✨ O projekcie
 
@@ -31,16 +31,16 @@ System ma wspierać zespół w codziennej obsłudze klientów:
 
 | Obszar | Odpowiedzialność |
 | --- | --- |
-| API (Python) | logika biznesowa CRM, role, workflow umów, alerty |
-| PostgreSQL | dane relacyjne + elastyczne pola `JSONB` (`additional_data`) |
-| Warstwa AI | LLM (phi 3.5 na Ollama), wektoryzacja dokumentów, odpowiedzi kontekstowe |
+| API (Python/FastAPI) | logika biznesowa CRM, role, workflow umów, alerty |
+| PostgreSQL + pgvector | dane relacyjne + `JSONB` (`additional_data`) + wyszukiwanie wektorowe |
+| Warstwa AI | Embedding: `nomic-embed-text` + LLM: `Gemma 4` na Ollama |
 | Integracje | Active Directory (autoryzacja), dane inflacyjne (np. GUS) |
 
 ## 🛠️ Stack technologiczny
 
-- **Backend:** Python (**FastAPI** lub **Django** — decyzja projektowa), REST API
-- **Baza danych:** PostgreSQL, JSONB, rozważane `pgvector` / Chroma / Qdrant
-- **AI/LLM:** phi 3.5 uruchamiany lokalnie przez Ollama
+- **Backend:** Python + **FastAPI**, REST API
+- **Baza danych:** PostgreSQL + **pgvector** + `JSONB`
+- **AI/LLM:** `nomic-embed-text` (embedding) + `Gemma 4` (tryb AI) przez Ollama
 - **Infrastruktura:** środowisko intranetowe z Active Directory (SSO/LDAP do doprecyzowania)
 
 ## 🧩 Kluczowe funkcjonalności
@@ -59,6 +59,8 @@ System ma wspierać zespół w codziennej obsłudze klientów:
 ### Asystent AI
 - pytania naturalne o klienta i umowę (RAG po dokumentach),
 - wskazanie źródła odpowiedzi (dokument/strona),
+- tryb domyślny: szybki retrieval bez LLM,
+- tryb AI (switch): interpretacja i synteza na `Gemma 4`,
 - weryfikacja spójności danych pracownika na podstawie dokumentów.
 
 ### Alerty i raporty
@@ -71,6 +73,7 @@ System ma wspierać zespół w codziennej obsłudze klientów:
 - Brak klasycznej rejestracji — dostęp przez Active Directory.
 - Onboarding oparty o konto AD i role systemowe.
 - Uprawnienia per klient i per umowa.
+- Dokumenty w MinIO: private bucket + szyfrowanie SSE + presigned URL.
 - Pełny log audytowy zmian (stawki, terminy, reguły waloryzacji).
 
 ## 🔗 Powiązanie z Linear
@@ -78,9 +81,14 @@ System ma wspierać zespół w codziennej obsłudze klientów:
 - Projekt: `HRK`
 - Powiązane zadania: planowanie roadmapy, analiza MVP i implementacja modułu CRM
 
+## 📚 Dokumentacja techniczna
+
+- `docs/rag-design.md` — docelowy flow RAG, modele Ollama, schemat `document_chunks`.
+- `docs/s3-security-design.md` — bezpieczeństwo dokumentów w MinIO (SSE, private bucket, presigned URL).
+
 ## 🗺️ Roadmap (high-level)
 
-1. Domknięcie decyzji technicznych (FastAPI/Django, baza wektorowa, AD).
+1. Domknięcie decyzji integracyjnych (AD, dane inflacyjne, workflow operacyjne).
 2. Implementacja fundamentów CRM (model danych + karta klienta).
 3. Workflow umów, stawek, waloryzacji i alertów.
 4. Moduł raportowy + dashboard operacyjny.
@@ -88,9 +96,7 @@ System ma wspierać zespół w codziennej obsłudze klientów:
 
 ## 📌 Otwarte decyzje
 
-- Ostateczny wybór frameworka backendowego.
 - Zakres i sposób integracji z AD (LDAP/SSO).
-- Docelowa baza wektorowa (`pgvector` vs Chroma/Qdrant).
 - Finalny zestaw scenariuszy użycia wymaganych na prezentację.
 
 ---
