@@ -36,9 +36,9 @@ def upgrade() -> None:
         sa.Column('website', sa.String(length=255), nullable=True),
         sa.Column('is_active', sa.Boolean(), server_default=sa.text('true'), nullable=False),
         sa.Column('additional_data', postgresql.JSONB(astext_type=sa.Text()), server_default=sa.text("'{}'::jsonb"), nullable=False),
-        sa.Column('deleted_at', sa.TIMESTAMP(timezone=True), nullable=True),
         sa.Column('created_at', sa.TIMESTAMP(timezone=True), server_default=sa.text('now()'), nullable=False),
         sa.Column('updated_at', sa.TIMESTAMP(timezone=True), server_default=sa.text('now()'), nullable=False),
+        sa.Column('deleted_at', sa.TIMESTAMP(timezone=True), nullable=True),
         sa.PrimaryKeyConstraint('id', name=op.f('pk_companies')),
         sa.UniqueConstraint('nip', name=op.f('uq_companies_nip')),
     )
@@ -55,7 +55,6 @@ def upgrade() -> None:
         sa.Column('last_login_at', sa.TIMESTAMP(timezone=True), nullable=True),
         sa.Column('created_at', sa.TIMESTAMP(timezone=True), server_default=sa.text('now()'), nullable=False),
         sa.Column('updated_at', sa.TIMESTAMP(timezone=True), server_default=sa.text('now()'), nullable=False),
-        sa.CheckConstraint("role IN ('admin', 'account_manager', 'manager', 'viewer')", name=op.f('ck_users_role_check')),
         sa.PrimaryKeyConstraint('id', name=op.f('pk_users')),
         sa.UniqueConstraint('ad_username', name=op.f('uq_users_ad_username')),
         sa.UniqueConstraint('email', name=op.f('uq_users_email')),
@@ -101,11 +100,10 @@ def upgrade() -> None:
         sa.Column('additional_data', postgresql.JSONB(astext_type=sa.Text()), server_default=sa.text("'{}'::jsonb"), nullable=False),
         sa.Column('created_by', sa.UUID(), nullable=True),
         sa.Column('updated_by', sa.UUID(), nullable=True),
-        sa.Column('deleted_at', sa.TIMESTAMP(timezone=True), nullable=True),
         sa.Column('created_at', sa.TIMESTAMP(timezone=True), server_default=sa.text('now()'), nullable=False),
         sa.Column('updated_at', sa.TIMESTAMP(timezone=True), server_default=sa.text('now()'), nullable=False),
-        sa.CheckConstraint("status IN ('active', 'churn_risk', 'needs_attention', 'inactive')", name=op.f('ck_customers_status_check')),
-        sa.ForeignKeyConstraint(['account_manager_id'], ['users.id'], name=op.f('fk_customers_account_manager_id_users'), ondelete='SET NULL'),
+        sa.Column('deleted_at', sa.TIMESTAMP(timezone=True), nullable=True),
+        sa.ForeignKeyConstraint(['account_manager_id'], ['users.id'], name=op.f('fk_customers_account_manager_id_users'), ondelete='RESTRICT'),
         sa.ForeignKeyConstraint(['company_id'], ['companies.id'], name=op.f('fk_customers_company_id_companies'), ondelete='RESTRICT'),
         sa.ForeignKeyConstraint(['created_by'], ['users.id'], name=op.f('fk_customers_created_by_users'), ondelete='SET NULL'),
         sa.ForeignKeyConstraint(['updated_by'], ['users.id'], name=op.f('fk_customers_updated_by_users'), ondelete='SET NULL'),
@@ -116,6 +114,7 @@ def upgrade() -> None:
     op.create_index('idx_customers_account_manager', 'customers', ['account_manager_id'], unique=False)
     op.create_index('idx_customers_ckd', 'customers', ['ckd'], unique=True)
     op.create_index('idx_customers_ckk', 'customers', ['ckk'], unique=True)
+    op.create_index('idx_customers_company', 'customers', ['company_id'], unique=False)
     op.create_index('idx_customers_deleted_at', 'customers', ['deleted_at'], unique=False)
     op.create_index('idx_customers_status', 'customers', ['status'], unique=False)
 
@@ -130,7 +129,6 @@ def upgrade() -> None:
         sa.Column('ip_address', sa.String(length=45), nullable=True),
         sa.Column('user_agent', sa.String(length=500), nullable=True),
         sa.Column('created_at', sa.TIMESTAMP(timezone=True), server_default=sa.text('now()'), nullable=False),
-        sa.CheckConstraint("action IN ('CREATE', 'UPDATE', 'DELETE', 'RESTORE', 'VIEW')", name=op.f('ck_audit_logs_action_check')),
         sa.ForeignKeyConstraint(['user_id'], ['users.id'], name=op.f('fk_audit_logs_user_id_users'), ondelete='SET NULL'),
         sa.PrimaryKeyConstraint('id', name=op.f('pk_audit_logs')),
     )
@@ -149,11 +147,10 @@ def upgrade() -> None:
         sa.Column('additional_data', postgresql.JSONB(astext_type=sa.Text()), server_default=sa.text("'{}'::jsonb"), nullable=False),
         sa.Column('created_at', sa.TIMESTAMP(timezone=True), server_default=sa.text('now()'), nullable=False),
         sa.Column('deleted_at', sa.TIMESTAMP(timezone=True), nullable=True),
-        sa.CheckConstraint("billing_frequency IN ('monthly', 'quarterly', 'one_time', 'on_demand')", name=op.f('ck_services_billing_frequency_check')),
-        sa.CheckConstraint("billing_unit IN ('per_person', 'ryczalt', 'per_hour', 'per_doc', 'per_item')", name=op.f('ck_services_billing_unit_check')),
         sa.ForeignKeyConstraint(['group_id'], ['service_groups.id'], name=op.f('fk_services_group_id_service_groups'), ondelete='RESTRICT'),
         sa.PrimaryKeyConstraint('id', name=op.f('pk_services')),
     )
+    op.create_index('idx_services_group', 'services', ['group_id'], unique=False)
 
     # ── Tier 2: depend on customers / users ──────────────────────────────
 
@@ -173,6 +170,7 @@ def upgrade() -> None:
         sa.ForeignKeyConstraint(['customer_id'], ['customers.id'], name=op.f('fk_contact_persons_customer_id_customers'), ondelete='CASCADE'),
         sa.PrimaryKeyConstraint('id', name=op.f('pk_contact_persons')),
     )
+    op.create_index('idx_contact_persons_customer', 'contact_persons', ['customer_id'], unique=False)
 
     op.create_table('contracts',
         sa.Column('id', sa.UUID(), nullable=False),
@@ -192,12 +190,9 @@ def upgrade() -> None:
         sa.Column('additional_data', postgresql.JSONB(astext_type=sa.Text()), server_default=sa.text("'{}'::jsonb"), nullable=False),
         sa.Column('created_by', sa.UUID(), nullable=True),
         sa.Column('updated_by', sa.UUID(), nullable=True),
-        sa.Column('deleted_at', sa.TIMESTAMP(timezone=True), nullable=True),
         sa.Column('created_at', sa.TIMESTAMP(timezone=True), server_default=sa.text('now()'), nullable=False),
         sa.Column('updated_at', sa.TIMESTAMP(timezone=True), server_default=sa.text('now()'), nullable=False),
-        sa.CheckConstraint("billing_cycle IN ('monthly', 'quarterly', 'annual', 'one_time')", name=op.f('ck_contracts_billing_cycle_check')),
-        sa.CheckConstraint("contract_type IN ('ramowa', 'aneks', 'SLA', 'DPA', 'PPK', 'inne')", name=op.f('ck_contracts_contract_type_check')),
-        sa.CheckConstraint("status IN ('draft', 'signed', 'active', 'expiring', 'terminated')", name=op.f('ck_contracts_status_check')),
+        sa.Column('deleted_at', sa.TIMESTAMP(timezone=True), nullable=True),
         sa.ForeignKeyConstraint(['account_manager_id'], ['users.id'], name=op.f('fk_contracts_account_manager_id_users'), ondelete='SET NULL'),
         sa.ForeignKeyConstraint(['created_by'], ['users.id'], name=op.f('fk_contracts_created_by_users'), ondelete='SET NULL'),
         sa.ForeignKeyConstraint(['customer_id'], ['customers.id'], name=op.f('fk_contracts_customer_id_customers'), ondelete='RESTRICT'),
@@ -220,9 +215,7 @@ def upgrade() -> None:
         sa.Column('reasoning', sa.Text(), nullable=True),
         sa.Column('calculated_by', sa.String(length=10), server_default=sa.text("'ai'"), nullable=False),
         sa.Column('created_at', sa.TIMESTAMP(timezone=True), server_default=sa.text('now()'), nullable=False),
-        sa.CheckConstraint("calculated_by IN ('ai', 'manual')", name=op.f('ck_customer_relation_scores_calculated_by_check')),
-        sa.CheckConstraint("score_label IN ('good', 'needs_attention', 'churn_risk')", name=op.f('ck_customer_relation_scores_score_label_check')),
-        sa.CheckConstraint('score_value BETWEEN 0.00 AND 1.00', name=op.f('ck_customer_relation_scores_score_value_range')),
+        sa.CheckConstraint('score_value BETWEEN 0.00 AND 1.00', name=op.f('ck_customer_relation_scores_ck_customer_relation_scores_score_value_range')),
         sa.ForeignKeyConstraint(['customer_id'], ['customers.id'], name=op.f('fk_customer_relation_scores_customer_id_customers'), ondelete='CASCADE'),
         sa.PrimaryKeyConstraint('id', name=op.f('pk_customer_relation_scores')),
         sa.UniqueConstraint('customer_id', 'score_date', name='uq_score_customer_date'),
@@ -241,7 +234,6 @@ def upgrade() -> None:
         sa.Column('activity_date', sa.TIMESTAMP(timezone=True), server_default=sa.text('now()'), nullable=False),
         sa.Column('additional_data', postgresql.JSONB(astext_type=sa.Text()), server_default=sa.text("'{}'::jsonb"), nullable=False),
         sa.Column('created_at', sa.TIMESTAMP(timezone=True), server_default=sa.text('now()'), nullable=False),
-        sa.CheckConstraint("activity_type IN ('meeting', 'email', 'note', 'document', 'verification', 'call', 'system')", name=op.f('ck_activity_logs_activity_type_check')),
         sa.ForeignKeyConstraint(['contract_id'], ['contracts.id'], name=op.f('fk_activity_logs_contract_id_contracts'), ondelete='SET NULL'),
         sa.ForeignKeyConstraint(['customer_id'], ['customers.id'], name=op.f('fk_activity_logs_customer_id_customers'), ondelete='CASCADE'),
         sa.ForeignKeyConstraint(['performed_by'], ['users.id'], name=op.f('fk_activity_logs_performed_by_users'), ondelete='SET NULL'),
@@ -264,14 +256,13 @@ def upgrade() -> None:
         sa.Column('assigned_to', sa.UUID(), nullable=True),
         sa.Column('acknowledged_at', sa.TIMESTAMP(timezone=True), nullable=True),
         sa.Column('created_at', sa.TIMESTAMP(timezone=True), server_default=sa.text('now()'), nullable=False),
-        sa.CheckConstraint("alert_type IN ('contract_expiry', 'valorization_overdue', 'no_contact', 'high_discount', 'contract_notice', 'custom')", name=op.f('ck_alerts_alert_type_check')),
-        sa.CheckConstraint("status IN ('open', 'acknowledged', 'resolved', 'snoozed')", name=op.f('ck_alerts_status_check')),
         sa.ForeignKeyConstraint(['assigned_to'], ['users.id'], name=op.f('fk_alerts_assigned_to_users'), ondelete='SET NULL'),
         sa.ForeignKeyConstraint(['contract_id'], ['contracts.id'], name=op.f('fk_alerts_contract_id_contracts'), ondelete='SET NULL'),
         sa.ForeignKeyConstraint(['customer_id'], ['customers.id'], name=op.f('fk_alerts_customer_id_customers'), ondelete='CASCADE'),
         sa.PrimaryKeyConstraint('id', name=op.f('pk_alerts')),
     )
     op.create_index('idx_alert_assigned', 'alerts', ['assigned_to', 'status'], unique=False)
+    op.create_index('idx_alert_contract', 'alerts', ['contract_id'], unique=False)
     op.create_index('idx_alert_customer', 'alerts', ['customer_id'], unique=False)
     op.create_index('idx_alert_trigger_status', 'alerts', ['trigger_date', 'status'], unique=False)
 
@@ -281,12 +272,11 @@ def upgrade() -> None:
         sa.Column('contract_id', sa.UUID(), nullable=True),
         sa.Column('note_type', sa.String(length=30), nullable=False),
         sa.Column('content', sa.Text(), nullable=False),
-        sa.Column('created_by', sa.UUID(), nullable=False),
+        sa.Column('created_by', sa.UUID(), nullable=True),
         sa.Column('created_at', sa.TIMESTAMP(timezone=True), server_default=sa.text('now()'), nullable=False),
         sa.Column('updated_at', sa.TIMESTAMP(timezone=True), server_default=sa.text('now()'), nullable=False),
         sa.Column('deleted_at', sa.TIMESTAMP(timezone=True), nullable=True),
-        sa.CheckConstraint("note_type IN ('meeting', 'call', 'internal', 'client_request', 'other')", name=op.f('ck_notes_note_type_check')),
-        sa.CheckConstraint('customer_id IS NOT NULL OR contract_id IS NOT NULL', name=op.f('ck_notes_note_parent_check')),
+        sa.CheckConstraint('customer_id IS NOT NULL OR contract_id IS NOT NULL', name=op.f('ck_notes_ck_notes_note_parent_check')),
         sa.ForeignKeyConstraint(['contract_id'], ['contracts.id'], name=op.f('fk_notes_contract_id_contracts'), ondelete='CASCADE'),
         sa.ForeignKeyConstraint(['created_by'], ['users.id'], name=op.f('fk_notes_created_by_users'), ondelete='SET NULL'),
         sa.ForeignKeyConstraint(['customer_id'], ['customers.id'], name=op.f('fk_notes_customer_id_customers'), ondelete='CASCADE'),
@@ -327,11 +317,9 @@ def upgrade() -> None:
         sa.Column('approved_by', sa.UUID(), nullable=True),
         sa.Column('notes', sa.Text(), nullable=True),
         sa.Column('additional_data', postgresql.JSONB(astext_type=sa.Text()), server_default=sa.text("'{}'::jsonb"), nullable=False),
+        sa.Column('created_by', sa.UUID(), nullable=True),
         sa.Column('created_at', sa.TIMESTAMP(timezone=True), server_default=sa.text('now()'), nullable=False),
         sa.Column('updated_at', sa.TIMESTAMP(timezone=True), server_default=sa.text('now()'), nullable=False),
-        sa.Column('created_by', sa.UUID(), nullable=True),
-        sa.CheckConstraint("index_type IN ('GUS_CPI', 'fixed_pct', 'custom')", name=op.f('ck_valorizations_index_type_check')),
-        sa.CheckConstraint("status IN ('pending', 'approved', 'applied', 'rejected')", name=op.f('ck_valorizations_status_check')),
         sa.ForeignKeyConstraint(['approved_by'], ['users.id'], name=op.f('fk_valorizations_approved_by_users'), ondelete='SET NULL'),
         sa.ForeignKeyConstraint(['contract_id'], ['contracts.id'], name=op.f('fk_valorizations_contract_id_contracts'), ondelete='RESTRICT'),
         sa.ForeignKeyConstraint(['created_by'], ['users.id'], name=op.f('fk_valorizations_created_by_users'), ondelete='SET NULL'),
@@ -359,11 +347,9 @@ def upgrade() -> None:
         sa.Column('extracted_text', sa.Text(), nullable=True),
         sa.Column('extracted_fields', postgresql.JSONB(astext_type=sa.Text()), server_default=sa.text("'{}'::jsonb"), nullable=False),
         sa.Column('version', sa.Integer(), server_default=sa.text('1'), nullable=False),
-        sa.Column('uploaded_by', sa.UUID(), nullable=False),
+        sa.Column('uploaded_by', sa.UUID(), nullable=True),
         sa.Column('created_at', sa.TIMESTAMP(timezone=True), server_default=sa.text('now()'), nullable=False),
         sa.Column('deleted_at', sa.TIMESTAMP(timezone=True), nullable=True),
-        sa.CheckConstraint("document_type IN ('contract', 'amendment', 'power_of_attorney', 'DPA', 'PPK', 'report', 'other')", name=op.f('ck_attachments_document_type_check')),
-        sa.CheckConstraint("ocr_status IN ('pending', 'processing', 'done', 'failed', 'skipped')", name=op.f('ck_attachments_ocr_status_check')),
         sa.ForeignKeyConstraint(['contract_id'], ['contracts.id'], name=op.f('fk_attachments_contract_id_contracts'), ondelete='CASCADE'),
         sa.ForeignKeyConstraint(['customer_id'], ['customers.id'], name=op.f('fk_attachments_customer_id_customers'), ondelete='CASCADE'),
         sa.ForeignKeyConstraint(['uploaded_by'], ['users.id'], name=op.f('fk_attachments_uploaded_by_users'), ondelete='SET NULL'),
@@ -394,6 +380,7 @@ def upgrade() -> None:
         sa.PrimaryKeyConstraint('id', name=op.f('pk_contract_amendments')),
         sa.UniqueConstraint('contract_id', 'amendment_number', name='uq_amendment_contract_number'),
     )
+    op.create_index('idx_amendments_contract', 'contract_amendments', ['contract_id'], unique=False)
 
     # Now add the deferred FK: attachments.amendment_id → contract_amendments.id
     op.create_foreign_key(
@@ -409,11 +396,18 @@ def upgrade() -> None:
         sa.Column('chunk_index', sa.Integer(), nullable=False),
         sa.Column('content', sa.Text(), nullable=False),
         sa.Column('token_count', sa.Integer(), nullable=True),
+        sa.Column('page_number', sa.Integer(), nullable=True),
+        sa.Column('bbox', postgresql.JSONB(astext_type=sa.Text()), nullable=True),
+        sa.Column('customer_id', sa.UUID(), nullable=True),
+        sa.Column('section_title', sa.String(length=500), nullable=True),
         sa.Column('created_at', sa.TIMESTAMP(timezone=True), server_default=sa.text('now()'), nullable=False),
         sa.ForeignKeyConstraint(['attachment_id'], ['attachments.id'], name=op.f('fk_document_chunks_attachment_id_attachments'), ondelete='CASCADE'),
+        sa.ForeignKeyConstraint(['customer_id'], ['customers.id'], name=op.f('fk_document_chunks_customer_id_customers'), ondelete='CASCADE'),
         sa.PrimaryKeyConstraint('id', name=op.f('pk_document_chunks')),
         sa.UniqueConstraint('attachment_id', 'chunk_index', name='uq_chunk_attachment_index'),
     )
+    op.create_index('idx_chunks_attachment', 'document_chunks', ['attachment_id'], unique=False)
+    op.create_index('idx_chunks_customer', 'document_chunks', ['customer_id'], unique=False)
 
     # ── Tier 5: depend on contract_services + valorizations ──────────────
 
@@ -422,18 +416,6 @@ def upgrade() -> None:
         sa.Column('contract_service_id', sa.UUID(), nullable=False),
         sa.Column('valorization_id', sa.UUID(), nullable=True),
         sa.Column('year', sa.Integer(), nullable=False),
-        sa.Column('net_price_01', sa.Numeric(precision=10, scale=2), nullable=True),
-        sa.Column('net_price_02', sa.Numeric(precision=10, scale=2), nullable=True),
-        sa.Column('net_price_03', sa.Numeric(precision=10, scale=2), nullable=True),
-        sa.Column('net_price_04', sa.Numeric(precision=10, scale=2), nullable=True),
-        sa.Column('net_price_05', sa.Numeric(precision=10, scale=2), nullable=True),
-        sa.Column('net_price_06', sa.Numeric(precision=10, scale=2), nullable=True),
-        sa.Column('net_price_07', sa.Numeric(precision=10, scale=2), nullable=True),
-        sa.Column('net_price_08', sa.Numeric(precision=10, scale=2), nullable=True),
-        sa.Column('net_price_09', sa.Numeric(precision=10, scale=2), nullable=True),
-        sa.Column('net_price_10', sa.Numeric(precision=10, scale=2), nullable=True),
-        sa.Column('net_price_11', sa.Numeric(precision=10, scale=2), nullable=True),
-        sa.Column('net_price_12', sa.Numeric(precision=10, scale=2), nullable=True),
         sa.Column('base_price', sa.Numeric(precision=10, scale=2), nullable=False),
         sa.Column('discount_pct', sa.Numeric(precision=5, scale=2), server_default=sa.text('0.00'), nullable=False),
         sa.Column('created_at', sa.TIMESTAMP(timezone=True), server_default=sa.text('now()'), nullable=False),
@@ -446,13 +428,32 @@ def upgrade() -> None:
     )
     op.create_index('idx_rates_cs_year', 'customer_rates', ['contract_service_id', 'year'], unique=False)
 
+    # ── Tier 6: customer_rate_months (1NF normalisation) ─────────────────
+
+    op.create_table('customer_rate_months',
+        sa.Column('id', sa.UUID(), nullable=False),
+        sa.Column('rate_id', sa.UUID(), nullable=False),
+        sa.Column('month', sa.Integer(), nullable=False),
+        sa.Column('net_price', sa.Numeric(precision=10, scale=2), nullable=False),
+        sa.CheckConstraint('month BETWEEN 1 AND 12', name=op.f('ck_customer_rate_months_ck_customer_rate_months_month_range')),
+        sa.ForeignKeyConstraint(['rate_id'], ['customer_rates.id'], name=op.f('fk_customer_rate_months_rate_id_customer_rates'), ondelete='CASCADE'),
+        sa.PrimaryKeyConstraint('id', name=op.f('pk_customer_rate_months')),
+        sa.UniqueConstraint('rate_id', 'month', name='uq_rate_month'),
+    )
+    op.create_index('idx_rate_months_rate', 'customer_rate_months', ['rate_id'], unique=False)
+
 
 def downgrade() -> None:
     """Revert migration."""
+    op.drop_index('idx_rate_months_rate', table_name='customer_rate_months')
+    op.drop_table('customer_rate_months')
     op.drop_index('idx_rates_cs_year', table_name='customer_rates')
     op.drop_table('customer_rates')
+    op.drop_index('idx_chunks_customer', table_name='document_chunks')
+    op.drop_index('idx_chunks_attachment', table_name='document_chunks')
     op.drop_table('document_chunks')
     op.drop_foreign_key(op.f('fk_attachments_amendment_id_contract_amendments'), 'attachments')
+    op.drop_index('idx_amendments_contract', table_name='contract_amendments')
     op.drop_table('contract_amendments')
     op.drop_index('idx_att_ocr_status', table_name='attachments',
                    postgresql_where=sa.text("ocr_status IN ('pending', 'processing')"))
@@ -470,6 +471,7 @@ def downgrade() -> None:
     op.drop_table('notes')
     op.drop_index('idx_alert_trigger_status', table_name='alerts')
     op.drop_index('idx_alert_customer', table_name='alerts')
+    op.drop_index('idx_alert_contract', table_name='alerts')
     op.drop_index('idx_alert_assigned', table_name='alerts')
     op.drop_table('alerts')
     op.drop_index('idx_act_customer_date', table_name='activity_logs')
@@ -482,7 +484,9 @@ def downgrade() -> None:
     op.drop_index('idx_contracts_deleted_at', table_name='contracts')
     op.drop_index('idx_contracts_customer_status', table_name='contracts')
     op.drop_table('contracts')
+    op.drop_index('idx_contact_persons_customer', table_name='contact_persons')
     op.drop_table('contact_persons')
+    op.drop_index('idx_services_group', table_name='services')
     op.drop_table('services')
     op.drop_index('idx_audit_user', table_name='audit_logs')
     op.drop_index('idx_audit_entity', table_name='audit_logs')
@@ -490,6 +494,7 @@ def downgrade() -> None:
     op.drop_table('audit_logs')
     op.drop_index('idx_customers_status', table_name='customers')
     op.drop_index('idx_customers_deleted_at', table_name='customers')
+    op.drop_index('idx_customers_company', table_name='customers')
     op.drop_index('idx_customers_ckk', table_name='customers')
     op.drop_index('idx_customers_ckd', table_name='customers')
     op.drop_index('idx_customers_account_manager', table_name='customers')

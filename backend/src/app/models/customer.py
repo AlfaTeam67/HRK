@@ -1,13 +1,11 @@
 """Customer and ContactPerson models."""
 
 import uuid
-from datetime import datetime
 from typing import Optional
 
+import sqlalchemy as sa
 from sqlalchemy import (
-    TIMESTAMP,
     Boolean,
-    CheckConstraint,
     ForeignKey,
     Index,
     Integer,
@@ -17,84 +15,82 @@ from sqlalchemy import (
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.models.base import Base, TimestampMixin
+from app.models.base import (
+    AuditMixin,
+    Base,
+    CreatedAtMixin,
+    SoftDeleteMixin,
+    TimestampMixin,
+)
+from app.models.enums import CustomerStatus
 
 
-class Customer(Base, TimestampMixin):
+class Customer(Base, TimestampMixin, SoftDeleteMixin, AuditMixin):
     """Customer account in the CRM."""
 
     __tablename__ = "customers"
     __table_args__ = (
-        CheckConstraint(
-            "status IN ('active', 'churn_risk', 'needs_attention', 'inactive')",
-            name="status_check",
-        ),
         Index("idx_customers_ckk", "ckk", unique=True),
         Index("idx_customers_ckd", "ckd", unique=True),
         Index("idx_customers_account_manager", "account_manager_id"),
+        Index("idx_customers_company", "company_id"),
         Index("idx_customers_status", "status"),
         Index("idx_customers_deleted_at", "deleted_at"),
     )
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
-    )
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     ckk: Mapped[str] = mapped_column(String(10), unique=True, nullable=False)
-    ckd: Mapped[Optional[str]] = mapped_column(String(10), unique=True, nullable=True)
+    ckd: Mapped[str | None] = mapped_column(String(10), unique=True, nullable=True)
 
-    company_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+    company_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("companies.id", ondelete="RESTRICT"),
         nullable=True,
     )
+    # 🔴 Fix: was ondelete="SET NULL" with nullable=False — impossible.
+    #    Customer MUST have an account manager → RESTRICT.
     account_manager_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
-        ForeignKey("users.id", ondelete="SET NULL"),
+        ForeignKey("users.id", ondelete="RESTRICT"),
         nullable=False,
     )
 
-    status: Mapped[str] = mapped_column(
-        String(30), server_default=text("'active'"), nullable=False
+    status: Mapped[CustomerStatus] = mapped_column(
+        sa.Enum(
+            CustomerStatus,
+            name="customerstatus",
+            create_constraint=False,
+            native_enum=False,
+        ),
+        server_default=text("'active'"),
+        nullable=False,
     )
-    segment: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
-    industry: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
-    employee_count: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    segment: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    industry: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    employee_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
     # Billing
-    payment_period_days: Mapped[Optional[int]] = mapped_column(
+    payment_period_days: Mapped[int | None] = mapped_column(
         Integer, server_default=text("21"), nullable=True
     )
-    account_number: Mapped[Optional[str]] = mapped_column(String(30), nullable=True)
-    billing_nip: Mapped[Optional[str]] = mapped_column(String(15), nullable=True)
-    billing_email: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
-    invoice_nip: Mapped[Optional[str]] = mapped_column(String(15), nullable=True)
+    account_number: Mapped[str | None] = mapped_column(String(30), nullable=True)
+    billing_nip: Mapped[str | None] = mapped_column(String(15), nullable=True)
+    billing_email: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    invoice_nip: Mapped[str | None] = mapped_column(String(15), nullable=True)
 
     # Contact
-    phone: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
+    phone: Mapped[str | None] = mapped_column(String(20), nullable=True)
 
     # Address
-    address_street: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
-    address_city: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
-    address_postal: Mapped[Optional[str]] = mapped_column(String(10), nullable=True)
-    address_country: Mapped[Optional[str]] = mapped_column(
+    address_street: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    address_city: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    address_postal: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    address_country: Mapped[str | None] = mapped_column(
         String(2), server_default=text("'PL'"), nullable=True
     )
 
     additional_data: Mapped[dict] = mapped_column(
         JSONB, server_default=text("'{}'::jsonb"), nullable=False
-    )
-
-    # Audit fields
-    created_by: Mapped[Optional[uuid.UUID]] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
-    )
-    updated_by: Mapped[Optional[uuid.UUID]] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
-    )
-
-    # Soft delete
-    deleted_at: Mapped[Optional[datetime]] = mapped_column(
-        TIMESTAMP(timezone=True), nullable=True
     )
 
     # Relationships
@@ -129,14 +125,13 @@ class Customer(Base, TimestampMixin):
     )
 
 
-class ContactPerson(Base):
+class ContactPerson(Base, CreatedAtMixin, SoftDeleteMixin):
     """Contact person linked to a Customer."""
 
     __tablename__ = "contact_persons"
+    __table_args__ = (Index("idx_contact_persons_customer", "customer_id"),)
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
-    )
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     customer_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("customers.id", ondelete="CASCADE"),
@@ -144,12 +139,10 @@ class ContactPerson(Base):
     )
     first_name: Mapped[str] = mapped_column(String(100), nullable=False)
     last_name: Mapped[str] = mapped_column(String(100), nullable=False)
-    email: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
-    phone: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
-    role: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
-    is_primary: Mapped[bool] = mapped_column(
-        Boolean, server_default=text("false"), nullable=False
-    )
+    email: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    phone: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    role: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    is_primary: Mapped[bool] = mapped_column(Boolean, server_default=text("false"), nullable=False)
     is_contract_signer: Mapped[bool] = mapped_column(
         Boolean, server_default=text("false"), nullable=False
     )
@@ -158,14 +151,5 @@ class ContactPerson(Base):
         JSONB, server_default=text("'{}'::jsonb"), nullable=False
     )
 
-    created_at: Mapped[datetime] = mapped_column(
-        TIMESTAMP(timezone=True), server_default=text("now()"), nullable=False
-    )
-    deleted_at: Mapped[Optional[datetime]] = mapped_column(
-        TIMESTAMP(timezone=True), nullable=True
-    )
-
     # Relationships
-    customer: Mapped["Customer"] = relationship(
-        "Customer", back_populates="contact_persons"
-    )
+    customer: Mapped["Customer"] = relationship("Customer", back_populates="contact_persons")

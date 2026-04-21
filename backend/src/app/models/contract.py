@@ -1,12 +1,11 @@
 """Contract and ContractAmendment models."""
 
 import uuid
-from datetime import date, datetime
+from datetime import date
 from typing import Optional
 
+import sqlalchemy as sa
 from sqlalchemy import (
-    TIMESTAMP,
-    CheckConstraint,
     Date,
     ForeignKey,
     Index,
@@ -19,84 +18,86 @@ from sqlalchemy import (
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.models.base import Base, TimestampMixin
+from app.models.base import (
+    AuditMixin,
+    Base,
+    CreatedAtMixin,
+    SoftDeleteMixin,
+    TimestampMixin,
+)
+from app.models.enums import BillingCycle, ContractStatus, ContractType
 
 
-class Contract(Base, TimestampMixin):
+class Contract(Base, TimestampMixin, SoftDeleteMixin, AuditMixin):
     """Contract linked to a Customer."""
 
     __tablename__ = "contracts"
     __table_args__ = (
-        CheckConstraint(
-            "contract_type IN ('ramowa', 'aneks', 'SLA', 'DPA', 'PPK', 'inne')",
-            name="contract_type_check",
-        ),
-        CheckConstraint(
-            "status IN ('draft', 'signed', 'active', 'expiring', 'terminated')",
-            name="status_check",
-        ),
-        CheckConstraint(
-            "billing_cycle IN ('monthly', 'quarterly', 'annual', 'one_time')",
-            name="billing_cycle_check",
-        ),
         Index("idx_contracts_number", "contract_number", unique=True),
         Index("idx_contracts_customer_status", "customer_id", "status"),
         Index("idx_contracts_end_date", "end_date"),
         Index("idx_contracts_deleted_at", "deleted_at"),
     )
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
-    )
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     customer_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("customers.id", ondelete="RESTRICT"),
         nullable=False,
     )
-    account_manager_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+    account_manager_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("users.id", ondelete="SET NULL"),
         nullable=True,
     )
     contract_number: Mapped[str] = mapped_column(String(50), unique=True, nullable=False)
-    contract_type: Mapped[str] = mapped_column(String(20), nullable=False)
-    status: Mapped[str] = mapped_column(
-        String(20), server_default=text("'draft'"), nullable=False
+    contract_type: Mapped[ContractType] = mapped_column(
+        sa.Enum(
+            ContractType,
+            name="contracttype",
+            create_constraint=False,
+            native_enum=False,
+        ),
+        nullable=False,
+    )
+    status: Mapped[ContractStatus] = mapped_column(
+        sa.Enum(
+            ContractStatus,
+            name="contractstatus",
+            create_constraint=False,
+            native_enum=False,
+        ),
+        server_default=text("'draft'"),
+        nullable=False,
     )
     start_date: Mapped[date] = mapped_column(Date, nullable=False)
-    end_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
-    notice_period_days: Mapped[Optional[int]] = mapped_column(
+    end_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    notice_period_days: Mapped[int | None] = mapped_column(
         Integer, server_default=text("90"), nullable=True
     )
-    notice_conditions: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    billing_cycle: Mapped[Optional[str]] = mapped_column(
-        String(20), server_default=text("'monthly'"), nullable=True
+    notice_conditions: Mapped[str | None] = mapped_column(Text, nullable=True)
+    billing_cycle: Mapped[BillingCycle | None] = mapped_column(
+        sa.Enum(
+            BillingCycle,
+            name="billingcycle",
+            create_constraint=False,
+            native_enum=False,
+        ),
+        server_default=text("'monthly'"),
+        nullable=True,
     )
-    governing_law: Mapped[Optional[str]] = mapped_column(
+    governing_law: Mapped[str | None] = mapped_column(
         String(10), server_default=text("'PL'"), nullable=True
     )
-    parent_contract_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+    parent_contract_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("contracts.id", ondelete="SET NULL"),
         nullable=True,
     )
-    notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     additional_data: Mapped[dict] = mapped_column(
         JSONB, server_default=text("'{}'::jsonb"), nullable=False
-    )
-
-    # Audit fields
-    created_by: Mapped[Optional[uuid.UUID]] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
-    )
-    updated_by: Mapped[Optional[uuid.UUID]] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
-    )
-
-    # Soft delete
-    deleted_at: Mapped[Optional[datetime]] = mapped_column(
-        TIMESTAMP(timezone=True), nullable=True
     )
 
     # Relationships
@@ -140,17 +141,16 @@ class Contract(Base, TimestampMixin):
     )
 
 
-class ContractAmendment(Base):
+class ContractAmendment(Base, CreatedAtMixin):
     """Amendment (aneks) to an existing Contract."""
 
     __tablename__ = "contract_amendments"
     __table_args__ = (
         UniqueConstraint("contract_id", "amendment_number", name="uq_amendment_contract_number"),
+        Index("idx_amendments_contract", "contract_id"),
     )
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
-    )
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     contract_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("contracts.id", ondelete="RESTRICT"),
@@ -160,25 +160,19 @@ class ContractAmendment(Base):
     amendment_date: Mapped[date] = mapped_column(Date, nullable=False)
     effective_date: Mapped[date] = mapped_column(Date, nullable=False)
     scope_of_change: Mapped[str] = mapped_column(Text, nullable=False)
-    approved_by_client: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
-    approved_by_hrk: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
-    document_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+    approved_by_client: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    approved_by_hrk: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    document_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("attachments.id", ondelete="SET NULL"),
         nullable=True,
     )
-
-    created_at: Mapped[datetime] = mapped_column(
-        TIMESTAMP(timezone=True), server_default=text("now()"), nullable=False
-    )
-    created_by: Mapped[Optional[uuid.UUID]] = mapped_column(
+    created_by: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
     )
 
     # Relationships
-    contract: Mapped["Contract"] = relationship(
-        "Contract", back_populates="amendments"
-    )
+    contract: Mapped["Contract"] = relationship("Contract", back_populates="amendments")
     document: Mapped[Optional["Attachment"]] = relationship(  # noqa: F821
         "Attachment"
     )

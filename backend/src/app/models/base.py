@@ -1,11 +1,11 @@
 """SQLAlchemy declarative Base and shared mixins."""
 
 import uuid
-from datetime import datetime
+from datetime import UTC, datetime
 
-from sqlalchemy import TIMESTAMP, MetaData, text
+from sqlalchemy import TIMESTAMP, ForeignKey, MetaData, text
+from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
-
 
 # Naming convention for constraints — makes Alembic autogenerate deterministic names.
 convention = {
@@ -23,17 +23,42 @@ class Base(DeclarativeBase):
     metadata = MetaData(naming_convention=convention)
 
 
-class TimestampMixin:
-    """Mixin that adds created_at / updated_at columns."""
+# ── Mixins ───────────────────────────────────────────────────────────────────
+
+
+class CreatedAtMixin:
+    """Mixin that adds a ``created_at`` column (immutable entities)."""
 
     created_at: Mapped[datetime] = mapped_column(
         TIMESTAMP(timezone=True),
         server_default=text("now()"),
         nullable=False,
     )
+
+
+class TimestampMixin(CreatedAtMixin):
+    """Mixin that adds ``created_at`` + ``updated_at`` columns."""
+
     updated_at: Mapped[datetime] = mapped_column(
         TIMESTAMP(timezone=True),
         server_default=text("now()"),
-        onupdate=datetime.utcnow,
+        onupdate=lambda: datetime.now(UTC),
         nullable=False,
+    )
+
+
+class SoftDeleteMixin:
+    """Mixin that adds a ``deleted_at`` column for soft-delete."""
+
+    deleted_at: Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=True), nullable=True)
+
+
+class AuditMixin:
+    """Mixin that adds ``created_by`` / ``updated_by`` FK columns."""
+
+    created_by: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+    updated_by: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
     )
