@@ -1,6 +1,7 @@
 """Service model."""
 
 import uuid
+from decimal import Decimal
 
 import sqlalchemy as sa
 from sqlalchemy import (
@@ -50,7 +51,7 @@ class Service(Base, CreatedAtMixin, SoftDeleteMixin):
         server_default=text("'monthly'"),
         nullable=False,
     )
-    vat_rate: Mapped[float | None] = mapped_column(
+    vat_rate: Mapped[Decimal | None] = mapped_column(
         Numeric(4, 2),
         server_default=text("23.00"),
         nullable=True,

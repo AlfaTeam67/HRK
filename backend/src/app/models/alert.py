@@ -6,6 +6,7 @@ from typing import Optional
 
 import sqlalchemy as sa
 from sqlalchemy import (
+    CheckConstraint,
     Date,
     ForeignKey,
     Index,
@@ -26,6 +27,10 @@ class Alert(Base, CreatedAtMixin):
 
     __tablename__ = "alerts"
     __table_args__ = (
+        CheckConstraint(
+            "customer_id IS NOT NULL OR contract_id IS NOT NULL",
+            name="ck_alerts_alert_parent_check",
+        ),
         Index("idx_alert_trigger_status", "trigger_date", "status"),
         Index("idx_alert_assigned", "assigned_to", "status"),
         Index("idx_alert_customer", "customer_id"),
@@ -40,7 +45,7 @@ class Alert(Base, CreatedAtMixin):
     )
     contract_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True),
-        ForeignKey("contracts.id", ondelete="SET NULL"),
+        ForeignKey("contracts.id", ondelete="CASCADE"),
         nullable=True,
     )
     alert_type: Mapped[AlertType] = mapped_column(

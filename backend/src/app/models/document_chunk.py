@@ -2,6 +2,7 @@
 
 import uuid
 
+from pgvector.sqlalchemy import Vector
 from sqlalchemy import (
     ForeignKey,
     Index,
@@ -24,6 +25,13 @@ class DocumentChunk(Base, CreatedAtMixin):
         UniqueConstraint("attachment_id", "chunk_index", name="uq_chunk_attachment_index"),
         Index("idx_chunks_attachment", "attachment_id"),
         Index("idx_chunks_customer", "customer_id"),
+        Index(
+            "idx_chunks_embedding_hnsw",
+            "embedding",
+            postgresql_using="hnsw",
+            postgresql_ops={"embedding": "vector_cosine_ops"},
+            postgresql_with={"m": 16, "ef_construction": 64},
+        ),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -45,9 +53,7 @@ class DocumentChunk(Base, CreatedAtMixin):
         nullable=True,
     )
     section_title: Mapped[str | None] = mapped_column(String(500), nullable=True)
-
-    # NOTE: embedding vector(768) column will be added in a separate migration
-    # after pgvector extension is enabled.
+    embedding: Mapped[list[float]] = mapped_column(Vector(768), nullable=False)
 
     # Relationships
     attachment: Mapped["Attachment"] = relationship(  # noqa: F821

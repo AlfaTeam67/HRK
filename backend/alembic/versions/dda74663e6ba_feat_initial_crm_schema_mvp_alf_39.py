@@ -2,12 +2,14 @@
 
 Revision ID: dda74663e6ba
 Revises:
-Create Date: 2026-04-19 10:10:46.417144
+Create Date: 2026-04-22 08:47:00.000000
 
 """
-from alembic import op
 import sqlalchemy as sa
+from pgvector.sqlalchemy import Vector
 from sqlalchemy.dialects import postgresql
+
+from alembic import op
 
 # revision identifiers
 revision = 'dda74663e6ba'
@@ -18,6 +20,7 @@ depends_on = None
 
 def upgrade() -> None:
     """Apply migration."""
+    op.execute("CREATE EXTENSION IF NOT EXISTS vector")
 
     # ── Tier 0: independent tables ────────────────────────────────────────
 
@@ -256,8 +259,9 @@ def upgrade() -> None:
         sa.Column('assigned_to', sa.UUID(), nullable=True),
         sa.Column('acknowledged_at', sa.TIMESTAMP(timezone=True), nullable=True),
         sa.Column('created_at', sa.TIMESTAMP(timezone=True), server_default=sa.text('now()'), nullable=False),
+        sa.CheckConstraint('customer_id IS NOT NULL OR contract_id IS NOT NULL', name=op.f('ck_alerts_ck_alerts_alert_parent_check')),
         sa.ForeignKeyConstraint(['assigned_to'], ['users.id'], name=op.f('fk_alerts_assigned_to_users'), ondelete='SET NULL'),
-        sa.ForeignKeyConstraint(['contract_id'], ['contracts.id'], name=op.f('fk_alerts_contract_id_contracts'), ondelete='SET NULL'),
+        sa.ForeignKeyConstraint(['contract_id'], ['contracts.id'], name=op.f('fk_alerts_contract_id_contracts'), ondelete='CASCADE'),
         sa.ForeignKeyConstraint(['customer_id'], ['customers.id'], name=op.f('fk_alerts_customer_id_customers'), ondelete='CASCADE'),
         sa.PrimaryKeyConstraint('id', name=op.f('pk_alerts')),
     )
@@ -400,6 +404,7 @@ def upgrade() -> None:
         sa.Column('bbox', postgresql.JSONB(astext_type=sa.Text()), nullable=True),
         sa.Column('customer_id', sa.UUID(), nullable=True),
         sa.Column('section_title', sa.String(length=500), nullable=True),
+        sa.Column('embedding', Vector(768), nullable=False),
         sa.Column('created_at', sa.TIMESTAMP(timezone=True), server_default=sa.text('now()'), nullable=False),
         sa.ForeignKeyConstraint(['attachment_id'], ['attachments.id'], name=op.f('fk_document_chunks_attachment_id_attachments'), ondelete='CASCADE'),
         sa.ForeignKeyConstraint(['customer_id'], ['customers.id'], name=op.f('fk_document_chunks_customer_id_customers'), ondelete='CASCADE'),
@@ -408,6 +413,15 @@ def upgrade() -> None:
     )
     op.create_index('idx_chunks_attachment', 'document_chunks', ['attachment_id'], unique=False)
     op.create_index('idx_chunks_customer', 'document_chunks', ['customer_id'], unique=False)
+    op.create_index(
+        'idx_chunks_embedding_hnsw',
+        'document_chunks',
+        ['embedding'],
+        unique=False,
+        postgresql_using='hnsw',
+        postgresql_ops={'embedding': 'vector_cosine_ops'},
+        postgresql_with={'m': 16, 'ef_construction': 64},
+    )
 
     # ── Tier 5: depend on contract_services + valorizations ──────────────
 
@@ -449,14 +463,18 @@ def downgrade() -> None:
     op.drop_table('customer_rate_months')
     op.drop_index('idx_rates_cs_year', table_name='customer_rates')
     op.drop_table('customer_rates')
+    op.drop_index('idx_chunks_embedding_hnsw', table_name='document_chunks')
     op.drop_index('idx_chunks_customer', table_name='document_chunks')
     op.drop_index('idx_chunks_attachment', table_name='document_chunks')
     op.drop_table('document_chunks')
-    op.drop_foreign_key(op.f('fk_attachments_amendment_id_contract_amendments'), 'attachments')
+    op.drop_constraint(
+        op.f('fk_attachments_amendment_id_contract_amendments'),
+        'attachments',
+        type_='foreignkey',
+    )
     op.drop_index('idx_amendments_contract', table_name='contract_amendments')
     op.drop_table('contract_amendments')
-    op.drop_index('idx_att_ocr_status', table_name='attachments',
-                   postgresql_where=sa.text("ocr_status IN ('pending', 'processing')"))
+    op.drop_index('idx_att_ocr_status', table_name='attachments')
     op.drop_index('idx_att_customer', table_name='attachments')
     op.drop_index('idx_att_contract', table_name='attachments')
     op.drop_table('attachments')
