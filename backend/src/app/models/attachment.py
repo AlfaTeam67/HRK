@@ -1,7 +1,9 @@
 """Attachment model."""
 
+from __future__ import annotations
+
 import uuid
-from typing import Optional
+from typing import TYPE_CHECKING
 
 import sqlalchemy as sa
 from sqlalchemy import (
@@ -18,6 +20,11 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base, CreatedAtMixin, SoftDeleteMixin
 from app.models.enums import DocumentType, OcrStatus
+
+if TYPE_CHECKING:
+    from app.models.contract import Contract
+    from app.models.customer import Customer
+    from app.models.document_chunk import DocumentChunk
 
 
 class Attachment(Base, CreatedAtMixin, SoftDeleteMixin):
@@ -88,12 +95,12 @@ class Attachment(Base, CreatedAtMixin, SoftDeleteMixin):
     )
 
     # Relationships
-    customer: Mapped[Optional["Customer"]] = relationship(  # noqa: F821
+    customer: Mapped[Customer | None] = relationship(
         "Customer", back_populates="attachments"
     )
-    contract: Mapped[Optional["Contract"]] = relationship(  # noqa: F821
+    contract: Mapped[Contract | None] = relationship(
         "Contract", back_populates="attachments"
     )
-    chunks: Mapped[list["DocumentChunk"]] = relationship(  # noqa: F821
+    chunks: Mapped[list[DocumentChunk]] = relationship(
         "DocumentChunk", back_populates="attachment", cascade="all, delete-orphan"
     )

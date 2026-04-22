@@ -1,12 +1,18 @@
 """Company model."""
 
+from __future__ import annotations
+
 import uuid
+from typing import TYPE_CHECKING
 
 from sqlalchemy import Boolean, String, text
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base, SoftDeleteMixin, TimestampMixin
+
+if TYPE_CHECKING:
+    from app.models.customer import Customer
 
 
 class Company(Base, TimestampMixin, SoftDeleteMixin):
@@ -40,6 +46,6 @@ class Company(Base, TimestampMixin, SoftDeleteMixin):
     )
 
     # Relationships
-    customers: Mapped[list["Customer"]] = relationship(  # noqa: F821
+    customers: Mapped[list[Customer]] = relationship(
         "Customer", back_populates="company"
     )

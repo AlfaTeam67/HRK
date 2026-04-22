@@ -1,8 +1,10 @@
 """Alert model."""
 
+from __future__ import annotations
+
 import uuid
 from datetime import date, datetime
-from typing import Optional
+from typing import TYPE_CHECKING
 
 import sqlalchemy as sa
 from sqlalchemy import (
@@ -20,6 +22,10 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base, CreatedAtMixin
 from app.models.enums import AlertStatus, AlertType
+
+if TYPE_CHECKING:
+    from app.models.contract import Contract
+    from app.models.customer import Customer
 
 
 class Alert(Base, CreatedAtMixin):
@@ -82,9 +88,9 @@ class Alert(Base, CreatedAtMixin):
     )
 
     # Relationships
-    customer: Mapped[Optional["Customer"]] = relationship(  # noqa: F821
+    customer: Mapped[Customer | None] = relationship(
         "Customer", back_populates="alerts"
     )
-    contract: Mapped[Optional["Contract"]] = relationship(  # noqa: F821
+    contract: Mapped[Contract | None] = relationship(
         "Contract", back_populates="alerts"
     )

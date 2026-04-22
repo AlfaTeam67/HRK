@@ -1,8 +1,10 @@
 """Contract and ContractAmendment models."""
 
+from __future__ import annotations
+
 import uuid
 from datetime import date
-from typing import Optional
+from typing import TYPE_CHECKING
 
 import sqlalchemy as sa
 from sqlalchemy import (
@@ -26,6 +28,16 @@ from app.models.base import (
     TimestampMixin,
 )
 from app.models.enums import BillingCycle, ContractStatus, ContractType
+
+if TYPE_CHECKING:
+    from app.models.activity import ActivityLog
+    from app.models.alert import Alert
+    from app.models.attachment import Attachment
+    from app.models.contract_service import ContractService
+    from app.models.customer import Customer
+    from app.models.note import Note
+    from app.models.rate import Valorization
+    from app.models.user import User
 
 
 class Contract(Base, TimestampMixin, SoftDeleteMixin, AuditMixin):
@@ -101,42 +113,42 @@ class Contract(Base, TimestampMixin, SoftDeleteMixin, AuditMixin):
     )
 
     # Relationships
-    customer: Mapped["Customer"] = relationship(  # noqa: F821
+    customer: Mapped[Customer] = relationship(
         "Customer", back_populates="contracts"
     )
-    account_manager: Mapped[Optional["User"]] = relationship(  # noqa: F821
+    account_manager: Mapped[User | None] = relationship(
         "User", foreign_keys=[account_manager_id]
     )
-    parent_contract: Mapped[Optional["Contract"]] = relationship(
+    parent_contract: Mapped[Contract | None] = relationship(
         "Contract",
         remote_side="Contract.id",
         foreign_keys=[parent_contract_id],
         back_populates="child_contracts",
     )
-    child_contracts: Mapped[list["Contract"]] = relationship(
+    child_contracts: Mapped[list[Contract]] = relationship(
         "Contract",
         back_populates="parent_contract",
         foreign_keys=[parent_contract_id],
     )
-    amendments: Mapped[list["ContractAmendment"]] = relationship(
+    amendments: Mapped[list[ContractAmendment]] = relationship(
         "ContractAmendment", back_populates="contract"
     )
-    contract_services: Mapped[list["ContractService"]] = relationship(  # noqa: F821
+    contract_services: Mapped[list[ContractService]] = relationship(
         "ContractService", back_populates="contract"
     )
-    valorizations: Mapped[list["Valorization"]] = relationship(  # noqa: F821
+    valorizations: Mapped[list[Valorization]] = relationship(
         "Valorization", back_populates="contract"
     )
-    notes_rel: Mapped[list["Note"]] = relationship(  # noqa: F821
+    notes_rel: Mapped[list[Note]] = relationship(
         "Note", back_populates="contract"
     )
-    attachments: Mapped[list["Attachment"]] = relationship(  # noqa: F821
+    attachments: Mapped[list[Attachment]] = relationship(
         "Attachment", back_populates="contract"
     )
-    activity_logs: Mapped[list["ActivityLog"]] = relationship(  # noqa: F821
+    activity_logs: Mapped[list[ActivityLog]] = relationship(
         "ActivityLog", back_populates="contract"
     )
-    alerts: Mapped[list["Alert"]] = relationship(  # noqa: F821
+    alerts: Mapped[list[Alert]] = relationship(
         "Alert", back_populates="contract"
     )
 
@@ -172,7 +184,7 @@ class ContractAmendment(Base, CreatedAtMixin):
     )
 
     # Relationships
-    contract: Mapped["Contract"] = relationship("Contract", back_populates="amendments")
-    document: Mapped[Optional["Attachment"]] = relationship(  # noqa: F821
-        "Attachment"
+    contract: Mapped[Contract] = relationship("Contract", back_populates="amendments")
+    document: Mapped[Attachment | None] = relationship(
+        "Attachment", foreign_keys=[document_id]
     )

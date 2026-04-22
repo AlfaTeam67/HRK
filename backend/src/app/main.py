@@ -1,13 +1,18 @@
 """Application entry point."""
-from contextlib import asynccontextmanager
 
+from collections.abc import AsyncGenerator
+from contextlib import asynccontextmanager
+from typing import Any
+
+import uvicorn
 from fastapi import FastAPI
 
+from app.api.v1 import api_router
 from app.config import settings
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI):
+async def lifespan(_app: FastAPI) -> AsyncGenerator[Any, Any]:
     """Manage application lifespan."""
     print(f"Starting up {settings.app_name}...")
     yield
@@ -24,9 +29,11 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+app.include_router(api_router, prefix=settings.api_v1_str)
+
 
 @app.get("/", tags=["status"])
-async def root():
+async def root() -> Any:
     """Root endpoint."""
     return {
         "message": f"Welcome to {settings.app_name}",
@@ -35,7 +42,7 @@ async def root():
 
 
 @app.get("/health", tags=["status"])
-async def health_check():
+async def health_check() -> Any:
     """Health check endpoint."""
     return {
         "status": "ok",
@@ -44,7 +51,4 @@ async def health_check():
 
 
 if __name__ == "__main__":
-    import uvicorn
-
     uvicorn.run(app, host=settings.host, port=settings.port)
-

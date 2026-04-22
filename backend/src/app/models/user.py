@@ -1,7 +1,10 @@
 """User model."""
 
+from __future__ import annotations
+
 import uuid
 from datetime import datetime
+from typing import TYPE_CHECKING
 
 import sqlalchemy as sa
 from sqlalchemy import Boolean, String, text
@@ -10,6 +13,9 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base, TimestampMixin
 from app.models.enums import UserRole
+
+if TYPE_CHECKING:
+    from .customer import Customer
 
 
 class User(Base, TimestampMixin):
@@ -33,7 +39,7 @@ class User(Base, TimestampMixin):
     )
 
     # Relationships
-    managed_customers: Mapped[list["Customer"]] = relationship(  # noqa: F821
+    managed_customers: Mapped[list[Customer]] = relationship(
         "Customer",
         back_populates="account_manager",
         foreign_keys="Customer.account_manager_id",

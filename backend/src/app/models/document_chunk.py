@@ -1,8 +1,11 @@
 """DocumentChunk model — text chunks for RAG / vector search."""
 
-import uuid
+from __future__ import annotations
 
-from pgvector.sqlalchemy import Vector
+import uuid
+from typing import TYPE_CHECKING
+
+from pgvector.sqlalchemy import Vector  # type: ignore
 from sqlalchemy import (
     ForeignKey,
     Index,
@@ -15,6 +18,9 @@ from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base, CreatedAtMixin
+
+if TYPE_CHECKING:
+    from app.models.attachment import Attachment
 
 
 class DocumentChunk(Base, CreatedAtMixin):
@@ -56,6 +62,6 @@ class DocumentChunk(Base, CreatedAtMixin):
     embedding: Mapped[list[float]] = mapped_column(Vector(768), nullable=False)
 
     # Relationships
-    attachment: Mapped["Attachment"] = relationship(  # noqa: F821
+    attachment: Mapped[Attachment] = relationship(
         "Attachment", back_populates="chunks"
     )

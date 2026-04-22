@@ -1,7 +1,9 @@
 """Customer and ContactPerson models."""
 
+from __future__ import annotations
+
 import uuid
-from typing import Optional
+from typing import TYPE_CHECKING
 
 import sqlalchemy as sa
 from sqlalchemy import (
@@ -23,6 +25,16 @@ from app.models.base import (
     TimestampMixin,
 )
 from app.models.enums import CustomerStatus
+
+if TYPE_CHECKING:
+    from app.models.activity import ActivityLog
+    from app.models.alert import Alert
+    from app.models.attachment import Attachment
+    from app.models.company import Company
+    from app.models.contract import Contract
+    from app.models.note import Note
+    from app.models.score import CustomerRelationScore
+    from app.models.user import User
 
 
 class Customer(Base, TimestampMixin, SoftDeleteMixin, AuditMixin):
@@ -94,33 +106,33 @@ class Customer(Base, TimestampMixin, SoftDeleteMixin, AuditMixin):
     )
 
     # Relationships
-    company: Mapped[Optional["Company"]] = relationship(  # noqa: F821
+    company: Mapped[Company | None] = relationship(
         "Company", back_populates="customers"
     )
-    account_manager: Mapped["User"] = relationship(  # noqa: F821
+    account_manager: Mapped[User] = relationship(
         "User",
         back_populates="managed_customers",
         foreign_keys=[account_manager_id],
     )
-    contact_persons: Mapped[list["ContactPerson"]] = relationship(
+    contact_persons: Mapped[list[ContactPerson]] = relationship(
         "ContactPerson", back_populates="customer", cascade="all, delete-orphan"
     )
-    contracts: Mapped[list["Contract"]] = relationship(  # noqa: F821
+    contracts: Mapped[list[Contract]] = relationship(
         "Contract", back_populates="customer"
     )
-    notes: Mapped[list["Note"]] = relationship(  # noqa: F821
+    notes: Mapped[list[Note]] = relationship(
         "Note", back_populates="customer"
     )
-    attachments: Mapped[list["Attachment"]] = relationship(  # noqa: F821
+    attachments: Mapped[list[Attachment]] = relationship(
         "Attachment", back_populates="customer"
     )
-    activity_logs: Mapped[list["ActivityLog"]] = relationship(  # noqa: F821
+    activity_logs: Mapped[list[ActivityLog]] = relationship(
         "ActivityLog", back_populates="customer"
     )
-    relation_scores: Mapped[list["CustomerRelationScore"]] = relationship(  # noqa: F821
+    relation_scores: Mapped[list[CustomerRelationScore]] = relationship(
         "CustomerRelationScore", back_populates="customer"
     )
-    alerts: Mapped[list["Alert"]] = relationship(  # noqa: F821
+    alerts: Mapped[list[Alert]] = relationship(
         "Alert", back_populates="customer"
     )
 
@@ -152,4 +164,4 @@ class ContactPerson(Base, CreatedAtMixin, SoftDeleteMixin):
     )
 
     # Relationships
-    customer: Mapped["Customer"] = relationship("Customer", back_populates="contact_persons")
+    customer: Mapped[Customer] = relationship("Customer", back_populates="contact_persons")

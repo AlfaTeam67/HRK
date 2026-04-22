@@ -1,7 +1,9 @@
 """Note model."""
 
+from __future__ import annotations
+
 import uuid
-from typing import Optional
+from typing import TYPE_CHECKING
 
 import sqlalchemy as sa
 from sqlalchemy import (
@@ -15,6 +17,10 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base, SoftDeleteMixin, TimestampMixin
 from app.models.enums import NoteType
+
+if TYPE_CHECKING:
+    from app.models.contract import Contract
+    from app.models.customer import Customer
 
 
 class Note(Base, TimestampMixin, SoftDeleteMixin):
@@ -60,9 +66,9 @@ class Note(Base, TimestampMixin, SoftDeleteMixin):
     )
 
     # Relationships
-    customer: Mapped[Optional["Customer"]] = relationship(  # noqa: F821
+    customer: Mapped[Customer | None] = relationship(
         "Customer", back_populates="notes"
     )
-    contract: Mapped[Optional["Contract"]] = relationship(  # noqa: F821
+    contract: Mapped[Contract | None] = relationship(
         "Contract", back_populates="notes_rel"
     )

@@ -1,0 +1,8 @@
+from fastapi import APIRouter
+
+from app.api.v1.companies import router as companies_router
+from app.api.v1.users import router as users_router
+
+api_router = APIRouter()
+api_router.include_router(companies_router, prefix="/companies", tags=["companies"])
+api_router.include_router(users_router, prefix="/users", tags=["users"])

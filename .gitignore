@@ -1,1 +1,4 @@
 *.DS_Store
+.gemini/
+GEMINI.md
+CLAUDE.md
