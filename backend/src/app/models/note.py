@@ -66,9 +66,5 @@ class Note(Base, TimestampMixin, SoftDeleteMixin):
     )
 
     # Relationships
-    customer: Mapped[Customer | None] = relationship(
-        "Customer", back_populates="notes"
-    )
-    contract: Mapped[Contract | None] = relationship(
-        "Contract", back_populates="notes_rel"
-    )
+    customer: Mapped[Customer | None] = relationship("Customer", back_populates="notes")
+    contract: Mapped[Contract | None] = relationship("Contract", back_populates="notes_rel")

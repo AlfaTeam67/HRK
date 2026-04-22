@@ -88,9 +88,5 @@ class Alert(Base, CreatedAtMixin):
     )
 
     # Relationships
-    customer: Mapped[Customer | None] = relationship(
-        "Customer", back_populates="alerts"
-    )
-    contract: Mapped[Contract | None] = relationship(
-        "Contract", back_populates="alerts"
-    )
+    customer: Mapped[Customer | None] = relationship("Customer", back_populates="alerts")
+    contract: Mapped[Contract | None] = relationship("Contract", back_populates="alerts")

@@ -20,6 +20,7 @@ async def create_user(obj_in: UserCreate, db: AsyncSession = Depends(get_db)) ->
     try:
         new_user = await repo.create(obj_in.model_dump())
         await db.commit()
+        await db.refresh(new_user)
         return new_user
     except IntegrityError:
         await db.rollback()
@@ -63,16 +64,26 @@ async def update_user(id: UUID, obj_in: UserUpdate, db: AsyncSession = Depends(g
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    updated_user = await repo.update(user, obj_in.model_dump(exclude_unset=True))
-    await db.commit()
-    return updated_user
+    try:
+        updated_user = await repo.update(user, obj_in.model_dump(exclude_unset=True))
+        await db.commit()
+        await db.refresh(updated_user)
+        return updated_user
+    except IntegrityError:
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="User with this username or email already exists.",
+        ) from None
 
 
 @router.delete("/{id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_user(id: UUID, db: AsyncSession = Depends(get_db)) -> None:
     repo = UserRepository(db)
-    # Users might not have soft-delete mixin in model yet, but repo handles it gracefully
-    success = await repo.delete(id, soft=False)
+    success = await repo.delete(id, soft=True)
+    if not success:
+        success = await repo.delete(id, soft=False)
+
     if not success:
         raise HTTPException(status_code=404, detail="User not found")
     await db.commit()

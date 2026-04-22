@@ -58,11 +58,15 @@ class BaseRepository(Generic[ModelType]):
         return db_obj
 
     async def delete(self, id: UUID, soft: bool = True) -> bool:
+        """Delete an item."""
         db_obj = await self.get(id)
         if not db_obj:
             return False
 
-        if soft and hasattr(self.model, "deleted_at"):
+        if soft:
+            if not hasattr(self.model, "deleted_at"):
+                # Return False or could raise an exception to prevent accidental hard delete
+                return False
             cast(Any, db_obj).deleted_at = datetime.now(UTC)
             self.session.add(db_obj)
         else:

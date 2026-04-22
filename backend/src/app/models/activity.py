@@ -70,9 +70,5 @@ class ActivityLog(Base, CreatedAtMixin):
     # IMMUTABLE — only created_at (via CreatedAtMixin), no updated_at or deleted_at
 
     # Relationships
-    customer: Mapped[Customer | None] = relationship(
-        "Customer", back_populates="activity_logs"
-    )
-    contract: Mapped[Contract | None] = relationship(
-        "Contract", back_populates="activity_logs"
-    )
+    customer: Mapped[Customer | None] = relationship("Customer", back_populates="activity_logs")
+    contract: Mapped[Contract | None] = relationship("Contract", back_populates="activity_logs")

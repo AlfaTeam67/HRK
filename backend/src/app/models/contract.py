@@ -113,12 +113,8 @@ class Contract(Base, TimestampMixin, SoftDeleteMixin, AuditMixin):
     )
 
     # Relationships
-    customer: Mapped[Customer] = relationship(
-        "Customer", back_populates="contracts"
-    )
-    account_manager: Mapped[User | None] = relationship(
-        "User", foreign_keys=[account_manager_id]
-    )
+    customer: Mapped[Customer] = relationship("Customer", back_populates="contracts")
+    account_manager: Mapped[User | None] = relationship("User", foreign_keys=[account_manager_id])
     parent_contract: Mapped[Contract | None] = relationship(
         "Contract",
         remote_side="Contract.id",
@@ -139,18 +135,12 @@ class Contract(Base, TimestampMixin, SoftDeleteMixin, AuditMixin):
     valorizations: Mapped[list[Valorization]] = relationship(
         "Valorization", back_populates="contract"
     )
-    notes_rel: Mapped[list[Note]] = relationship(
-        "Note", back_populates="contract"
-    )
-    attachments: Mapped[list[Attachment]] = relationship(
-        "Attachment", back_populates="contract"
-    )
+    notes_rel: Mapped[list[Note]] = relationship("Note", back_populates="contract")
+    attachments: Mapped[list[Attachment]] = relationship("Attachment", back_populates="contract")
     activity_logs: Mapped[list[ActivityLog]] = relationship(
         "ActivityLog", back_populates="contract"
     )
-    alerts: Mapped[list[Alert]] = relationship(
-        "Alert", back_populates="contract"
-    )
+    alerts: Mapped[list[Alert]] = relationship("Alert", back_populates="contract")
 
 
 class ContractAmendment(Base, CreatedAtMixin):
@@ -185,6 +175,4 @@ class ContractAmendment(Base, CreatedAtMixin):
 
     # Relationships
     contract: Mapped[Contract] = relationship("Contract", back_populates="amendments")
-    document: Mapped[Attachment | None] = relationship(
-        "Attachment", foreign_keys=[document_id]
-    )
+    document: Mapped[Attachment | None] = relationship("Attachment", foreign_keys=[document_id])

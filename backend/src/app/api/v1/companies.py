@@ -20,6 +20,7 @@ async def create_company(obj_in: CompanyCreate, db: AsyncSession = Depends(get_d
     try:
         new_company = await repo.create(obj_in.model_dump())
         await db.commit()
+        await db.refresh(new_company)
         return new_company
     except IntegrityError:
         await db.rollback()
@@ -65,15 +66,26 @@ async def update_company(
     if not company:
         raise HTTPException(status_code=404, detail="Company not found")
 
-    updated_company = await repo.update(company, obj_in.model_dump(exclude_unset=True))
-    await db.commit()
-    return updated_company
+    try:
+        updated_company = await repo.update(company, obj_in.model_dump(exclude_unset=True))
+        await db.commit()
+        await db.refresh(updated_company)
+        return updated_company
+    except IntegrityError:
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Company with this name or unique identifier already exists.",
+        ) from None
 
 
 @router.delete("/{id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_company(id: UUID, db: AsyncSession = Depends(get_db)) -> None:
     repo = CompanyRepository(db)
-    success = await repo.delete(id)
+    success = await repo.delete(id, soft=True)
+    if not success:
+        success = await repo.delete(id, soft=False)
+
     if not success:
         raise HTTPException(status_code=404, detail="Company not found")
     await db.commit()

@@ -46,6 +46,4 @@ class Company(Base, TimestampMixin, SoftDeleteMixin):
     )
 
     # Relationships
-    customers: Mapped[list[Customer]] = relationship(
-        "Customer", back_populates="company"
-    )
+    customers: Mapped[list[Customer]] = relationship("Customer", back_populates="company")

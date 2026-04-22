@@ -70,9 +70,7 @@ class Service(Base, CreatedAtMixin, SoftDeleteMixin):
     )
 
     # Relationships
-    group: Mapped[ServiceGroup] = relationship(
-        "ServiceGroup", back_populates="services"
-    )
+    group: Mapped[ServiceGroup] = relationship("ServiceGroup", back_populates="services")
     contract_services: Mapped[list[ContractService]] = relationship(
         "ContractService", back_populates="service"
     )

@@ -71,6 +71,4 @@ class CustomerRelationScore(Base, CreatedAtMixin):
     )
 
     # Relationships
-    customer: Mapped[Customer] = relationship(
-        "Customer", back_populates="relation_scores"
-    )
+    customer: Mapped[Customer] = relationship("Customer", back_populates="relation_scores")

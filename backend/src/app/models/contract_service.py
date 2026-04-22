@@ -67,12 +67,8 @@ class ContractService(Base):
     )
 
     # Relationships
-    contract: Mapped[Contract] = relationship(
-        "Contract", back_populates="contract_services"
-    )
-    service: Mapped[Service] = relationship(
-        "Service", back_populates="contract_services"
-    )
+    contract: Mapped[Contract] = relationship("Contract", back_populates="contract_services")
+    service: Mapped[Service] = relationship("Service", back_populates="contract_services")
     customer_rates: Mapped[list[CustomerRate]] = relationship(
         "CustomerRate", back_populates="contract_service"
     )

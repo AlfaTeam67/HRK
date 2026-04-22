@@ -106,9 +106,7 @@ class Customer(Base, TimestampMixin, SoftDeleteMixin, AuditMixin):
     )
 
     # Relationships
-    company: Mapped[Company | None] = relationship(
-        "Company", back_populates="customers"
-    )
+    company: Mapped[Company | None] = relationship("Company", back_populates="customers")
     account_manager: Mapped[User] = relationship(
         "User",
         back_populates="managed_customers",
@@ -117,24 +115,16 @@ class Customer(Base, TimestampMixin, SoftDeleteMixin, AuditMixin):
     contact_persons: Mapped[list[ContactPerson]] = relationship(
         "ContactPerson", back_populates="customer", cascade="all, delete-orphan"
     )
-    contracts: Mapped[list[Contract]] = relationship(
-        "Contract", back_populates="customer"
-    )
-    notes: Mapped[list[Note]] = relationship(
-        "Note", back_populates="customer"
-    )
-    attachments: Mapped[list[Attachment]] = relationship(
-        "Attachment", back_populates="customer"
-    )
+    contracts: Mapped[list[Contract]] = relationship("Contract", back_populates="customer")
+    notes: Mapped[list[Note]] = relationship("Note", back_populates="customer")
+    attachments: Mapped[list[Attachment]] = relationship("Attachment", back_populates="customer")
     activity_logs: Mapped[list[ActivityLog]] = relationship(
         "ActivityLog", back_populates="customer"
     )
     relation_scores: Mapped[list[CustomerRelationScore]] = relationship(
         "CustomerRelationScore", back_populates="customer"
     )
-    alerts: Mapped[list[Alert]] = relationship(
-        "Alert", back_populates="customer"
-    )
+    alerts: Mapped[list[Alert]] = relationship("Alert", back_populates="customer")
 
 
 class ContactPerson(Base, CreatedAtMixin, SoftDeleteMixin):

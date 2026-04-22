@@ -60,6 +60,4 @@ class ServiceGroup(Base, CreatedAtMixin):
         back_populates="parent",
         foreign_keys=[parent_id],
     )
-    services: Mapped[list[Service]] = relationship(
-        "Service", back_populates="group"
-    )
+    services: Mapped[list[Service]] = relationship("Service", back_populates="group")

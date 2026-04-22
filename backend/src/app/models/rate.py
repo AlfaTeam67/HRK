@@ -156,9 +156,7 @@ class Valorization(Base, TimestampMixin):
     )
 
     # Relationships
-    contract: Mapped[Contract] = relationship(
-        "Contract", back_populates="valorizations"
-    )
+    contract: Mapped[Contract] = relationship("Contract", back_populates="valorizations")
     customer_rates: Mapped[list[CustomerRate]] = relationship(
         "CustomerRate", back_populates="valorization"
     )

@@ -95,12 +95,8 @@ class Attachment(Base, CreatedAtMixin, SoftDeleteMixin):
     )
 
     # Relationships
-    customer: Mapped[Customer | None] = relationship(
-        "Customer", back_populates="attachments"
-    )
-    contract: Mapped[Contract | None] = relationship(
-        "Contract", back_populates="attachments"
-    )
+    customer: Mapped[Customer | None] = relationship("Customer", back_populates="attachments")
+    contract: Mapped[Contract | None] = relationship("Contract", back_populates="attachments")
     chunks: Mapped[list[DocumentChunk]] = relationship(
         "DocumentChunk", back_populates="attachment", cascade="all, delete-orphan"
     )

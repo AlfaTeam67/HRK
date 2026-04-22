@@ -62,6 +62,4 @@ class DocumentChunk(Base, CreatedAtMixin):
     embedding: Mapped[list[float]] = mapped_column(Vector(768), nullable=False)
 
     # Relationships
-    attachment: Mapped[Attachment] = relationship(
-        "Attachment", back_populates="chunks"
-    )
+    attachment: Mapped[Attachment] = relationship("Attachment", back_populates="chunks")
