@@ -35,6 +35,7 @@ class CustomerRateRepository:
         for key, value in data.items():
             setattr(rate, key, value)
         await self.db.flush()
+        await self.db.refresh(rate)
         return rate
 
     async def delete(self, rate: CustomerRate) -> None:

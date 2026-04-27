@@ -7,9 +7,9 @@ from app.repo.lookups import LookupRepository
 from app.repo.services import ServiceRepository
 
 __all__ = [
-	"CustomerRepository",
-	"ContractRepository",
-	"ServiceRepository",
-	"ContractServiceRepository",
-	"LookupRepository",
+    "CustomerRepository",
+    "ContractRepository",
+    "ServiceRepository",
+    "ContractServiceRepository",
+    "LookupRepository",
 ]

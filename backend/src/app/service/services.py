@@ -53,7 +53,7 @@ class ServiceCrudService:
 
     async def delete_service(self, service_id: uuid.UUID) -> None:
         service = await self.get_service(service_id)
-        service.deleted_at = datetime.now(UTC)
+        await self.services.update(service, {"deleted_at": datetime.now(UTC)})
 
     async def _validate_service_refs(self, data: dict) -> None:
         group_id = data.get("group_id")

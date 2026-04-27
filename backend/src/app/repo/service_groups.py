@@ -35,6 +35,7 @@ class ServiceGroupRepository:
         for key, value in data.items():
             setattr(group, key, value)
         await self.db.flush()
+        await self.db.refresh(group)
         return group
 
     async def delete(self, group: ServiceGroup) -> None:

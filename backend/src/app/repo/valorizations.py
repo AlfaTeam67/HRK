@@ -49,6 +49,7 @@ class ValorizationRepository:
         for key, value in data.items():
             setattr(val, key, value)
         await self.db.flush()
+        await self.db.refresh(val)
         return val
 
     async def delete(self, val: Valorization) -> None:

@@ -65,7 +65,7 @@ class ContractService:
 
     async def delete_contract(self, contract_id: uuid.UUID) -> None:
         contract = await self.get_contract(contract_id)
-        contract.deleted_at = datetime.now(UTC)
+        await self.contracts.update(contract, {"deleted_at": datetime.now(UTC)})
 
     async def _validate_contract_refs(self, data: dict) -> None:
         customer_id = data.get("customer_id")

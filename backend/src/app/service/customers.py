@@ -58,7 +58,7 @@ class CustomerService:
                 status_code=status.HTTP_409_CONFLICT,
                 detail="Customer has active contracts and cannot be deleted",
             )
-        customer.deleted_at = datetime.now(UTC)
+        await self.customers.update(customer, {"deleted_at": datetime.now(UTC)})
 
     async def _validate_customer_refs(self, data: dict) -> None:
         company_id = data.get("company_id")

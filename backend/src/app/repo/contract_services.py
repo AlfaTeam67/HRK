@@ -40,3 +40,4 @@ class ContractServiceRepository:
 
     async def delete(self, relation: ContractService) -> None:
         await self.db.delete(relation)
+        await self.db.flush()

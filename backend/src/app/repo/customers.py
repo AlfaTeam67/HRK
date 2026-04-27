@@ -3,7 +3,7 @@
 import uuid
 from datetime import date
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.customer import Customer
@@ -34,9 +34,9 @@ class CustomerRepository:
         if statuses:
             stmt = stmt.where(Customer.status.in_(statuses))
         if created_from:
-            stmt = stmt.where(Customer.created_at >= created_from)
+            stmt = stmt.where(func.date(Customer.created_at) >= created_from)
         if created_to:
-            stmt = stmt.where(Customer.created_at <= created_to)
+            stmt = stmt.where(func.date(Customer.created_at) <= created_to)
         stmt = stmt.order_by(Customer.created_at.desc())
         result = await self.db.execute(stmt)
         return list(result.scalars().all())
