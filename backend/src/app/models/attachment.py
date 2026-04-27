@@ -22,6 +22,7 @@ from app.models.base import Base, CreatedAtMixin, SoftDeleteMixin
 from app.models.enums import DocumentType, OcrStatus
 
 if TYPE_CHECKING:
+    from app.models.company import Company
     from app.models.contract import Contract
     from app.models.customer import Customer
     from app.models.document_chunk import DocumentChunk
@@ -32,16 +33,22 @@ class Attachment(Base, CreatedAtMixin, SoftDeleteMixin):
 
     __tablename__ = "attachments"
     __table_args__ = (
+        Index("idx_att_company", "company_id"),
         Index("idx_att_customer", "customer_id"),
         Index("idx_att_contract", "contract_id"),
         Index(
             "idx_att_ocr_status",
             "ocr_status",
-            postgresql_where=text("ocr_status IN ('pending', 'processing')"),
+            postgresql_where=text("ocr_status IN ('PENDING', 'PROCESSING')"),
         ),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    company_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("companies.id", ondelete="SET NULL"),
+        nullable=True,
+    )
     customer_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("customers.id", ondelete="CASCADE"),
@@ -78,7 +85,7 @@ class Attachment(Base, CreatedAtMixin, SoftDeleteMixin):
             create_constraint=False,
             native_enum=False,
         ),
-        server_default=text("'pending'"),
+        server_default=text("'PENDING'"),
         nullable=True,
     )
     extracted_text: Mapped[str | None] = mapped_column(Text, nullable=True)
@@ -95,6 +102,7 @@ class Attachment(Base, CreatedAtMixin, SoftDeleteMixin):
     )
 
     # Relationships
+    company: Mapped[Company | None] = relationship("Company", back_populates="attachments")
     customer: Mapped[Customer | None] = relationship("Customer", back_populates="attachments")
     contract: Mapped[Contract | None] = relationship("Contract", back_populates="attachments")
     chunks: Mapped[list[DocumentChunk]] = relationship(
