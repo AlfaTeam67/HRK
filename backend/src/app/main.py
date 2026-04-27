@@ -7,15 +7,17 @@ from typing import Any
 import uvicorn
 from fastapi import FastAPI
 
-from app.api.v1 import api_router as v1_router
 from app.api import api_router as crm_router
+from app.api.v1 import api_router as v1_router
 from app.config import settings
+from app.core.storage import get_storage_service
 
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI) -> AsyncGenerator[Any, Any]:
     """Manage application lifespan."""
     print(f"Starting up {settings.app_name}...")
+    await get_storage_service().ensure_bucket_private()
     yield
     print(f"Shutting down {settings.app_name}...")
 

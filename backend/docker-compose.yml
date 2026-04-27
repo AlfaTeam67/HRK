@@ -6,9 +6,9 @@ services:
     image: pgvector/pgvector:pg17
     container_name: hrk-db
     environment:
-      POSTGRES_USER: ${POSTGRES_USER:-hrk}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-hrk_secret}
-      POSTGRES_DB: ${POSTGRES_DB:-hrk_db}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     ports:
@@ -79,16 +79,22 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      args:
+        PYTHON_BASE_IMAGE: ${PYTHON_BASE_IMAGE:-public.ecr.aws/docker/library/python:3.12-slim}
     container_name: hrk-api
     environment:
-      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-hrk}:${POSTGRES_PASSWORD:-hrk_secret}@db:5432/${POSTGRES_DB:-hrk_db}
+      DATABASE_URL: ${DATABASE_URL}
       S3_ENDPOINT: http://minio:9000
       S3_BUCKET: ${S3_BUCKET:-hrk-documents}
       S3_ACCESS_KEY: ${S3_ACCESS_KEY:-minioadmin}
       S3_SECRET_KEY: ${S3_SECRET_KEY:-minioadmin}
       S3_REGION: ${S3_REGION:-us-east-1}
+      S3_SSE_ENABLED: ${S3_SSE_ENABLED:-false}
+      S3_EXTERNAL_ENDPOINT: ${S3_EXTERNAL_ENDPOINT:-http://localhost:9000}
       FE_DOMAIN: ${FE_DOMAIN:-http://localhost:4173}
       DEBUG: ${DEBUG:-false}
+      AD_SERVICE_URL: http://ad:8001
+      API_AD_DOMAIN: ${API_AD_DOMAIN:-HRK}
     ports:
       - "8000:8000"
     networks:
@@ -107,6 +113,58 @@ services:
       db:
         condition: service_healthy
       minio:
+        condition: service_healthy
+      ad:
+        condition: service_healthy
+
+  # ── AD microservice (Active Directory auth) ───────────────────────────────
+  ad:
+    build:
+      context: ./AD
+      dockerfile: Dockerfile
+    container_name: hrk-ad
+    env_file:
+      - ./AD/.env
+    environment:
+      APP_NAME: ${AD_APP_NAME:-HRK AD Service}
+      APP_VERSION: ${AD_APP_VERSION:-0.1.0}
+      DEBUG: ${AD_DEBUG:-false}
+      HOST: 0.0.0.0
+      PORT: 8001
+      AD_SERVER_URL: ${AD_SERVER_URL:-ldap://localhost:389}
+      AD_DOMAIN: ${AD_DOMAIN:-hrk.local}
+      AD_BASE_DN: ${AD_BASE_DN:-DC=hrk,DC=local}
+      AD_USE_SSL: ${AD_USE_SSL:-false}
+      AD_MOCK_MODE: ${AD_MOCK_MODE:-true}
+    ports:
+      - "8001:8001"
+    networks:
+      - hrk-network
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          'python -c "import urllib.request; urllib.request.urlopen(''http://localhost:8001/openapi.json'')"',
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
+  # ── Schema Manager microservice ───────────────────────────────────────────
+  schema-manager:
+    build:
+      context: ./schema_manager
+      dockerfile: Dockerfile
+    container_name: hrk-schema-manager
+    environment:
+      DATABASE_URL: postgresql://hrk:hrk_secret@db:5432/hrk_db
+    ports:
+      - "8002:8002"
+    networks:
+      - hrk-network
+    depends_on:
+      db:
         condition: service_healthy
 
 volumes:
