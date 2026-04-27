@@ -1,7 +1,10 @@
 """Service model."""
 
+from __future__ import annotations
+
 import uuid
 from decimal import Decimal
+from typing import TYPE_CHECKING
 
 import sqlalchemy as sa
 from sqlalchemy import (
@@ -17,6 +20,10 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base, CreatedAtMixin, SoftDeleteMixin
 from app.models.enums import BillingFrequency, BillingUnit
+
+if TYPE_CHECKING:
+    from app.models.contract_service import ContractService
+    from app.models.service_group import ServiceGroup
 
 
 class Service(Base, CreatedAtMixin, SoftDeleteMixin):
@@ -63,9 +70,7 @@ class Service(Base, CreatedAtMixin, SoftDeleteMixin):
     )
 
     # Relationships
-    group: Mapped["ServiceGroup"] = relationship(  # noqa: F821
-        "ServiceGroup", back_populates="services"
-    )
-    contract_services: Mapped[list["ContractService"]] = relationship(  # noqa: F821
+    group: Mapped[ServiceGroup] = relationship("ServiceGroup", back_populates="services")
+    contract_services: Mapped[list[ContractService]] = relationship(
         "ContractService", back_populates="service"
     )

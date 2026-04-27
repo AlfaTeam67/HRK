@@ -1,8 +1,11 @@
 """CustomerRelationScore model."""
 
+from __future__ import annotations
+
 import uuid
 from datetime import date
 from decimal import Decimal
+from typing import TYPE_CHECKING
 
 import sqlalchemy as sa
 from sqlalchemy import (
@@ -20,6 +23,9 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base, CreatedAtMixin
 from app.models.enums import CalculatedBy, ScoreLabel
+
+if TYPE_CHECKING:
+    from app.models.customer import Customer
 
 
 class CustomerRelationScore(Base, CreatedAtMixin):
@@ -65,6 +71,4 @@ class CustomerRelationScore(Base, CreatedAtMixin):
     )
 
     # Relationships
-    customer: Mapped["Customer"] = relationship(  # noqa: F821
-        "Customer", back_populates="relation_scores"
-    )
+    customer: Mapped[Customer] = relationship("Customer", back_populates="relation_scores")

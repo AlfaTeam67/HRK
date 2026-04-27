@@ -1,9 +1,11 @@
 """CustomerRate, CustomerRateMonth, and Valorization models."""
 
+from __future__ import annotations
+
 import uuid
 from datetime import date
 from decimal import Decimal
-from typing import Optional
+from typing import TYPE_CHECKING
 
 import sqlalchemy as sa
 from sqlalchemy import (
@@ -22,6 +24,10 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base, CreatedAtMixin, TimestampMixin
 from app.models.enums import IndexType, ValorizationStatus
+
+if TYPE_CHECKING:
+    from app.models.contract import Contract
+    from app.models.contract_service import ContractService
 
 
 class CustomerRate(Base, CreatedAtMixin):
@@ -56,13 +62,13 @@ class CustomerRate(Base, CreatedAtMixin):
     )
 
     # Relationships
-    contract_service: Mapped["ContractService"] = relationship(  # noqa: F821
+    contract_service: Mapped[ContractService] = relationship(
         "ContractService", back_populates="customer_rates"
     )
-    valorization: Mapped[Optional["Valorization"]] = relationship(
+    valorization: Mapped[Valorization | None] = relationship(
         "Valorization", back_populates="customer_rates"
     )
-    monthly_prices: Mapped[list["CustomerRateMonth"]] = relationship(
+    monthly_prices: Mapped[list[CustomerRateMonth]] = relationship(
         "CustomerRateMonth", back_populates="rate", cascade="all, delete-orphan"
     )
 
@@ -94,7 +100,7 @@ class CustomerRateMonth(Base):
     net_price: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
 
     # Relationships
-    rate: Mapped["CustomerRate"] = relationship("CustomerRate", back_populates="monthly_prices")
+    rate: Mapped[CustomerRate] = relationship("CustomerRate", back_populates="monthly_prices")
 
 
 class Valorization(Base, TimestampMixin):
@@ -150,9 +156,7 @@ class Valorization(Base, TimestampMixin):
     )
 
     # Relationships
-    contract: Mapped["Contract"] = relationship(  # noqa: F821
-        "Contract", back_populates="valorizations"
-    )
-    customer_rates: Mapped[list["CustomerRate"]] = relationship(
+    contract: Mapped[Contract] = relationship("Contract", back_populates="valorizations")
+    customer_rates: Mapped[list[CustomerRate]] = relationship(
         "CustomerRate", back_populates="valorization"
     )

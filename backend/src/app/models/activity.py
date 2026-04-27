@@ -1,8 +1,10 @@
 """ActivityLog model."""
 
+from __future__ import annotations
+
 import uuid
 from datetime import datetime
-from typing import Optional
+from typing import TYPE_CHECKING
 
 import sqlalchemy as sa
 from sqlalchemy import (
@@ -16,6 +18,10 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base, CreatedAtMixin
 from app.models.enums import ActivityType
+
+if TYPE_CHECKING:
+    from app.models.contract import Contract
+    from app.models.customer import Customer
 
 
 class ActivityLog(Base, CreatedAtMixin):
@@ -64,9 +70,5 @@ class ActivityLog(Base, CreatedAtMixin):
     # IMMUTABLE — only created_at (via CreatedAtMixin), no updated_at or deleted_at
 
     # Relationships
-    customer: Mapped[Optional["Customer"]] = relationship(  # noqa: F821
-        "Customer", back_populates="activity_logs"
-    )
-    contract: Mapped[Optional["Contract"]] = relationship(  # noqa: F821
-        "Contract", back_populates="activity_logs"
-    )
+    customer: Mapped[Customer | None] = relationship("Customer", back_populates="activity_logs")
+    contract: Mapped[Contract | None] = relationship("Contract", back_populates="activity_logs")

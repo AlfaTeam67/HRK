@@ -1,7 +1,9 @@
 """ServiceGroup model — hierarchical grouping of services."""
 
+from __future__ import annotations
+
 import uuid
-from typing import Optional
+from typing import TYPE_CHECKING
 
 from sqlalchemy import (
     Boolean,
@@ -14,6 +16,9 @@ from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base, CreatedAtMixin
+
+if TYPE_CHECKING:
+    from app.models.service import Service
 
 
 class ServiceGroup(Base, CreatedAtMixin):
@@ -44,17 +49,15 @@ class ServiceGroup(Base, CreatedAtMixin):
     is_active: Mapped[bool] = mapped_column(Boolean, server_default=text("true"), nullable=False)
 
     # Relationships
-    parent: Mapped[Optional["ServiceGroup"]] = relationship(
+    parent: Mapped[ServiceGroup | None] = relationship(
         "ServiceGroup",
         remote_side="ServiceGroup.id",
         foreign_keys=[parent_id],
         back_populates="children",
     )
-    children: Mapped[list["ServiceGroup"]] = relationship(
+    children: Mapped[list[ServiceGroup]] = relationship(
         "ServiceGroup",
         back_populates="parent",
         foreign_keys=[parent_id],
     )
-    services: Mapped[list["Service"]] = relationship(  # noqa: F821
-        "Service", back_populates="group"
-    )
+    services: Mapped[list[Service]] = relationship("Service", back_populates="group")

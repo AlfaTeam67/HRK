@@ -1,5 +1,5 @@
 .PHONY: help install run test lint format typecheck security migrate makemigration check \
-        docker-up docker-down docker-build docker-logs docker-migrate minio-init
+	up docker-up docker-down docker-build docker-logs docker-migrate minio-init
 
 help:
 	@echo "HRK Backend - Available commands:"
@@ -17,7 +17,8 @@ help:
 	@echo "  make check          - Run all checks (lint + typecheck + test + security)"
 	@echo ""
 	@echo "  Docker:"
-	@echo "  make docker-up      - Start backend stack (API + DB + MinIO)"
+	@echo "  make up             - Build and start backend stack"
+	@echo "  make docker-up      - Start backend stack without rebuilding"
 	@echo "  make docker-down    - Stop and remove containers"
 	@echo "  make docker-build   - Rebuild all images"
 	@echo "  make docker-logs    - Tail API logs"
@@ -55,6 +56,9 @@ check: lint typecheck test security
 	@echo "All checks passed"
 
 # ── Docker targets ─────────────────────────────────────────────────────────────
+
+up:
+	docker compose up -d --build
 
 docker-up:
 	docker compose up -d

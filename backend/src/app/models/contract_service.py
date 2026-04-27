@@ -1,7 +1,10 @@
 """ContractService model — junction between Contract and Service."""
 
+from __future__ import annotations
+
 import uuid
 from datetime import date
+from typing import TYPE_CHECKING
 
 from sqlalchemy import (
     Boolean,
@@ -18,6 +21,11 @@ from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base
+
+if TYPE_CHECKING:
+    from app.models.contract import Contract
+    from app.models.rate import CustomerRate
+    from app.models.service import Service
 
 
 class ContractService(Base):
@@ -59,12 +67,8 @@ class ContractService(Base):
     )
 
     # Relationships
-    contract: Mapped["Contract"] = relationship(  # noqa: F821
-        "Contract", back_populates="contract_services"
-    )
-    service: Mapped["Service"] = relationship(  # noqa: F821
-        "Service", back_populates="contract_services"
-    )
-    customer_rates: Mapped[list["CustomerRate"]] = relationship(  # noqa: F821
+    contract: Mapped[Contract] = relationship("Contract", back_populates="contract_services")
+    service: Mapped[Service] = relationship("Service", back_populates="contract_services")
+    customer_rates: Mapped[list[CustomerRate]] = relationship(
         "CustomerRate", back_populates="contract_service"
     )
