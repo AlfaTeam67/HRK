@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Final
 from uuid import UUID
 
-from fastapi import UploadFile
+from fastapi import BackgroundTasks, UploadFile
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -30,6 +30,7 @@ from app.repo.attachment import AttachmentRepository
 from app.repo.contract import ContractRepository
 from app.repo.customer import CustomerRepository
 from app.repo.user import UserRepository
+from app.service.document_processing import DocumentProcessingService
 from app.service.storage import StorageService, StorageServiceError
 
 ALLOWED_CONTENT_TYPES: Final[frozenset[str]] = frozenset(
@@ -67,6 +68,7 @@ class DocumentService:
         customer_id: UUID | None,
         contract_id: UUID | None,
         uploaded_by: UUID,
+        background_tasks: BackgroundTasks,
     ) -> Attachment:
         if customer_id is None and contract_id is None:
             raise DocumentValidationError("Document must be linked to a customer or a contract.")
@@ -108,6 +110,13 @@ class DocumentService:
             )
             await self._session.commit()
             await self._session.refresh(attachment)
+            background_tasks.add_task(
+                DocumentProcessingService().process,
+                attachment.id,
+                attachment.customer_id,
+                content,
+                content_type,
+            )
             return attachment
         except SQLAlchemyError as exc:
             await self._session.rollback()
