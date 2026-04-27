@@ -9,7 +9,7 @@ import pytest
 from fastapi import HTTPException
 from fastapi.testclient import TestClient
 
-from app.api.crm import get_crm_service
+from app.api.deps import get_crm_service
 from app.main import app
 from app.models.enums import (
     BillingFrequency,
@@ -18,7 +18,7 @@ from app.models.enums import (
     ContractType,
     CustomerStatus,
 )
-from app.schemas.crm import ContractServiceCreate
+from app.schemas.contract_services import ContractServiceCreate
 
 
 class FakeCRMService:

@@ -8,8 +8,8 @@ from fastapi import APIRouter, Depends, Query, Response, status
 
 from app.api.deps import get_crm_service
 from app.models.enums import CustomerStatus
-from app.schemas.crm import CustomerCreate, CustomerRead, CustomerUpdate
-from app.service.crm import CRMService
+from app.schemas.customers import CustomerCreate, CustomerRead, CustomerUpdate
+from app.service import CRMService
 
 router = APIRouter(tags=["crm-customers"])
 

@@ -8,14 +8,13 @@ from fastapi import APIRouter, Depends, Query, Response, status
 
 from app.api.deps import get_crm_service
 from app.models.enums import ContractStatus
-from app.schemas.crm import (
+from app.schemas.contract_services import ContractServiceCreate, ContractServiceRead
+from app.schemas.contracts import (
     ContractCreate,
     ContractRead,
-    ContractServiceCreate,
-    ContractServiceRead,
     ContractUpdate,
 )
-from app.service.crm import CRMService
+from app.service import CRMService
 
 router = APIRouter(tags=["crm-contracts"])
 

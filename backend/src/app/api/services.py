@@ -6,8 +6,8 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Query, Response, status
 
 from app.api.deps import get_crm_service
-from app.schemas.crm import ServiceCreate, ServiceRead, ServiceUpdate
-from app.service.crm import CRMService
+from app.schemas.services import ServiceCreate, ServiceRead, ServiceUpdate
+from app.service import CRMService
 
 router = APIRouter(tags=["crm-services"])
 
