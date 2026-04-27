@@ -7,7 +7,8 @@ from typing import Any
 import uvicorn
 from fastapi import FastAPI
 
-from app.api.v1 import api_router
+from app.api.v1 import api_router as v1_router
+from app.api import api_router as crm_router
 from app.config import settings
 
 
@@ -29,7 +30,8 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-app.include_router(api_router, prefix=settings.api_v1_str)
+app.include_router(v1_router, prefix=settings.api_v1_str)
+app.include_router(crm_router, prefix=settings.api_v1_str)
 
 
 @app.get("/", tags=["status"])
