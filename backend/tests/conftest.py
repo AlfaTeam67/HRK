@@ -1,8 +1,11 @@
-import pytest
 import asyncio
-from httpx import AsyncClient, ASGITransport
-from typing import AsyncGenerator, Generator
+from collections.abc import AsyncGenerator, Generator
+
+import pytest
+from httpx import ASGITransport, AsyncClient
+
 from app.main import app
+
 
 @pytest.fixture(scope="session")
 def event_loop() -> Generator[asyncio.AbstractEventLoop, None, None]:
@@ -11,10 +14,8 @@ def event_loop() -> Generator[asyncio.AbstractEventLoop, None, None]:
     yield loop
     loop.close()
 
+
 @pytest.fixture
 async def client() -> AsyncGenerator[AsyncClient, None]:
-    async with AsyncClient(
-        transport=ASGITransport(app=app), 
-        base_url="http://test"
-    ) as ac:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
         yield ac

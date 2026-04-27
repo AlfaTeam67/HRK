@@ -74,7 +74,7 @@ class Customer(Base, TimestampMixin, SoftDeleteMixin, AuditMixin):
             create_constraint=False,
             native_enum=False,
         ),
-        server_default=text("'active'"),
+        server_default=text("'ACTIVE'"),
         nullable=False,
     )
     segment: Mapped[str | None] = mapped_column(String(50), nullable=True)
