@@ -1,4 +1,6 @@
-FROM python:3.12-slim AS base
+ARG PYTHON_BASE_IMAGE=public.ecr.aws/docker/library/python:3.12-slim
+
+FROM ${PYTHON_BASE_IMAGE} AS base
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
@@ -19,7 +21,7 @@ COPY pyproject.toml poetry.lock* ./
 RUN poetry install --only=main --no-root
 
 # ── runtime ───────────────────────────────────────────────────────────────────
-FROM python:3.12-slim AS runtime
+FROM ${PYTHON_BASE_IMAGE} AS runtime
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \

@@ -1,0 +1,172 @@
+{
+  "info": {
+    "_postman_id": "7f4a98f0-b3ef-4fd8-a9b4-2d6e63240d31",
+    "name": "HRK S3 Documents API",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "Endpointy backendu HRK związane ze storage S3/MinIO (documents)."
+  },
+  "item": [
+    {
+      "name": "Upload document (S3)",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "formdata",
+          "formdata": [
+            {
+              "key": "file",
+              "type": "file",
+              "src": "{{localFilePath}}"
+            },
+            {
+              "key": "document_type",
+              "value": "contract",
+              "type": "text"
+            },
+            {
+              "key": "company_id",
+              "value": "{{companyId}}",
+              "type": "text",
+              "disabled": true
+            },
+            {
+              "key": "customer_id",
+              "value": "{{customerId}}",
+              "type": "text"
+            },
+            {
+              "key": "contract_id",
+              "value": "{{contractId}}",
+              "type": "text",
+              "disabled": true
+            },
+            {
+              "key": "uploaded_by",
+              "value": "{{uploadedByUserId}}",
+              "type": "text"
+            }
+          ]
+        },
+        "url": {
+          "raw": "{{baseUrl}}/documents/",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "documents",
+            ""
+          ]
+        },
+        "description": "Upload pliku do S3/MinIO + zapis metadanych attachment w DB."
+      }
+    },
+    {
+      "name": "Get document metadata",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/documents/{{documentId}}?requester_user_id={{requesterUserId}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "documents",
+            "{{documentId}}"
+          ],
+          "query": [
+            {
+              "key": "requester_user_id",
+              "value": "{{requesterUserId}}"
+            }
+          ]
+        },
+        "description": "Pobiera metadane dokumentu i weryfikuje autoryzację."
+      }
+    },
+    {
+      "name": "Get presigned download URL",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/documents/{{documentId}}/download-url?requester_user_id={{requesterUserId}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "documents",
+            "{{documentId}}",
+            "download-url"
+          ],
+          "query": [
+            {
+              "key": "requester_user_id",
+              "value": "{{requesterUserId}}"
+            }
+          ]
+        },
+        "description": "Zwraca krótko żyjący presigned URL do pobrania obiektu z S3/MinIO."
+      }
+    },
+    {
+      "name": "Delete document (S3 + soft delete)",
+      "request": {
+        "method": "DELETE",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/documents/{{documentId}}?requester_user_id={{requesterUserId}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "documents",
+            "{{documentId}}"
+          ],
+          "query": [
+            {
+              "key": "requester_user_id",
+              "value": "{{requesterUserId}}"
+            }
+          ]
+        },
+        "description": "Usuwa obiekt ze storage S3/MinIO i wykonuje soft delete rekordu attachment."
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8000/api/v1"
+    },
+    {
+      "key": "localFilePath",
+      "value": "/Users/mciolkowski/Documents/PROGRAMMING/study/HRK/README.md"
+    },
+    {
+      "key": "uploadedByUserId",
+      "value": "86275f96-1c73-430a-b181-81abea565a1b"
+    },
+    {
+      "key": "requesterUserId",
+      "value": "86275f96-1c73-430a-b181-81abea565a1b"
+    },
+    {
+      "key": "companyId",
+      "value": "0be81238-77f8-4bc2-aa35-bb1f9bd7d031"
+    },
+    {
+      "key": "customerId",
+      "value": "0862457e-e7c5-4c9f-af98-7a442ac1cf81"
+    },
+    {
+      "key": "contractId",
+      "value": ""
+    },
+    {
+      "key": "documentId",
+      "value": "d0c13bb1-4a25-4556-9a2c-f6fb2a1d2e3f"
+    }
+  ]
+}

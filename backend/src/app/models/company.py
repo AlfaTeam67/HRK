@@ -12,6 +12,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.models.base import Base, SoftDeleteMixin, TimestampMixin
 
 if TYPE_CHECKING:
+    from app.models.attachment import Attachment
     from app.models.customer import Customer
 
 
@@ -47,3 +48,4 @@ class Company(Base, TimestampMixin, SoftDeleteMixin):
 
     # Relationships
     customers: Mapped[list[Customer]] = relationship("Customer", back_populates="company")
+    attachments: Mapped[list[Attachment]] = relationship("Attachment", back_populates="company")

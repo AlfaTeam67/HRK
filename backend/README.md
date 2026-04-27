@@ -30,6 +30,8 @@ This starts:
 
 The `minio-init` container automatically creates the `hrk-documents` bucket on first start.
 
+If your environment cannot resolve `registry-1.docker.io`, set `PYTHON_BASE_IMAGE` in `.env` to a reachable registry mirror (default is already set to `public.ecr.aws/docker/library/python:3.12-slim` in `.env.example`).
+
 Apply migrations after the stack is up:
 
 ```bash
