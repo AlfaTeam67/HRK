@@ -14,6 +14,13 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
+from app.core.exceptions import (
+    DocumentAccessDeniedError,
+    DocumentError,
+    DocumentNotFoundError,
+    DocumentStorageError,
+    DocumentValidationError,
+)
 from app.models.attachment import Attachment
 from app.models.contract import Contract
 from app.models.customer import Customer
@@ -40,26 +47,6 @@ ALLOWED_EXTENSIONS: Final[frozenset[str]] = frozenset(
 )
 FILENAME_SANITIZER_RE: Final[re.Pattern[str]] = re.compile(r"[^A-Za-z0-9._-]+")
 logger = logging.getLogger(__name__)
-
-
-class DocumentError(Exception):
-    """Base exception for document operations."""
-
-
-class DocumentValidationError(DocumentError):
-    """Raised on invalid document input."""
-
-
-class DocumentNotFoundError(DocumentError):
-    """Raised when the document was not found."""
-
-
-class DocumentStorageError(DocumentError):
-    """Raised when underlying storage operation fails."""
-
-
-class DocumentAccessDeniedError(DocumentError):
-    """Raised when user has no permission to access a document."""
 
 
 class DocumentService:
