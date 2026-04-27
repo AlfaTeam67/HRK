@@ -26,7 +26,7 @@ async def create_user(obj_in: UserCreate, db: AsyncSession = Depends(get_db)) ->
         await db.rollback()
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="User with this username or email already exists.",
+            detail="User with this login or email already exists.",
         ) from None
 
 
@@ -73,7 +73,7 @@ async def update_user(id: UUID, obj_in: UserUpdate, db: AsyncSession = Depends(g
         await db.rollback()
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="User with this username or email already exists.",
+            detail="User with this login or email already exists.",
         ) from None
 
 
