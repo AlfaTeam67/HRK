@@ -321,11 +321,13 @@ class FakeCRMService:
 
     async def get_service_group(self, group_id):
         group = getattr(self, "groups", {}).get(group_id)
-        if not group: raise HTTPException(status_code=404, detail="Not found")
+        if not group:
+            raise HTTPException(status_code=404, detail="Not found")
         return SimpleNamespace(**group)
 
     async def create_service_group(self, payload):
-        if not hasattr(self, "groups"): self.groups = {}
+        if not hasattr(self, "groups"):
+            self.groups = {}
         gid = uuid.uuid4()
         item = payload.model_dump()
         item["id"] = gid
@@ -335,12 +337,14 @@ class FakeCRMService:
 
     async def update_service_group(self, group_id, payload):
         group = getattr(self, "groups", {}).get(group_id)
-        if not group: raise HTTPException(status_code=404, detail="Not found")
+        if not group:
+            raise HTTPException(status_code=404, detail="Not found")
         group.update(payload.model_dump(exclude_unset=True))
         return SimpleNamespace(**group)
 
     async def delete_service_group(self, group_id):
-        if group_id not in getattr(self, "groups", {}): raise HTTPException(status_code=404, detail="Not found")
+        if group_id not in getattr(self, "groups", {}):
+            raise HTTPException(status_code=404, detail="Not found")
         del self.groups[group_id]
 
     async def list_customer_rates(self):
@@ -348,11 +352,13 @@ class FakeCRMService:
 
     async def get_customer_rate(self, rate_id):
         rate = getattr(self, "rates", {}).get(rate_id)
-        if not rate: raise HTTPException(status_code=404, detail="Not found")
+        if not rate:
+            raise HTTPException(status_code=404, detail="Not found")
         return SimpleNamespace(**rate)
 
     async def create_customer_rate(self, payload):
-        if not hasattr(self, "rates"): self.rates = {}
+        if not hasattr(self, "rates"):
+            self.rates = {}
         rid = uuid.uuid4()
         item = payload.model_dump()
         item["id"] = rid
@@ -363,28 +369,35 @@ class FakeCRMService:
 
     async def update_customer_rate(self, rate_id, payload):
         rate = getattr(self, "rates", {}).get(rate_id)
-        if not rate: raise HTTPException(status_code=404, detail="Not found")
+        if not rate:
+            raise HTTPException(status_code=404, detail="Not found")
         rate.update(payload.model_dump(exclude_unset=True))
         return SimpleNamespace(**rate)
 
     async def delete_customer_rate(self, rate_id):
-        if rate_id not in getattr(self, "rates", {}): raise HTTPException(status_code=404, detail="Not found")
+        if rate_id not in getattr(self, "rates", {}):
+            raise HTTPException(status_code=404, detail="Not found")
         del self.rates[rate_id]
 
     async def list_valorizations(self, contract_id=None, year=None, status_=None):
         items = list(getattr(self, "vals", {}).values())
-        if contract_id: items = [i for i in items if i["contract_id"] == contract_id]
-        if year is not None: items = [i for i in items if i["year"] == year]
-        if status_: items = [i for i in items if i["status"] == status_]
+        if contract_id:
+            items = [i for i in items if i["contract_id"] == contract_id]
+        if year is not None:
+            items = [i for i in items if i["year"] == year]
+        if status_:
+            items = [i for i in items if i["status"] == status_]
         return [SimpleNamespace(**i) for i in items]
 
     async def get_valorization(self, valorization_id):
         val = getattr(self, "vals", {}).get(valorization_id)
-        if not val: raise HTTPException(status_code=404, detail="Not found")
+        if not val:
+            raise HTTPException(status_code=404, detail="Not found")
         return SimpleNamespace(**val)
 
     async def create_valorization(self, payload):
-        if not hasattr(self, "vals"): self.vals = {}
+        if not hasattr(self, "vals"):
+            self.vals = {}
         vid = uuid.uuid4()
         item = payload.model_dump()
         item["id"] = vid
@@ -396,13 +409,15 @@ class FakeCRMService:
 
     async def update_valorization(self, valorization_id, payload):
         val = getattr(self, "vals", {}).get(valorization_id)
-        if not val: raise HTTPException(status_code=404, detail="Not found")
+        if not val:
+            raise HTTPException(status_code=404, detail="Not found")
         val.update(payload.model_dump(exclude_unset=True))
         val["updated_at"] = datetime.now(UTC)
         return SimpleNamespace(**val)
 
     async def delete_valorization(self, valorization_id):
-        if valorization_id not in getattr(self, "vals", {}): raise HTTPException(status_code=404, detail="Not found")
+        if valorization_id not in getattr(self, "vals", {}):
+            raise HTTPException(status_code=404, detail="Not found")
         del self.vals[valorization_id]
 
 
@@ -620,6 +635,8 @@ def test_openapi_contains_crm_paths(client: TestClient) -> None:
     assert "/api/v1/customers" in paths
     assert "/api/v1/contracts" in paths
     assert "/api/v1/services" in paths
+
+
 def test_service_groups_crud(client: TestClient) -> None:
     payload = {"name": "HR group", "level": 1, "is_active": True}
     res = client.post("/api/v1/service-groups", json=payload)
@@ -685,3 +702,4 @@ def test_valorizations_crud(client: TestClient) -> None:
 
     res = client.delete(f"/api/v1/valorizations/{val_id}")
     assert res.status_code == 204
+de == 204
