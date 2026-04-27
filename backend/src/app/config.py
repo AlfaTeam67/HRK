@@ -24,6 +24,11 @@ class Settings(BaseSettings):
     fe_domain: str = "http://localhost:3000"
     allowed_hosts: list[str] = ["localhost", "127.0.0.1"]
 
+    # AD integration
+    ad_service_url: str = "http://localhost:8001"
+    api_ad_domain: str = "HRK"
+    ad_request_timeout: float = 5.0
+
     # S3 / MinIO — credentials required
     s3_endpoint: str = "http://localhost:9000"
     s3_external_endpoint: str | None = None
