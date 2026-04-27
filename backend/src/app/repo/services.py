@@ -31,7 +31,11 @@ class ServiceRepository:
                 stmt.join(ContractService, ContractService.service_id == Service.id)
                 .join(Contract, Contract.id == ContractService.contract_id)
                 .join(Customer, Customer.id == Contract.customer_id)
-                .where(Customer.company_id == company_id)
+                .where(
+                    Customer.company_id == company_id,
+                    Contract.deleted_at.is_(None),
+                    Customer.deleted_at.is_(None),
+                )
                 .distinct()
             )
         stmt = stmt.order_by(Service.created_at.desc())

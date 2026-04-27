@@ -316,18 +316,6 @@ class FakeCRMService:
         del self.contract_services[relation_id]
 
 
-@pytest.fixture
-def fake_crm_service() -> FakeCRMService:
-    return FakeCRMService()
-
-
-@pytest.fixture
-def client(fake_crm_service: FakeCRMService) -> TestClient:
-    app.dependency_overrides[get_crm_service] = lambda: fake_crm_service
-    with TestClient(app) as test_client:
-        yield test_client
-    app.dependency_overrides.clear()
-
     async def list_service_groups(self):
         return [SimpleNamespace(**g) for g in getattr(self, "groups", {}).values()]
 
@@ -416,6 +404,20 @@ def client(fake_crm_service: FakeCRMService) -> TestClient:
     async def delete_valorization(self, valorization_id):
         if valorization_id not in getattr(self, "vals", {}): raise HTTPException(status_code=404, detail="Not found")
         del self.vals[valorization_id]
+
+
+@pytest.fixture
+def fake_crm_service() -> FakeCRMService:
+    return FakeCRMService()
+
+
+@pytest.fixture
+def client(fake_crm_service: FakeCRMService) -> TestClient:
+    app.dependency_overrides[get_crm_service] = lambda: fake_crm_service
+    with TestClient(app) as test_client:
+        yield test_client
+    app.dependency_overrides.clear()
+
 
 
 
@@ -531,10 +533,17 @@ def test_service_relation_flow_and_conflicts(client: TestClient, fake_crm_servic
     )
     contract_id = contract_resp.json()["id"]
 
+    group_resp = client.post(
+        "/api/v1/service-groups",
+        json={"name": "Test Group", "level": 1, "is_active": True}
+    )
+    assert group_resp.status_code == 201
+    group_id = group_resp.json()["id"]
+
     service_resp = client.post(
         "/api/v1/services",
         json={
-            "group_id": str(uuid.uuid4()),
+            "group_id": group_id,
             "name": "Payroll processing",
             "billing_unit": BillingUnit.PER_PERSON.value,
             "billing_frequency": BillingFrequency.MONTHLY.value,
