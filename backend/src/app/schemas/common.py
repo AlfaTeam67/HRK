@@ -1,3 +1,18 @@
+"""Common schema utilities."""
+
+from pydantic import BaseModel, ConfigDict
+
+
+class ORMBaseSchema(BaseModel):
+    """Schema base configured for SQLAlchemy model serialization."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class MessageResponse(BaseModel):
+    """Simple message response schema."""
+
+    message: str
 from collections.abc import Sequence
 from typing import Generic, TypeVar
 
