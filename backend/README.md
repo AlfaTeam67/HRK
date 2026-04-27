@@ -24,6 +24,7 @@ This starts:
 |---|---|
 | FastAPI API | http://localhost:8000 |
 | AD microservice | http://localhost:8001 |
+| Schema Manager | http://localhost:8002 |
 | API docs (debug) | http://localhost:8000/docs |
 | PostgreSQL + pgvector | localhost:5432 |
 | MinIO S3 API | http://localhost:9000 |
@@ -44,8 +45,34 @@ make docker-down    # Stop all containers
 make docker-build   # Rebuild images after Dockerfile changes
 make docker-logs    # Tail API logs
 make docker-logs-ad # Tail AD microservice logs
+make docker-logs-schema-manager # Tail Schema Manager logs
 make minio-init     # Re-create MinIO bucket manually if needed
 ```
+
+## Schema Manager
+
+All table/column management logic lives in the `schema_manager` microservice.
+
+Supported endpoints:
+
+- `POST /tables/create`
+- `DELETE /tables/drop`
+- `PUT /tables/rename`
+- `POST /columns/add`
+- `DELETE /columns/drop`
+- `PUT /columns/update-type`
+- `GET /tables/inspect/{table_name}`
+
+Supported column types:
+
+- `TEXT`
+- `INTEGER` / `INT`
+- `BOOLEAN`
+- `TIMESTAMP`
+- `DATE`
+- `FLOAT` / `DOUBLE`
+- `NUMERIC`
+- `VARCHAR`
 
 ### Installation
 
