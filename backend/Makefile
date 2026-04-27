@@ -1,5 +1,5 @@
 .PHONY: help install run test lint format typecheck security migrate makemigration check \
-	up docker-up docker-down docker-build docker-logs docker-migrate minio-init
+	up docker-up docker-down docker-build docker-logs docker-logs-ad docker-migrate minio-init
 
 help:
 	@echo "HRK Backend - Available commands:"
@@ -22,6 +22,7 @@ help:
 	@echo "  make docker-down    - Stop and remove containers"
 	@echo "  make docker-build   - Rebuild all images"
 	@echo "  make docker-logs    - Tail API logs"
+	@echo "  make docker-logs-ad - Tail AD microservice logs"
 	@echo "  make docker-migrate - Run alembic migrations inside the api container"
 	@echo "  make minio-init     - Create default S3 bucket in MinIO (auto-run on docker-up)"
 
@@ -71,6 +72,9 @@ docker-build:
 
 docker-logs:
 	docker compose logs -f api
+
+docker-logs-ad:
+	docker compose logs -f ad
 
 docker-migrate:
 	docker compose exec api alembic upgrade head

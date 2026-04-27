@@ -23,6 +23,7 @@ This starts:
 | Service | URL |
 |---|---|
 | FastAPI API | http://localhost:8000 |
+| AD microservice | http://localhost:8001 |
 | API docs (debug) | http://localhost:8000/docs |
 | PostgreSQL + pgvector | localhost:5432 |
 | MinIO S3 API | http://localhost:9000 |
@@ -42,6 +43,7 @@ make docker-migrate
 make docker-down    # Stop all containers
 make docker-build   # Rebuild images after Dockerfile changes
 make docker-logs    # Tail API logs
+make docker-logs-ad # Tail AD microservice logs
 make minio-init     # Re-create MinIO bucket manually if needed
 ```
 
@@ -63,6 +65,32 @@ Or manually with auto-reload:
 ```bash
 poetry run uvicorn app.main:app --reload
 ```
+
+## AD Login Flow
+
+The main API now talks to the AD microservice and can sync a user into PostgreSQL.
+Users are stored with only three fields: `id`, `login`, `email`.
+The email is generated as `login@hrk.eu`.
+
+Login endpoint:
+
+```bash
+POST /api/v1/auth/login/{username}
+```
+
+Example:
+
+```bash
+POST /api/v1/auth/login/asia
+```
+
+Required integration setting for local runs:
+
+```bash
+AD_SERVICE_URL=http://localhost:8001
+```
+
+When running through Docker Compose, the API container uses `http://ad:8001` automatically.
 
 ## Development Commands
 

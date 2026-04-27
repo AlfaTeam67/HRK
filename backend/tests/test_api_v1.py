@@ -17,12 +17,8 @@ async def test_list_companies_smoke(client: AsyncClient) -> None:
 @pytest.mark.asyncio
 async def test_create_user_smoke(client: AsyncClient) -> None:
     user_data = {
-        "ad_username": "testuser",
+        "login": "testuser",
         "email": "test@example.com",
-        "first_name": "Test",
-        "last_name": "User",
-        "role": "viewer",
-        "is_active": True,
     }
     response = await client.post("/api/v1/users/", json=user_data)
     assert response.status_code in [201, 400, 500]
