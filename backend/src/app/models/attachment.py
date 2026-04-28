@@ -39,7 +39,7 @@ class Attachment(Base, CreatedAtMixin, SoftDeleteMixin):
         Index(
             "idx_att_ocr_status",
             "ocr_status",
-            postgresql_where=text("ocr_status IN ('PENDING', 'PROCESSING')"),
+            postgresql_where=text("ocr_status IN ('pending', 'processing')"),
         ),
     )
 
@@ -70,6 +70,7 @@ class Attachment(Base, CreatedAtMixin, SoftDeleteMixin):
             name="documenttype",
             create_constraint=False,
             native_enum=False,
+            values_callable=lambda x: [e.value for e in x],
         ),
         nullable=False,
     )
@@ -84,8 +85,9 @@ class Attachment(Base, CreatedAtMixin, SoftDeleteMixin):
             name="ocrstatus",
             create_constraint=False,
             native_enum=False,
+            values_callable=lambda x: [e.value for e in x],
         ),
-        server_default=text("'PENDING'"),
+        server_default=text("'pending'"),
         nullable=True,
     )
     extracted_text: Mapped[str | None] = mapped_column(Text, nullable=True)

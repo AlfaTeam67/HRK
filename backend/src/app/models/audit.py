@@ -39,6 +39,7 @@ class AuditLog(Base, CreatedAtMixin):
             name="auditaction",
             create_constraint=False,
             native_enum=False,
+            values_callable=lambda x: [e.value for e in x],
         ),
         nullable=False,
     )

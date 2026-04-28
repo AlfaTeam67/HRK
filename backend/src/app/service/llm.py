@@ -37,5 +37,7 @@ class LLMService:
                     ],
                 },
             )
+            if response.status_code == 429:
+                return "Model jest chwilowo przeciążony (rate limit). Spróbuj ponownie za chwilę."
             response.raise_for_status()
             return response.json()["choices"][0]["message"]["content"]  # type: ignore[no-any-return]

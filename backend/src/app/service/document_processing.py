@@ -7,6 +7,9 @@ import logging
 from uuid import UUID
 
 import pdfplumber  # type: ignore[import-untyped]
+import pytesseract
+from pdf2image import convert_from_bytes  # type: ignore[import-untyped]
+from PIL import Image
 
 from app.core.database import AsyncSessionLocal
 from app.models.enums import OcrStatus
@@ -21,7 +24,8 @@ CHUNK_OVERLAP = 320  # chars ≈ 80 tokens
 
 _PDF_MIME = "application/pdf"
 _TEXT_MIME = "text/plain"
-_PROCESSABLE = {_PDF_MIME, _TEXT_MIME}
+_IMAGE_MIMES = {"image/jpeg", "image/png", "image/tiff", "image/bmp", "image/webp"}
+_PROCESSABLE = {_PDF_MIME, _TEXT_MIME} | _IMAGE_MIMES
 
 
 def _split_long(text: str, page: int | None) -> list[tuple[str, int | None]]:
@@ -46,12 +50,27 @@ def _extract_paragraphs(content: bytes, mime_type: str) -> list[tuple[str, int |
                     para = para.strip()
                     if para:
                         raw.append((para, page_num))
+        if not raw:
+            images = convert_from_bytes(content, dpi=200)
+            for page_num, image in enumerate(images, start=1):
+                text = pytesseract.image_to_string(image, lang="pol+eng")
+                for para in text.split("\n\n"):
+                    para = para.strip()
+                    if para:
+                        raw.append((para, page_num))
     elif mime_type == _TEXT_MIME:
         text = content.decode("utf-8", errors="replace")
         for para in text.split("\n\n"):
             para = para.strip()
             if para:
                 raw.append((para, None))
+    elif mime_type in _IMAGE_MIMES:
+        image = Image.open(io.BytesIO(content))
+        text = pytesseract.image_to_string(image, lang="pol+eng")
+        for para in text.split("\n\n"):
+            para = para.strip()
+            if para:
+                raw.append((para, 1))
 
     result: list[tuple[str, int | None]] = []
     for para, page in raw:

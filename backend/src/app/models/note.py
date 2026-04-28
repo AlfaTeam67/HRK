@@ -53,6 +53,7 @@ class Note(Base, TimestampMixin, SoftDeleteMixin):
             name="notetype",
             create_constraint=False,
             native_enum=False,
+            values_callable=lambda x: [e.value for e in x],
         ),
         nullable=False,
     )

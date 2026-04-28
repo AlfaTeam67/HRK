@@ -45,6 +45,7 @@ class Service(Base, CreatedAtMixin, SoftDeleteMixin):
             name="billingunit",
             create_constraint=False,
             native_enum=False,
+            values_callable=lambda x: [e.value for e in x],
         ),
         nullable=False,
     )
@@ -54,6 +55,7 @@ class Service(Base, CreatedAtMixin, SoftDeleteMixin):
             name="billingfrequency",
             create_constraint=False,
             native_enum=False,
+            values_callable=lambda x: [e.value for e in x],
         ),
         server_default=text("'monthly'"),
         nullable=False,

@@ -3,8 +3,7 @@
 from typing import Any
 from uuid import UUID
 
-from pgvector.sqlalchemy import Vector  # type: ignore
-from sqlalchemy import cast, select
+from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.document_chunk import DocumentChunk
@@ -26,18 +25,22 @@ class DocumentChunkRepository(BaseRepository[DocumentChunk]):
         customer_id: UUID,
         embedding: list[float],
         top_k: int = 5,
-    ) -> list[tuple[DocumentChunk, float]]:
-        query_vec = cast(embedding, Vector(768))
-        distance = DocumentChunk.embedding.op("<=>")(query_vec)
-
-        stmt = (
-            select(DocumentChunk, distance.label("score"))
-            .where(DocumentChunk.customer_id == customer_id)
-            .order_by(distance)
-            .limit(top_k)
+    ) -> list[tuple[Any, float]]:
+        vec_str = "[" + ",".join(str(v) for v in embedding) + "]"
+        stmt = text("""
+            SELECT id, attachment_id, content, page_number, bbox, section_title,
+                   (embedding <=> CAST(:vec AS vector(768))) AS score
+            FROM document_chunks
+            WHERE customer_id = :customer_id
+            ORDER BY score ASC
+            LIMIT :top_k
+        """)
+        result = await self.session.execute(
+            stmt,
+            {"vec": vec_str, "customer_id": str(customer_id), "top_k": top_k},
         )
-        result = await self.session.execute(stmt)
-        return [(row.DocumentChunk, float(row.score)) for row in result]
+        rows = result.all()
+        return [(row, float(row.score)) for row in rows]
 
     async def delete_by_attachment(self, attachment_id: UUID) -> None:
         chunks = await self.session.execute(

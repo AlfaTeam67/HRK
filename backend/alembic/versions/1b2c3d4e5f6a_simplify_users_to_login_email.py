@@ -1,7 +1,7 @@
 """simplify users to login/email only
 
 Revision ID: 1b2c3d4e5f6a
-Revises: dda74663e6ba
+Revises: 40a1f8a0d4a7
 Create Date: 2026-04-27 00:00:00.000000
 
 """
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision = "1b2c3d4e5f6a"
-down_revision = "dda74663e6ba"
+down_revision = "40a1f8a0d4a7"
 branch_labels = None
 depends_on = None
 

@@ -16,6 +16,7 @@ class ChunkResult(BaseModel):
     chunk_id: UUID
     attachment_id: UUID
     content: str
+    highlight: str | None
     page_number: int | None
     bbox: dict | None
     section_title: str | None
