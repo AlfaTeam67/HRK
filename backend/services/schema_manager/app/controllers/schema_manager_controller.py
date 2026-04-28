@@ -2,7 +2,7 @@ import os
 
 from fastapi import APIRouter
 
-from models import (
+from app.models import (
     ColumnAdd,
     ColumnDrop,
     ColumnTypeUpdate,
@@ -10,7 +10,7 @@ from models import (
     TableDrop,
     TableRename,
 )
-from service import SchemaManagerService
+from app.service import SchemaManagerService
 
 router = APIRouter()
 service = SchemaManagerService(

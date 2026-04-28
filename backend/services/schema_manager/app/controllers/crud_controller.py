@@ -4,7 +4,7 @@ from fastapi import APIRouter, HTTPException, status
 from pydantic import BaseModel
 from typing import Any, Dict
 
-from service.crud_service import CRUDService
+from app.service.crud_service import CRUDService
 
 router = APIRouter(prefix="/crud", tags=["CRUD"])
 crud_service = CRUDService(
