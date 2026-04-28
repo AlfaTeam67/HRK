@@ -120,11 +120,11 @@ services:
   # ── AD microservice (Active Directory auth) ───────────────────────────────
   ad:
     build:
-      context: ./AD
+      context: ./services/ad
       dockerfile: Dockerfile
     container_name: hrk-ad
     env_file:
-      - ./AD/.env
+      - ./services/ad/.env
     environment:
       APP_NAME: ${AD_APP_NAME:-HRK AD Service}
       APP_VERSION: ${AD_APP_VERSION:-0.1.0}
@@ -154,7 +154,7 @@ services:
   # ── Schema Manager microservice ───────────────────────────────────────────
   schema-manager:
     build:
-      context: ./schema_manager
+      context: ./services/schema_manager
       dockerfile: Dockerfile
     container_name: hrk-schema-manager
     environment:
