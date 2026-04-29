@@ -33,7 +33,7 @@ const VAL_S: Record<string, { bg: string; color: string }> = {
 /* ─── Component ──────────────────────────────────────────────── */
 export function ValorizationPage() {
   return (
-    <div style={{ maxWidth: 1200, margin: '0 auto' }}>
+    <div style={{ width: '100%' }}>
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
         <div>

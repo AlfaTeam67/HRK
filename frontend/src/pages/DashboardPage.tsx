@@ -57,7 +57,7 @@ export function DashboardPage() {
   const firstName = user?.displayName.split(' ')[0] ?? 'użytkowniku'
 
   return (
-    <div style={{ maxWidth: 1200, margin: '0 auto' }}>
+    <div style={{ width: '100%' }}>
       {/* Top bar */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
         <div style={{ fontSize: 12, color: '#9e9389', textTransform: 'capitalize' }}>{today}</div>
