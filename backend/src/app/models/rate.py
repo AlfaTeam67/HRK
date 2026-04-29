@@ -126,6 +126,7 @@ class Valorization(Base, TimestampMixin):
             name="indextype",
             create_constraint=False,
             native_enum=False,
+            values_callable=lambda x: [e.value for e in x],
         ),
         nullable=False,
     )
@@ -138,6 +139,7 @@ class Valorization(Base, TimestampMixin):
             name="valorizationstatus",
             create_constraint=False,
             native_enum=False,
+            values_callable=lambda x: [e.value for e in x],
         ),
         server_default=text("'pending'"),
         nullable=False,

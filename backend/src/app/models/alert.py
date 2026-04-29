@@ -60,6 +60,7 @@ class Alert(Base, CreatedAtMixin):
             name="alerttype",
             create_constraint=False,
             native_enum=False,
+            values_callable=lambda x: [e.value for e in x],
         ),
         nullable=False,
     )
@@ -71,6 +72,7 @@ class Alert(Base, CreatedAtMixin):
             name="alertstatus",
             create_constraint=False,
             native_enum=False,
+            values_callable=lambda x: [e.value for e in x],
         ),
         server_default=text("'open'"),
         nullable=False,

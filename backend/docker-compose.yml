@@ -93,6 +93,10 @@ services:
       S3_EXTERNAL_ENDPOINT: ${S3_EXTERNAL_ENDPOINT:-http://localhost:9000}
       FE_DOMAIN: ${FE_DOMAIN:-http://localhost:4173}
       DEBUG: ${DEBUG:-false}
+      OLLAMA_URL: ${OLLAMA_URL:-http://ollama:11434}
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+      OPENROUTER_BASE_URL: ${OPENROUTER_BASE_URL:-https://openrouter.ai/api/v1}
+      OPENROUTER_MODEL: ${OPENROUTER_MODEL:-google/gemma-2-9b-it}
       AD_SERVICE_URL: http://ad:8001
       API_AD_DOMAIN: ${API_AD_DOMAIN:-HRK}
     ports:
@@ -114,8 +118,44 @@ services:
         condition: service_healthy
       minio:
         condition: service_healthy
-      ad:
+      ollama:
         condition: service_healthy
+
+  # ── Ollama (embedding + LLM inference) ───────────────────────────────────────
+  ollama:
+    image: ollama/ollama
+    container_name: hrk-ollama
+    volumes:
+      - ollama_data:/root/.ollama
+    ports:
+      - "11434:11434"
+    networks:
+      - hrk-network
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  # ── Ollama model initialiser (pulls nomic-embed-text once, then exits) ────────
+  ollama-init:
+    image: ollama/ollama
+    container_name: hrk-ollama-init
+    depends_on:
+      ollama:
+        condition: service_healthy
+    environment:
+      OLLAMA_HOST: ollama:11434
+    entrypoint: >
+      /bin/sh -c "
+        echo 'Pulling nomic-embed-text...' &&
+        ollama pull nomic-embed-text &&
+        echo 'Model ready.'
+      "
+    networks:
+      - hrk-network
+    restart: "no"
 
   # ── AD microservice (Active Directory auth) ───────────────────────────────
   ad:
@@ -170,6 +210,7 @@ services:
 volumes:
   postgres_data:
   minio_data:
+  ollama_data:
 
 networks:
   hrk-network:

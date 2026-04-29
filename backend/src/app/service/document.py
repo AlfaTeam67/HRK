@@ -9,13 +9,12 @@ from pathlib import Path
 from typing import Final
 from uuid import UUID
 
-from fastapi import UploadFile
+from fastapi import BackgroundTasks, UploadFile
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.core.exceptions import (
-    DocumentAccessDeniedError,
     DocumentError,
     DocumentNotFoundError,
     DocumentStorageError,
@@ -24,12 +23,13 @@ from app.core.exceptions import (
 from app.models.attachment import Attachment
 from app.models.contract import Contract
 from app.models.customer import Customer
-from app.models.enums import DocumentType, UserRole
+from app.models.enums import DocumentType
 from app.models.user import User
 from app.repo.attachment import AttachmentRepository
 from app.repo.contract import ContractRepository
 from app.repo.customer import CustomerRepository
 from app.repo.user import UserRepository
+from app.service.document_processing import DocumentProcessingService
 from app.service.storage import StorageService, StorageServiceError
 
 ALLOWED_CONTENT_TYPES: Final[frozenset[str]] = frozenset(
@@ -67,6 +67,7 @@ class DocumentService:
         customer_id: UUID | None,
         contract_id: UUID | None,
         uploaded_by: UUID,
+        background_tasks: BackgroundTasks,
     ) -> Attachment:
         if customer_id is None and contract_id is None:
             raise DocumentValidationError("Document must be linked to a customer or a contract.")
@@ -74,8 +75,7 @@ class DocumentService:
         original_filename, content_type, content = await self._validate_upload_file(file)
 
         customer, contract = await self._resolve_relations(customer_id=customer_id, contract_id=contract_id)
-        user = await self._get_requesting_user(uploaded_by)
-        self._authorize(user_role=user.role, user_id=user.id, customer=customer, contract=contract, action="write")
+        await self._get_requesting_user(uploaded_by)
 
         resolved_company_id = self._resolve_company_id(
             explicit_company_id=company_id,
@@ -108,6 +108,13 @@ class DocumentService:
             )
             await self._session.commit()
             await self._session.refresh(attachment)
+            background_tasks.add_task(
+                DocumentProcessingService().process,
+                attachment.id,
+                attachment.customer_id,
+                content,
+                content_type,
+            )
             return attachment
         except SQLAlchemyError as exc:
             await self._session.rollback()
@@ -128,11 +135,7 @@ class DocumentService:
         attachment = await self._attachments.get(document_id)
         if not attachment:
             raise DocumentNotFoundError("Document not found.")
-        user = await self._get_requesting_user(requester_user_id)
-        customer, contract = await self._resolve_relations(
-            customer_id=attachment.customer_id, contract_id=attachment.contract_id
-        )
-        self._authorize(user_role=user.role, user_id=user.id, customer=customer, contract=contract, action="read")
+        await self._get_requesting_user(requester_user_id)
 
         try:
             url = await self._storage.generate_download_url(key=attachment.s3_key)
@@ -145,11 +148,7 @@ class DocumentService:
         attachment = await self._attachments.get(document_id)
         if not attachment:
             raise DocumentNotFoundError("Document not found.")
-        user = await self._get_requesting_user(requester_user_id)
-        customer, contract = await self._resolve_relations(
-            customer_id=attachment.customer_id, contract_id=attachment.contract_id
-        )
-        self._authorize(user_role=user.role, user_id=user.id, customer=customer, contract=contract, action="write")
+        await self._get_requesting_user(requester_user_id)
 
         try:
             await self._storage.delete_object(key=attachment.s3_key)
@@ -163,41 +162,14 @@ class DocumentService:
         attachment = await self._attachments.get(document_id)
         if not attachment:
             raise DocumentNotFoundError("Document not found.")
-        user = await self._get_requesting_user(requester_user_id)
-        customer, contract = await self._resolve_relations(
-            customer_id=attachment.customer_id, contract_id=attachment.contract_id
-        )
-        self._authorize(user_role=user.role, user_id=user.id, customer=customer, contract=contract, action="read")
+        await self._get_requesting_user(requester_user_id)
         return attachment
 
     async def _get_requesting_user(self, user_id: UUID) -> User:
         user = await self._users.get(user_id)
-        if user is None or not user.is_active:
-            raise DocumentValidationError("Requesting user not found or inactive.")
+        if user is None:
+            raise DocumentValidationError("Requesting user not found.")
         return user
-
-    @staticmethod
-    def _authorize(
-        *,
-        user_role: UserRole,
-        user_id: UUID,
-        customer: Customer | None,
-        contract: Contract | None,
-        action: str,
-    ) -> None:
-        if user_role in {UserRole.ADMIN, UserRole.MANAGER}:
-            return
-
-        customer_match = customer is not None and customer.account_manager_id == user_id
-        contract_match = contract is not None and contract.account_manager_id == user_id
-        is_related = customer_match or contract_match
-
-        if user_role == UserRole.ACCOUNT_MANAGER and is_related:
-            return
-        if user_role == UserRole.VIEWER and action == "read" and is_related:
-            return
-
-        raise DocumentAccessDeniedError("User has no permission to access this document.")
 
     async def _resolve_relations(
         self, *, customer_id: UUID | None, contract_id: UUID | None

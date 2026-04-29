@@ -69,6 +69,7 @@ class Contract(Base, TimestampMixin, SoftDeleteMixin, AuditMixin):
             name="contracttype",
             create_constraint=False,
             native_enum=False,
+            values_callable=lambda x: [e.value for e in x],
         ),
         nullable=False,
     )
@@ -78,6 +79,7 @@ class Contract(Base, TimestampMixin, SoftDeleteMixin, AuditMixin):
             name="contractstatus",
             create_constraint=False,
             native_enum=False,
+            values_callable=lambda x: [e.value for e in x],
         ),
         server_default=text("'draft'"),
         nullable=False,
@@ -94,6 +96,7 @@ class Contract(Base, TimestampMixin, SoftDeleteMixin, AuditMixin):
             name="billingcycle",
             create_constraint=False,
             native_enum=False,
+            values_callable=lambda x: [e.value for e in x],
         ),
         server_default=text("'monthly'"),
         nullable=True,

@@ -1,7 +1,7 @@
 from typing import Any
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
+from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, UploadFile, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
@@ -26,6 +26,7 @@ async def get_document_service(db: AsyncSession = Depends(get_db)) -> DocumentSe
 
 @router.post("/", response_model=DocumentRead, status_code=status.HTTP_201_CREATED)
 async def upload_document(
+    background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
     document_type: DocumentType = Form(DocumentType.OTHER),
     company_id: str | None = Form(None),
@@ -55,6 +56,7 @@ async def upload_document(
             customer_id=parsed_customer_id,
             contract_id=parsed_contract_id,
             uploaded_by=parsed_uploaded_by,
+            background_tasks=background_tasks,
         )
     except DocumentValidationError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc

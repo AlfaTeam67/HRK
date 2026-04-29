@@ -18,8 +18,13 @@ asyncpg = "^0.30.0"
 pgvector = "^0.4.1"
 python-dotenv = "^1.1.0"
 email-validator = "^2.2.0"
+httpx = "^0.28.1"
 boto3 = "^1.39.0"
 python-multipart = "^0.0.20"
+pdfplumber = "^0.11.0"
+pytesseract = "^0.3.13"
+Pillow = "^11.0.0"
+pdf2image = "^1.17.0"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.3.0"
@@ -29,7 +34,6 @@ ruff = "^0.11.0"
 mypy = "^1.15.0"
 bandit = "^1.8.0"
 httpx = "^0.28.1"
-moto = {extras = ["s3"], version = "^5.1.0"}
 
 [tool.pytest.ini_options]
 minversion = "7.0"
@@ -59,7 +63,7 @@ warn_no_return = true
 strict_equality = true
 
 [[tool.mypy.overrides]]
-module = ["boto3", "botocore.*"]
+module = ["boto3", "botocore.*", "pdfplumber"]
 ignore_missing_imports = true
 
 [tool.ruff]
