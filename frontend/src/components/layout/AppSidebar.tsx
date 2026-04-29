@@ -1,5 +1,9 @@
-import { NavLink } from 'react-router-dom'
+import { useDispatch } from 'react-redux'
+import { NavLink, useNavigate } from 'react-router-dom'
+
 import { HrkLogo } from '@/components/HrkLogo'
+import { useAppSelector } from '@/hooks/store'
+import { logout } from '@/store/slices/authSlice'
 
 /* ─── SVG icon helpers ───────────────────────────────────────── */
 const IcoDashboard = () => (
@@ -100,6 +104,15 @@ function SectionLabel({ children }: { children: string }) {
 }
 
 export function AppSidebar() {
+  const user = useAppSelector((s) => s.auth.user)
+  const dispatch = useDispatch()
+  const navigate = useNavigate()
+
+  function handleLogout() {
+    dispatch(logout())
+    navigate('/login', { replace: true })
+  }
+
   return (
     <aside style={{
       width: 220, minWidth: 220,
@@ -131,21 +144,47 @@ export function AppSidebar() {
 
       {/* ── User footer ──────────────────────────────── */}
       <div style={{
-        padding: '12px 14px', borderTop: '1px solid rgba(255,255,255,0.06)',
-        display: 'flex', alignItems: 'center', gap: 10,
+        padding: '10px 12px', borderTop: '1px solid rgba(255,255,255,0.06)',
       }}>
-        <div style={{
-          width: 32, height: 32, borderRadius: '50%',
-          background: 'linear-gradient(135deg, #e85c04 0%, #c94f02 100%)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: 11, fontWeight: 800, color: 'white', flexShrink: 0,
-        }}>MJ</div>
-        <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <div style={{
-            fontSize: 12, fontWeight: 700, color: '#e2ddd8',
-            whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-          }}>Małgorzata Janowska</div>
-          <div style={{ fontSize: 10, color: '#4a4340' }}>Opiekun klienta</div>
+            width: 32, height: 32, borderRadius: '50%', flexShrink: 0,
+            background: 'linear-gradient(135deg, #e85c04 0%, #c94f02 100%)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: 11, fontWeight: 800, color: 'white',
+          }}>
+            {user?.initials ?? '??'}
+          </div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{
+              fontSize: 12, fontWeight: 700, color: '#e2ddd8',
+              whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+            }}>
+              {user?.displayName ?? '—'}
+            </div>
+            <div style={{ fontSize: 10, color: '#4a4340' }}>
+              {user?.department ?? 'HRK'}
+            </div>
+          </div>
+          <button
+            onClick={handleLogout}
+            title="Wyloguj się"
+            style={{
+              background: 'none', border: 'none', cursor: 'pointer',
+              color: '#4a4340', padding: 4, borderRadius: 4,
+              display: 'flex', alignItems: 'center',
+              transition: 'color 0.12s',
+              flexShrink: 0,
+            }}
+            onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.color = '#e85c04' }}
+            onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.color = '#4a4340' }}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+              <polyline points="16 17 21 12 16 7"/>
+              <line x1="21" y1="12" x2="9" y2="12"/>
+            </svg>
+          </button>
         </div>
       </div>
     </aside>
