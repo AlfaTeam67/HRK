@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.company import Company
 from app.models.contract import Contract
+from app.models.customer import Customer
 from app.models.service_group import ServiceGroup
 from app.models.user import User
 
@@ -27,6 +28,10 @@ class LookupRepository:
 
     async def service_group_exists(self, group_id: uuid.UUID) -> bool:
         stmt = select(ServiceGroup.id).where(ServiceGroup.id == group_id)
+        return (await self.db.execute(stmt)).scalar_one_or_none() is not None
+
+    async def customer_exists(self, customer_id: uuid.UUID) -> bool:
+        stmt = select(Customer.id).where(Customer.id == customer_id, Customer.deleted_at.is_(None))
         return (await self.db.execute(stmt)).scalar_one_or_none() is not None
 
     async def has_customer_contracts(self, customer_id: uuid.UUID) -> bool:

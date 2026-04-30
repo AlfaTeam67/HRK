@@ -1,1090 +1,1233 @@
 {
-	"info": {
-		"_postman_id": "8d745582-7e4a-4b9a-9e1e-c2f35d67890a",
-		"name": "HRK CRM API - CRUD",
-		"description": "Kompletna kolekcja CRUD dla HRK CRM. Kolejność folderów = kolejność wywołań potrzebna do uploadu dokumentu: Auth → Users → Companies → Customers → Service Groups → Services → Contracts → Contract Services → Valorizations → Customer Rates → Documents → RAG.",
-		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
-	},
-	"item": [
-		{
-			"name": "Auth",
-			"item": [
-				{
-					"name": "Login",
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"exec": [
-									"if (pm.response.code === 200) {",
-									"    var jsonData = pm.response.json();",
-									"    pm.collectionVariables.set('userId', jsonData.id);",
-									"    console.log('Logged in as user:', jsonData.id);",
-									"}"
-								],
-								"type": "text/javascript"
-							}
-						}
-					],
-					"request": {
-						"method": "POST",
-						"header": [],
-						"url": {
-							"raw": "{{baseUrl}}/auth/login/jkowalski",
-							"host": ["{{baseUrl}}"],
-							"path": ["auth", "login", "jkowalski"]
-						},
-						"description": "Loguje użytkownika przez AD. Zwraca obiekt User i zapisuje userId."
-					},
-					"response": []
-				}
-			]
-		},
-		{
-			"name": "Users",
-			"item": [
-				{
-					"name": "Create User",
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"exec": [
-									"if (pm.response.code === 201) {",
-									"    var jsonData = pm.response.json();",
-									"    pm.collectionVariables.set('userId', jsonData.id);",
-									"    console.log('Created user:', jsonData.id);",
-									"}"
-								],
-								"type": "text/javascript"
-							}
-						}
-					],
-					"request": {
-						"method": "POST",
-						"header": [{"key": "Content-Type", "value": "application/json"}],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n    \"login\": \"jkowalski\",\n    \"email\": \"jan.kowalski@hrk.pl\"\n}",
-							"options": {"raw": {"language": "json"}}
-						},
-						"url": {
-							"raw": "{{baseUrl}}/users/",
-							"host": ["{{baseUrl}}"],
-							"path": ["users", ""]
-						},
-						"description": "role: admin | account_manager | manager | viewer"
-					},
-					"response": []
-				},
-				{
-					"name": "List Users",
-					"request": {
-						"method": "GET",
-						"header": [],
-						"url": {
-							"raw": "{{baseUrl}}/users/?page=1&page_size=20",
-							"host": ["{{baseUrl}}"],
-							"path": ["users", ""],
-							"query": [
-								{"key": "page", "value": "1"},
-								{"key": "page_size", "value": "20"}
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "Get User by ID",
-					"request": {
-						"method": "GET",
-						"header": [],
-						"url": {
-							"raw": "{{baseUrl}}/users/{{userId}}",
-							"host": ["{{baseUrl}}"],
-							"path": ["users", "{{userId}}"]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "Update User",
-					"request": {
-						"method": "PATCH",
-						"header": [{"key": "Content-Type", "value": "application/json"}],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n    \"login\": \"jkowalski2\",\n    \"email\": \"jan.kowalski2@hrk.pl\"\n}",
-							"options": {"raw": {"language": "json"}}
-						},
-						"url": {
-							"raw": "{{baseUrl}}/users/{{userId}}",
-							"host": ["{{baseUrl}}"],
-							"path": ["users", "{{userId}}"]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "Delete User",
-					"request": {
-						"method": "DELETE",
-						"header": [],
-						"url": {
-							"raw": "{{baseUrl}}/users/{{userId}}",
-							"host": ["{{baseUrl}}"],
-							"path": ["users", "{{userId}}"]
-						}
-					},
-					"response": []
-				}
-			]
-		},
-		{
-			"name": "Companies",
-			"item": [
-				{
-					"name": "Create Company",
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"exec": [
-									"if (pm.response.code === 201) {",
-									"    var jsonData = pm.response.json();",
-									"    pm.collectionVariables.set('companyId', jsonData.id);",
-									"    console.log('Created company:', jsonData.id);",
-									"}"
-								],
-								"type": "text/javascript"
-							}
-						}
-					],
-					"request": {
-						"method": "POST",
-						"header": [{"key": "Content-Type", "value": "application/json"}],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n    \"name\": \"HRK Payroll Consulting\",\n    \"nip\": \"5213456789\",\n    \"regon\": \"123456789\",\n    \"address_city\": \"Warszawa\",\n    \"address_street\": \"Aleje Jerozolimskie 100\",\n    \"address_postal\": \"00-001\",\n    \"address_country\": \"PL\",\n    \"phone\": \"+48221234567\",\n    \"email\": \"biuro@hrk.pl\",\n    \"website\": \"https://hrk.pl\",\n    \"is_active\": true\n}",
-							"options": {"raw": {"language": "json"}}
-						},
-						"url": {
-							"raw": "{{baseUrl}}/companies/",
-							"host": ["{{baseUrl}}"],
-							"path": ["companies", ""]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "List Companies",
-					"request": {
-						"method": "GET",
-						"header": [],
-						"url": {
-							"raw": "{{baseUrl}}/companies/?page=1&page_size=20",
-							"host": ["{{baseUrl}}"],
-							"path": ["companies", ""],
-							"query": [
-								{"key": "page", "value": "1"},
-								{"key": "page_size", "value": "20"}
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "Get Company by ID",
-					"request": {
-						"method": "GET",
-						"header": [],
-						"url": {
-							"raw": "{{baseUrl}}/companies/{{companyId}}",
-							"host": ["{{baseUrl}}"],
-							"path": ["companies", "{{companyId}}"]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "Update Company",
-					"request": {
-						"method": "PATCH",
-						"header": [{"key": "Content-Type", "value": "application/json"}],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n    \"name\": \"HRK Payroll Consulting SP. Z O.O.\",\n    \"website\": \"https://hrk.pl\"\n}",
-							"options": {"raw": {"language": "json"}}
-						},
-						"url": {
-							"raw": "{{baseUrl}}/companies/{{companyId}}",
-							"host": ["{{baseUrl}}"],
-							"path": ["companies", "{{companyId}}"]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "Delete Company",
-					"request": {
-						"method": "DELETE",
-						"header": [],
-						"url": {
-							"raw": "{{baseUrl}}/companies/{{companyId}}",
-							"host": ["{{baseUrl}}"],
-							"path": ["companies", "{{companyId}}"]
-						}
-					},
-					"response": []
-				}
-			]
-		},
-		{
-			"name": "Customers",
-			"item": [
-				{
-					"name": "Create Customer",
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"exec": [
-									"if (pm.response.code === 201) {",
-									"    var jsonData = pm.response.json();",
-									"    pm.collectionVariables.set('customerId', jsonData.id);",
-									"    console.log('Created customer:', jsonData.id);",
-									"}"
-								],
-								"type": "text/javascript"
-							}
-						}
-					],
-					"request": {
-						"method": "POST",
-						"header": [{"key": "Content-Type", "value": "application/json"}],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n    \"ckk\": \"CKK0001\",\n    \"ckd\": \"CKD001\",\n    \"company_id\": \"{{companyId}}\",\n    \"account_manager_id\": \"{{userId}}\",\n    \"status\": \"active\",\n    \"segment\": \"enterprise\",\n    \"industry\": \"Technology\",\n    \"employee_count\": 500,\n    \"payment_period_days\": 30,\n    \"billing_nip\": \"5213456789\",\n    \"billing_email\": \"faktury@hrk.pl\",\n    \"phone\": \"+48221234567\",\n    \"address_street\": \"Aleje Jerozolimskie 100\",\n    \"address_city\": \"Warszawa\",\n    \"address_postal\": \"00-001\",\n    \"address_country\": \"PL\"\n}",
-							"options": {"raw": {"language": "json"}}
-						},
-						"url": {
-							"raw": "{{baseUrl}}/customers",
-							"host": ["{{baseUrl}}"],
-							"path": ["customers"]
-						},
-						"description": "status: active | churn_risk | needs_attention | inactive\nWymaga: companyId i userId z poprzednich kroków."
-					},
-					"response": []
-				},
-				{
-					"name": "List Customers",
-					"request": {
-						"method": "GET",
-						"header": [],
-						"url": {
-							"raw": "{{baseUrl}}/customers?company_id={{companyId}}",
-							"host": ["{{baseUrl}}"],
-							"path": ["customers"],
-							"query": [
-								{"key": "company_id", "value": "{{companyId}}"},
-								{"key": "statuses", "value": "active", "disabled": true},
-								{"key": "created_from", "value": "2024-01-01", "disabled": true},
-								{"key": "created_to", "value": "2026-12-31", "disabled": true}
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "Get Customer by ID",
-					"request": {
-						"method": "GET",
-						"header": [],
-						"url": {
-							"raw": "{{baseUrl}}/customers/{{customerId}}",
-							"host": ["{{baseUrl}}"],
-							"path": ["customers", "{{customerId}}"]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "Update Customer",
-					"request": {
-						"method": "PATCH",
-						"header": [{"key": "Content-Type", "value": "application/json"}],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n    \"status\": \"active\",\n    \"segment\": \"enterprise\",\n    \"employee_count\": 600\n}",
-							"options": {"raw": {"language": "json"}}
-						},
-						"url": {
-							"raw": "{{baseUrl}}/customers/{{customerId}}",
-							"host": ["{{baseUrl}}"],
-							"path": ["customers", "{{customerId}}"]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "Delete Customer",
-					"request": {
-						"method": "DELETE",
-						"header": [],
-						"url": {
-							"raw": "{{baseUrl}}/customers/{{customerId}}",
-							"host": ["{{baseUrl}}"],
-							"path": ["customers", "{{customerId}}"]
-						}
-					},
-					"response": []
-				}
-			]
-		},
-		{
-			"name": "Service Groups",
-			"item": [
-				{
-					"name": "Create Service Group",
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"exec": [
-									"if (pm.response.code === 201) {",
-									"    var jsonData = pm.response.json();",
-									"    pm.collectionVariables.set('serviceGroupId', jsonData.id);",
-									"    console.log('Created service group:', jsonData.id);",
-									"}"
-								],
-								"type": "text/javascript"
-							}
-						}
-					],
-					"request": {
-						"method": "POST",
-						"header": [{"key": "Content-Type", "value": "application/json"}],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n    \"name\": \"Obsługa kadrowo-płacowa\",\n    \"service_code\": \"OKP\",\n    \"level\": 1,\n    \"is_active\": true\n}",
-							"options": {"raw": {"language": "json"}}
-						},
-						"url": {
-							"raw": "{{baseUrl}}/service-groups",
-							"host": ["{{baseUrl}}"],
-							"path": ["service-groups"]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "List Service Groups",
-					"request": {
-						"method": "GET",
-						"header": [],
-						"url": {
-							"raw": "{{baseUrl}}/service-groups",
-							"host": ["{{baseUrl}}"],
-							"path": ["service-groups"]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "Get Service Group by ID",
-					"request": {
-						"method": "GET",
-						"header": [],
-						"url": {
-							"raw": "{{baseUrl}}/service-groups/{{serviceGroupId}}",
-							"host": ["{{baseUrl}}"],
-							"path": ["service-groups", "{{serviceGroupId}}"]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "Update Service Group",
-					"request": {
-						"method": "PATCH",
-						"header": [{"key": "Content-Type", "value": "application/json"}],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n    \"name\": \"Obsługa kadrowo-płacowa (zaktualizowana)\",\n    \"is_active\": true\n}",
-							"options": {"raw": {"language": "json"}}
-						},
-						"url": {
-							"raw": "{{baseUrl}}/service-groups/{{serviceGroupId}}",
-							"host": ["{{baseUrl}}"],
-							"path": ["service-groups", "{{serviceGroupId}}"]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "Delete Service Group",
-					"request": {
-						"method": "DELETE",
-						"header": [],
-						"url": {
-							"raw": "{{baseUrl}}/service-groups/{{serviceGroupId}}",
-							"host": ["{{baseUrl}}"],
-							"path": ["service-groups", "{{serviceGroupId}}"]
-						}
-					},
-					"response": []
-				}
-			]
-		},
-		{
-			"name": "Services",
-			"item": [
-				{
-					"name": "Create Service",
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"exec": [
-									"if (pm.response.code === 201) {",
-									"    var jsonData = pm.response.json();",
-									"    pm.collectionVariables.set('serviceId', jsonData.id);",
-									"    console.log('Created service:', jsonData.id);",
-									"}"
-								],
-								"type": "text/javascript"
-							}
-						}
-					],
-					"request": {
-						"method": "POST",
-						"header": [{"key": "Content-Type", "value": "application/json"}],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n    \"group_id\": \"{{serviceGroupId}}\",\n    \"name\": \"Naliczanie wynagrodzeń\",\n    \"billing_unit\": \"per_person\",\n    \"billing_frequency\": \"monthly\",\n    \"vat_rate\": \"23.00\",\n    \"is_active\": true\n}",
-							"options": {"raw": {"language": "json"}}
-						},
-						"url": {
-							"raw": "{{baseUrl}}/services",
-							"host": ["{{baseUrl}}"],
-							"path": ["services"]
-						},
-						"description": "billing_unit: per_person | ryczalt | per_hour | per_doc | per_item\nbilling_frequency: monthly | quarterly | one_time | on_demand\nWymaga: serviceGroupId"
-					},
-					"response": []
-				},
-				{
-					"name": "List Services",
-					"request": {
-						"method": "GET",
-						"header": [],
-						"url": {
-							"raw": "{{baseUrl}}/services",
-							"host": ["{{baseUrl}}"],
-							"path": ["services"]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "Get Service by ID",
-					"request": {
-						"method": "GET",
-						"header": [],
-						"url": {
-							"raw": "{{baseUrl}}/services/{{serviceId}}",
-							"host": ["{{baseUrl}}"],
-							"path": ["services", "{{serviceId}}"]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "Update Service",
-					"request": {
-						"method": "PATCH",
-						"header": [{"key": "Content-Type", "value": "application/json"}],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n    \"name\": \"Naliczanie wynagrodzeń (zaktualizowana)\",\n    \"vat_rate\": \"23.00\"\n}",
-							"options": {"raw": {"language": "json"}}
-						},
-						"url": {
-							"raw": "{{baseUrl}}/services/{{serviceId}}",
-							"host": ["{{baseUrl}}"],
-							"path": ["services", "{{serviceId}}"]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "Delete Service",
-					"request": {
-						"method": "DELETE",
-						"header": [],
-						"url": {
-							"raw": "{{baseUrl}}/services/{{serviceId}}",
-							"host": ["{{baseUrl}}"],
-							"path": ["services", "{{serviceId}}"]
-						}
-					},
-					"response": []
-				}
-			]
-		},
-		{
-			"name": "Contracts",
-			"item": [
-				{
-					"name": "Create Contract",
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"exec": [
-									"if (pm.response.code === 201) {",
-									"    var jsonData = pm.response.json();",
-									"    pm.collectionVariables.set('contractId', jsonData.id);",
-									"    console.log('Created contract:', jsonData.id);",
-									"}"
-								],
-								"type": "text/javascript"
-							}
-						}
-					],
-					"request": {
-						"method": "POST",
-						"header": [{"key": "Content-Type", "value": "application/json"}],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n    \"customer_id\": \"{{customerId}}\",\n    \"account_manager_id\": \"{{userId}}\",\n    \"contract_number\": \"HRK/2026/001\",\n    \"contract_type\": \"ramowa\",\n    \"status\": \"active\",\n    \"start_date\": \"2026-01-01\",\n    \"end_date\": \"2026-12-31\",\n    \"notice_period_days\": 30,\n    \"billing_cycle\": \"monthly\",\n    \"governing_law\": \"PL\",\n    \"notes\": \"Umowa ramowa na obsługę kadrowo-płacową\"\n}",
-							"options": {"raw": {"language": "json"}}
-						},
-						"url": {
-							"raw": "{{baseUrl}}/contracts",
-							"host": ["{{baseUrl}}"],
-							"path": ["contracts"]
-						},
-						"description": "contract_type: ramowa | aneks | SLA | DPA | PPK | inne\nstatus: draft | signed | active | expiring | terminated\nbilling_cycle: monthly | quarterly | annual | one_time\nWymaga: customerId, userId"
-					},
-					"response": []
-				},
-				{
-					"name": "List Contracts",
-					"request": {
-						"method": "GET",
-						"header": [],
-						"url": {
-							"raw": "{{baseUrl}}/contracts?company_id={{companyId}}",
-							"host": ["{{baseUrl}}"],
-							"path": ["contracts"],
-							"query": [
-								{"key": "company_id", "value": "{{companyId}}"},
-								{"key": "statuses", "value": "active", "disabled": true},
-								{"key": "start_from", "value": "2026-01-01", "disabled": true},
-								{"key": "end_to", "value": "2026-12-31", "disabled": true}
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "Get Contract by ID",
-					"request": {
-						"method": "GET",
-						"header": [],
-						"url": {
-							"raw": "{{baseUrl}}/contracts/{{contractId}}",
-							"host": ["{{baseUrl}}"],
-							"path": ["contracts", "{{contractId}}"]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "Update Contract",
-					"request": {
-						"method": "PATCH",
-						"header": [{"key": "Content-Type", "value": "application/json"}],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n    \"status\": \"active\",\n    \"notes\": \"Zaktualizowane notatki\"\n}",
-							"options": {"raw": {"language": "json"}}
-						},
-						"url": {
-							"raw": "{{baseUrl}}/contracts/{{contractId}}",
-							"host": ["{{baseUrl}}"],
-							"path": ["contracts", "{{contractId}}"]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "Delete Contract",
-					"request": {
-						"method": "DELETE",
-						"header": [],
-						"url": {
-							"raw": "{{baseUrl}}/contracts/{{contractId}}",
-							"host": ["{{baseUrl}}"],
-							"path": ["contracts", "{{contractId}}"]
-						}
-					},
-					"response": []
-				}
-			]
-		},
-		{
-			"name": "Contract Services",
-			"item": [
-				{
-					"name": "Attach Service to Contract",
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"exec": [
-									"if (pm.response.code === 201) {",
-									"    var jsonData = pm.response.json();",
-									"    pm.collectionVariables.set('contractServiceRelationId', jsonData.id);",
-									"    console.log('Attached service relation:', jsonData.id);",
-									"}"
-								],
-								"type": "text/javascript"
-							}
-						}
-					],
-					"request": {
-						"method": "POST",
-						"header": [{"key": "Content-Type", "value": "application/json"}],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n    \"service_id\": \"{{serviceId}}\",\n    \"scope_description\": \"Naliczanie wynagrodzeń dla 500 pracowników\",\n    \"volume_limit\": 500,\n    \"volume_unit\": \"osoby\",\n    \"is_billable\": true,\n    \"valid_from\": \"2026-01-01\",\n    \"valid_to\": \"2026-12-31\"\n}",
-							"options": {"raw": {"language": "json"}}
-						},
-						"url": {
-							"raw": "{{baseUrl}}/contracts/{{contractId}}/services",
-							"host": ["{{baseUrl}}"],
-							"path": ["contracts", "{{contractId}}", "services"]
-						},
-						"description": "Przypisuje usługę do umowy. Wymaga: contractId, serviceId."
-					},
-					"response": []
-				},
-				{
-					"name": "List Contract Services",
-					"request": {
-						"method": "GET",
-						"header": [],
-						"url": {
-							"raw": "{{baseUrl}}/contracts/{{contractId}}/services",
-							"host": ["{{baseUrl}}"],
-							"path": ["contracts", "{{contractId}}", "services"]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "Detach Service from Contract",
-					"request": {
-						"method": "DELETE",
-						"header": [],
-						"url": {
-							"raw": "{{baseUrl}}/contracts/{{contractId}}/services/{{contractServiceRelationId}}",
-							"host": ["{{baseUrl}}"],
-							"path": ["contracts", "{{contractId}}", "services", "{{contractServiceRelationId}}"]
-						}
-					},
-					"response": []
-				}
-			]
-		},
-		{
-			"name": "Valorizations",
-			"item": [
-				{
-					"name": "Create Valorization",
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"exec": [
-									"if (pm.response.code === 201) {",
-									"    var jsonData = pm.response.json();",
-									"    pm.collectionVariables.set('valorizationId', jsonData.id);",
-									"    console.log('Created valorization:', jsonData.id);",
-									"}"
-								],
-								"type": "text/javascript"
-							}
-						}
-					],
-					"request": {
-						"method": "POST",
-						"header": [{"key": "Content-Type", "value": "application/json"}],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n    \"contract_id\": \"{{contractId}}\",\n    \"year\": 2026,\n    \"index_type\": \"GUS_CPI\",\n    \"index_value\": \"3.50\",\n    \"planned_date\": \"2026-03-01\",\n    \"status\": \"pending\",\n    \"notes\": \"Waloryzacja roczna GUS CPI 2026\"\n}",
-							"options": {"raw": {"language": "json"}}
-						},
-						"url": {
-							"raw": "{{baseUrl}}/valorizations",
-							"host": ["{{baseUrl}}"],
-							"path": ["valorizations"]
-						},
-						"description": "index_type: GUS_CPI | fixed_pct | custom\nstatus: pending | approved | applied | rejected\nWymaga: contractId"
-					},
-					"response": []
-				},
-				{
-					"name": "List Valorizations",
-					"request": {
-						"method": "GET",
-						"header": [],
-						"url": {
-							"raw": "{{baseUrl}}/valorizations",
-							"host": ["{{baseUrl}}"],
-							"path": ["valorizations"]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "Get Valorization by ID",
-					"request": {
-						"method": "GET",
-						"header": [],
-						"url": {
-							"raw": "{{baseUrl}}/valorizations/{{valorizationId}}",
-							"host": ["{{baseUrl}}"],
-							"path": ["valorizations", "{{valorizationId}}"]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "Update Valorization",
-					"request": {
-						"method": "PATCH",
-						"header": [{"key": "Content-Type", "value": "application/json"}],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n    \"status\": \"approved\",\n    \"applied_date\": \"2026-03-01\"\n}",
-							"options": {"raw": {"language": "json"}}
-						},
-						"url": {
-							"raw": "{{baseUrl}}/valorizations/{{valorizationId}}",
-							"host": ["{{baseUrl}}"],
-							"path": ["valorizations", "{{valorizationId}}"]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "Delete Valorization",
-					"request": {
-						"method": "DELETE",
-						"header": [],
-						"url": {
-							"raw": "{{baseUrl}}/valorizations/{{valorizationId}}",
-							"host": ["{{baseUrl}}"],
-							"path": ["valorizations", "{{valorizationId}}"]
-						}
-					},
-					"response": []
-				}
-			]
-		},
-		{
-			"name": "Customer Rates",
-			"item": [
-				{
-					"name": "Create Customer Rate",
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"exec": [
-									"if (pm.response.code === 201) {",
-									"    var jsonData = pm.response.json();",
-									"    pm.collectionVariables.set('customerRateId', jsonData.id);",
-									"    console.log('Created customer rate:', jsonData.id);",
-									"}"
-								],
-								"type": "text/javascript"
-							}
-						}
-					],
-					"request": {
-						"method": "POST",
-						"header": [{"key": "Content-Type", "value": "application/json"}],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n    \"contract_service_id\": \"{{contractServiceRelationId}}\",\n    \"valorization_id\": \"{{valorizationId}}\",\n    \"year\": 2026,\n    \"base_price\": \"25.00\",\n    \"discount_pct\": \"5.00\"\n}",
-							"options": {"raw": {"language": "json"}}
-						},
-						"url": {
-							"raw": "{{baseUrl}}/customer-rates",
-							"host": ["{{baseUrl}}"],
-							"path": ["customer-rates"]
-						},
-						"description": "Wymaga: contractServiceRelationId i valorizationId (opcjonalnie)"
-					},
-					"response": []
-				},
-				{
-					"name": "List Customer Rates",
-					"request": {
-						"method": "GET",
-						"header": [],
-						"url": {
-							"raw": "{{baseUrl}}/customer-rates",
-							"host": ["{{baseUrl}}"],
-							"path": ["customer-rates"]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "Get Customer Rate by ID",
-					"request": {
-						"method": "GET",
-						"header": [],
-						"url": {
-							"raw": "{{baseUrl}}/customer-rates/{{customerRateId}}",
-							"host": ["{{baseUrl}}"],
-							"path": ["customer-rates", "{{customerRateId}}"]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "Update Customer Rate",
-					"request": {
-						"method": "PATCH",
-						"header": [{"key": "Content-Type", "value": "application/json"}],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n    \"base_price\": \"26.00\",\n    \"discount_pct\": \"3.00\"\n}",
-							"options": {"raw": {"language": "json"}}
-						},
-						"url": {
-							"raw": "{{baseUrl}}/customer-rates/{{customerRateId}}",
-							"host": ["{{baseUrl}}"],
-							"path": ["customer-rates", "{{customerRateId}}"]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "Delete Customer Rate",
-					"request": {
-						"method": "DELETE",
-						"header": [],
-						"url": {
-							"raw": "{{baseUrl}}/customer-rates/{{customerRateId}}",
-							"host": ["{{baseUrl}}"],
-							"path": ["customer-rates", "{{customerRateId}}"]
-						}
-					},
-					"response": []
-				}
-			]
-		},
-		{
-			"name": "Documents",
-			"item": [
-				{
-					"name": "Upload Document (contract PDF)",
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"exec": [
-									"if (pm.response.code === 201) {",
-									"    var jsonData = pm.response.json();",
-									"    pm.collectionVariables.set('documentId', jsonData.id);",
-									"    console.log('Uploaded document:', jsonData.id);",
-									"    console.log('OCR status:', jsonData.ocr_status);",
-									"}"
-								],
-								"type": "text/javascript"
-							}
-						}
-					],
-					"request": {
-						"method": "POST",
-						"header": [],
-						"body": {
-							"mode": "formdata",
-							"formdata": [
-								{
-									"key": "file",
-									"type": "file",
-									"src": [],
-									"description": "Plik PDF/DOCX/TXT/JPEG/PNG (max 10MB)"
-								},
-								{
-									"key": "document_type",
-									"value": "contract",
-									"type": "text",
-									"description": "contract | amendment | power_of_attorney | DPA | PPK | report | other"
-								},
-								{
-									"key": "company_id",
-									"value": "{{companyId}}",
-									"type": "text"
-								},
-								{
-									"key": "customer_id",
-									"value": "{{customerId}}",
-									"type": "text"
-								},
-								{
-									"key": "contract_id",
-									"value": "{{contractId}}",
-									"type": "text"
-								},
-								{
-									"key": "uploaded_by",
-									"value": "{{userId}}",
-									"type": "text"
-								}
-							]
-						},
-						"url": {
-							"raw": "{{baseUrl}}/documents/",
-							"host": ["{{baseUrl}}"],
-							"path": ["documents", ""]
-						},
-						"description": "Multipart form-data upload.\nPo uploadzzie ocr_status=pending → w tle: processing → done.\nEmbeddingi zapisywane do document_chunks (pgvector).\nWymaga: companyId, customerId, contractId, userId."
-					},
-					"response": []
-				},
-				{
-					"name": "Get Document by ID",
-					"request": {
-						"method": "GET",
-						"header": [],
-						"url": {
-							"raw": "{{baseUrl}}/documents/{{documentId}}?requester_user_id={{userId}}",
-							"host": ["{{baseUrl}}"],
-							"path": ["documents", "{{documentId}}"],
-							"query": [
-								{"key": "requester_user_id", "value": "{{userId}}"}
-							]
-						},
-						"description": "Zwraca metadane dokumentu z aktualnym ocr_status."
-					},
-					"response": []
-				},
-				{
-					"name": "Get Document Download URL",
-					"request": {
-						"method": "GET",
-						"header": [],
-						"url": {
-							"raw": "{{baseUrl}}/documents/{{documentId}}/download-url?requester_user_id={{userId}}",
-							"host": ["{{baseUrl}}"],
-							"path": ["documents", "{{documentId}}", "download-url"],
-							"query": [
-								{"key": "requester_user_id", "value": "{{userId}}"}
-							]
-						},
-						"description": "Zwraca presigned URL do pobrania pliku z MinIO/S3. TTL: 300s."
-					},
-					"response": []
-				},
-				{
-					"name": "Delete Document",
-					"request": {
-						"method": "DELETE",
-						"header": [],
-						"url": {
-							"raw": "{{baseUrl}}/documents/{{documentId}}?requester_user_id={{userId}}",
-							"host": ["{{baseUrl}}"],
-							"path": ["documents", "{{documentId}}"],
-							"query": [
-								{"key": "requester_user_id", "value": "{{userId}}"}
-							]
-						},
-						"description": "Usuwa dokument z DB i S3 oraz wszystkie powiązane chunki."
-					},
-					"response": []
-				}
-			]
-		},
-		{
-			"name": "RAG",
-			"item": [
-				{
-					"name": "Search Documents (vector, bez AI)",
-					"request": {
-						"method": "POST",
-						"header": [{"key": "Content-Type", "value": "application/json"}],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n    \"customer_id\": \"{{customerId}}\",\n    \"query\": \"Jakie są warunki wypowiedzenia umowy?\",\n    \"ai_mode\": false,\n    \"top_k\": 5\n}",
-							"options": {"raw": {"language": "json"}}
-						},
-						"url": {
-							"raw": "{{baseUrl}}/rag/search",
-							"host": ["{{baseUrl}}"],
-							"path": ["rag", "search"]
-						},
-						"description": "Wyszukiwanie semantyczne. Zwraca chunki z polem highlight (najlepsze zdanie z chunku).\nWymaga: customerId i dokumentu z ocr_status=done."
-					},
-					"response": []
-				},
-				{
-					"name": "Search Documents (vector + AI)",
-					"request": {
-						"method": "POST",
-						"header": [{"key": "Content-Type", "value": "application/json"}],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n    \"customer_id\": \"{{customerId}}\",\n    \"query\": \"Kto jest pracownikiem i jakie ma wynagrodzenie?\",\n    \"ai_mode\": true,\n    \"top_k\": 5\n}",
-							"options": {"raw": {"language": "json"}}
-						},
-						"url": {
-							"raw": "{{baseUrl}}/rag/search",
-							"host": ["{{baseUrl}}"],
-							"path": ["rag", "search"]
-						},
-						"description": "ai_mode=true → LLM (google/gemma-4-31b-it:free via OpenRouter) syntetyzuje odpowiedź na podstawie znalezionych chunków.\nai_answer zawiera odpowiedź w języku polskim.\nWymaga: customerId i dokumentu z ocr_status=done."
-					},
-					"response": []
-				}
-			]
-		}
-	],
-	"event": [
-		{
-			"listen": "prerequest",
-			"script": {
-				"type": "text/javascript",
-				"exec": [""]
-			}
-		},
-		{
-			"listen": "test",
-			"script": {
-				"type": "text/javascript",
-				"exec": [""]
-			}
-		}
-	],
-	"variable": [
-		{"key": "baseUrl", "value": "http://localhost:8000/api/v1", "type": "string"},
-		{"key": "userId", "value": "", "type": "string"},
-		{"key": "companyId", "value": "", "type": "string"},
-		{"key": "customerId", "value": "", "type": "string"},
-		{"key": "serviceGroupId", "value": "", "type": "string"},
-		{"key": "serviceId", "value": "", "type": "string"},
-		{"key": "contractId", "value": "", "type": "string"},
-		{"key": "contractServiceRelationId", "value": "", "type": "string"},
-		{"key": "valorizationId", "value": "", "type": "string"},
-		{"key": "customerRateId", "value": "", "type": "string"},
-		{"key": "documentId", "value": "", "type": "string"}
-	]
+  "info": {
+    "_postman_id": "8d745582-7e4a-4b9a-9e1e-c2f35d67890a",
+    "name": "HRK CRM API - CRUD",
+    "description": "Kompletna kolekcja CRUD dla HRK CRM. Kolejność folderów = kolejność wywołań potrzebna do uploadu dokumentu: Auth → Users → Companies → Customers → Service Groups → Services → Contracts → Contract Services → Valorizations → Customer Rates → Documents → RAG.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.collectionVariables.set('userId', jsonData.id);",
+                  "    console.log('Logged in as user:', jsonData.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/auth/login/jkowalski",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "login", "jkowalski"]
+            },
+            "description": "Loguje użytkownika przez AD. Zwraca obiekt User i zapisuje userId."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Users",
+      "item": [
+        {
+          "name": "Create User",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.collectionVariables.set('userId', jsonData.id);",
+                  "    console.log('Created user:', jsonData.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"login\": \"jkowalski\",\n    \"email\": \"jan.kowalski@hrk.pl\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/users/",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", ""]
+            },
+            "description": "role: admin | account_manager | manager | viewer"
+          },
+          "response": []
+        },
+        {
+          "name": "List Users",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/users/?page=1&page_size=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", ""],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "page_size", "value": "20" }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get User by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/users/{{userId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "{{userId}}"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update User",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"login\": \"jkowalski2\",\n    \"email\": \"jan.kowalski2@hrk.pl\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/users/{{userId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "{{userId}}"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Delete User",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/users/{{userId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "{{userId}}"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Companies",
+      "item": [
+        {
+          "name": "Create Company",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.collectionVariables.set('companyId', jsonData.id);",
+                  "    console.log('Created company:', jsonData.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"name\": \"HRK Payroll Consulting\",\n    \"nip\": \"5213456789\",\n    \"regon\": \"123456789\",\n    \"address_city\": \"Warszawa\",\n    \"address_street\": \"Aleje Jerozolimskie 100\",\n    \"address_postal\": \"00-001\",\n    \"address_country\": \"PL\",\n    \"phone\": \"+48221234567\",\n    \"email\": \"biuro@hrk.pl\",\n    \"website\": \"https://hrk.pl\",\n    \"is_active\": true\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/companies/",
+              "host": ["{{baseUrl}}"],
+              "path": ["companies", ""]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "List Companies",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/companies/?page=1&page_size=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["companies", ""],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "page_size", "value": "20" }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Company by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/companies/{{companyId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["companies", "{{companyId}}"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update Company",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"name\": \"HRK Payroll Consulting SP. Z O.O.\",\n    \"website\": \"https://hrk.pl\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/companies/{{companyId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["companies", "{{companyId}}"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Company",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/companies/{{companyId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["companies", "{{companyId}}"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Contact Persons",
+      "item": [
+        {
+          "name": "Create Primary Contact",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.collectionVariables.set('contactId', jsonData.id);",
+                  "    console.log('Created primary contact:', jsonData.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"customer_id\": \"{{customerId}}\",\n    \"first_name\": \"Jan\",\n    \"last_name\": \"Kowalski\",\n    \"email\": \"jan.kowalski@klient.pl\",\n    \"phone\": \"+48 123 456 789\",\n    \"role\": \"Dyrektor HR\",\n    \"is_primary\": true,\n    \"is_contract_signer\": true\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/customers/{{customerId}}/contacts",
+              "host": ["{{baseUrl}}"],
+              "path": ["customers", "{{customerId}}", "contacts"]
+            },
+            "description": "Tworzy główną osobę kontaktową z uprawnieniami do podpisywania umów. Wymaga: customerId"
+          },
+          "response": []
+        },
+        {
+          "name": "Create Secondary Contact",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.collectionVariables.set('secondaryContactId', jsonData.id);",
+                  "    console.log('Created secondary contact:', jsonData.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"customer_id\": \"{{customerId}}\",\n    \"first_name\": \"Anna\",\n    \"last_name\": \"Nowak\",\n    \"email\": \"anna.nowak@klient.pl\",\n    \"phone\": \"+48 987 654 321\",\n    \"role\": \"Główna księgowa\",\n    \"is_primary\": false,\n    \"is_contract_signer\": false\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/customers/{{customerId}}/contacts",
+              "host": ["{{baseUrl}}"],
+              "path": ["customers", "{{customerId}}", "contacts"]
+            },
+            "description": "Tworzy dodatkową osobę kontaktową (księgowość). Wymaga: customerId"
+          },
+          "response": []
+        },
+        {
+          "name": "List Contacts",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/customers/{{customerId}}/contacts",
+              "host": ["{{baseUrl}}"],
+              "path": ["customers", "{{customerId}}", "contacts"]
+            },
+            "description": "Lista osób kontaktowych klienta - primary sortowane jako pierwsze"
+          },
+          "response": []
+        },
+        {
+          "name": "Update Contact",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"role\": \"Prezes Zarządu\",\n    \"phone\": \"+48 111 222 333\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/customers/{{customerId}}/contacts/{{contactId}}",
+              "host": ["{{baseUrl}}"],
+              "path": [
+                "customers",
+                "{{customerId}}",
+                "contacts",
+                "{{contactId}}"
+              ]
+            },
+            "description": "Aktualizuje osobę kontaktową. Wymaga: contactId"
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Contact",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/customers/{{customerId}}/contacts/{{contactId}}",
+              "host": ["{{baseUrl}}"],
+              "path": [
+                "customers",
+                "{{customerId}}",
+                "contacts",
+                "{{contactId}}"
+              ]
+            },
+            "description": "Soft delete osoby kontaktowej. Wymaga: contactId"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Customers",
+      "item": [
+        {
+          "name": "Create Customer",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.collectionVariables.set('customerId', jsonData.id);",
+                  "    console.log('Created customer:', jsonData.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"ckk\": \"E{{$randomInt}}{{$randomInt}}\",\n    \"ckd\": \"E01\",\n    \"company_id\": \"{{companyId}}\",\n    \"account_manager_id\": \"{{userId}}\",\n    \"status\": \"active\",\n    \"segment\": \"enterprise\",\n    \"industry\": \"Technology\",\n    \"employee_count\": 500,\n    \"payment_period_days\": 30,\n    \"billing_nip\": \"5213456789\",\n    \"billing_email\": \"faktury@hrk.pl\",\n    \"phone\": \"+48221234567\",\n    \"address_street\": \"Aleje Jerozolimskie 100\",\n    \"address_city\": \"Warszawa\",\n    \"address_postal\": \"00-001\",\n    \"address_country\": \"PL\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/customers",
+              "host": ["{{baseUrl}}"],
+              "path": ["customers"]
+            },
+            "description": "status: active | churn_risk | needs_attention | inactive\nWymaga: companyId i userId z poprzednich kroków."
+          },
+          "response": []
+        },
+        {
+          "name": "List Customers",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/customers?company_id={{companyId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["customers"],
+              "query": [
+                { "key": "company_id", "value": "{{companyId}}" },
+                { "key": "statuses", "value": "active", "disabled": true },
+                {
+                  "key": "created_from",
+                  "value": "2024-01-01",
+                  "disabled": true
+                },
+                { "key": "created_to", "value": "2026-12-31", "disabled": true }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Customer by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/customers/{{customerId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["customers", "{{customerId}}"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update Customer",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"status\": \"active\",\n    \"segment\": \"enterprise\",\n    \"employee_count\": 600\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/customers/{{customerId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["customers", "{{customerId}}"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Customer",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/customers/{{customerId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["customers", "{{customerId}}"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Service Groups",
+      "item": [
+        {
+          "name": "Create Service Group",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.collectionVariables.set('serviceGroupId', jsonData.id);",
+                  "    console.log('Created service group:', jsonData.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"name\": \"Obsługa kadrowo-płacowa\",\n    \"service_code\": \"OKP\",\n    \"level\": 1,\n    \"is_active\": true\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/service-groups",
+              "host": ["{{baseUrl}}"],
+              "path": ["service-groups"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "List Service Groups",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/service-groups",
+              "host": ["{{baseUrl}}"],
+              "path": ["service-groups"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Service Group by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/service-groups/{{serviceGroupId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["service-groups", "{{serviceGroupId}}"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update Service Group",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"name\": \"Obsługa kadrowo-płacowa (zaktualizowana)\",\n    \"is_active\": true\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/service-groups/{{serviceGroupId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["service-groups", "{{serviceGroupId}}"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Service Group",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/service-groups/{{serviceGroupId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["service-groups", "{{serviceGroupId}}"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Services",
+      "item": [
+        {
+          "name": "Create Service",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.collectionVariables.set('serviceId', jsonData.id);",
+                  "    console.log('Created service:', jsonData.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"group_id\": \"{{serviceGroupId}}\",\n    \"name\": \"Naliczanie wynagrodzeń\",\n    \"billing_unit\": \"per_person\",\n    \"billing_frequency\": \"monthly\",\n    \"vat_rate\": \"23.00\",\n    \"is_active\": true\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/services",
+              "host": ["{{baseUrl}}"],
+              "path": ["services"]
+            },
+            "description": "billing_unit: per_person | ryczalt | per_hour | per_doc | per_item\nbilling_frequency: monthly | quarterly | one_time | on_demand\nWymaga: serviceGroupId"
+          },
+          "response": []
+        },
+        {
+          "name": "List Services",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/services",
+              "host": ["{{baseUrl}}"],
+              "path": ["services"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Service by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/services/{{serviceId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["services", "{{serviceId}}"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update Service",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"name\": \"Naliczanie wynagrodzeń (zaktualizowana)\",\n    \"vat_rate\": \"23.00\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/services/{{serviceId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["services", "{{serviceId}}"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Service",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/services/{{serviceId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["services", "{{serviceId}}"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Contracts",
+      "item": [
+        {
+          "name": "Create Contract",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.collectionVariables.set('contractId', jsonData.id);",
+                  "    console.log('Created contract:', jsonData.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"customer_id\": \"{{customerId}}\",\n    \"account_manager_id\": \"{{userId}}\",\n    \"contract_number\": \"CNT-001\",\n    \"contract_type\": \"ramowa\",\n    \"status\": \"active\",\n    \"start_date\": \"2026-01-01\",\n    \"end_date\": \"2026-12-31\",\n    \"notice_period_days\": 30,\n    \"billing_cycle\": \"monthly\",\n    \"governing_law\": \"PL\",\n    \"notes\": \"Umowa ramowa na obsługę kadrowo-płacową\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/contracts",
+              "host": ["{{baseUrl}}"],
+              "path": ["contracts"]
+            },
+            "description": "contract_type: ramowa | aneks | SLA | DPA | PPK | inne\nstatus: draft | signed | active | expiring | terminated\nbilling_cycle: monthly | quarterly | annual | one_time\nWymaga: customerId, userId"
+          },
+          "response": []
+        },
+        {
+          "name": "List Contracts",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/contracts?company_id={{companyId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["contracts"],
+              "query": [
+                { "key": "company_id", "value": "{{companyId}}" },
+                { "key": "statuses", "value": "active", "disabled": true },
+                {
+                  "key": "start_from",
+                  "value": "2026-01-01",
+                  "disabled": true
+                },
+                { "key": "end_to", "value": "2026-12-31", "disabled": true }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Contract by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/contracts/{{contractId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["contracts", "{{contractId}}"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update Contract",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"status\": \"active\",\n    \"notes\": \"Zaktualizowane notatki\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/contracts/{{contractId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["contracts", "{{contractId}}"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Contract",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/contracts/{{contractId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["contracts", "{{contractId}}"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Contract Services",
+      "item": [
+        {
+          "name": "Attach Service to Contract",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.collectionVariables.set('contractServiceRelationId', jsonData.id);",
+                  "    console.log('Attached service relation:', jsonData.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"service_id\": \"{{serviceId}}\",\n    \"scope_description\": \"Naliczanie wynagrodzeń dla 500 pracowników\",\n    \"volume_limit\": 500,\n    \"volume_unit\": \"osoby\",\n    \"is_billable\": true,\n    \"valid_from\": \"2026-01-01\",\n    \"valid_to\": \"2026-12-31\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/contracts/{{contractId}}/services",
+              "host": ["{{baseUrl}}"],
+              "path": ["contracts", "{{contractId}}", "services"]
+            },
+            "description": "Przypisuje usługę do umowy. Wymaga: contractId, serviceId."
+          },
+          "response": []
+        },
+        {
+          "name": "List Contract Services",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/contracts/{{contractId}}/services",
+              "host": ["{{baseUrl}}"],
+              "path": ["contracts", "{{contractId}}", "services"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Detach Service from Contract",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/contracts/{{contractId}}/services/{{contractServiceRelationId}}",
+              "host": ["{{baseUrl}}"],
+              "path": [
+                "contracts",
+                "{{contractId}}",
+                "services",
+                "{{contractServiceRelationId}}"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Valorizations",
+      "item": [
+        {
+          "name": "Create Valorization",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.collectionVariables.set('valorizationId', jsonData.id);",
+                  "    console.log('Created valorization:', jsonData.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"contract_id\": \"{{contractId}}\",\n    \"year\": 2026,\n    \"index_type\": \"GUS_CPI\",\n    \"index_value\": \"3.50\",\n    \"planned_date\": \"2026-03-01\",\n    \"status\": \"pending\",\n    \"notes\": \"Waloryzacja roczna GUS CPI 2026\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/valorizations",
+              "host": ["{{baseUrl}}"],
+              "path": ["valorizations"]
+            },
+            "description": "index_type: GUS_CPI | fixed_pct | custom\nstatus: pending | approved | applied | rejected\nWymaga: contractId"
+          },
+          "response": []
+        },
+        {
+          "name": "List Valorizations",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/valorizations",
+              "host": ["{{baseUrl}}"],
+              "path": ["valorizations"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Valorization by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/valorizations/{{valorizationId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["valorizations", "{{valorizationId}}"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update Valorization",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"status\": \"approved\",\n    \"applied_date\": \"2026-03-01\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/valorizations/{{valorizationId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["valorizations", "{{valorizationId}}"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Valorization",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/valorizations/{{valorizationId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["valorizations", "{{valorizationId}}"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Customer Rates",
+      "item": [
+        {
+          "name": "Create Customer Rate",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.collectionVariables.set('customerRateId', jsonData.id);",
+                  "    console.log('Created customer rate:', jsonData.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"contract_service_id\": \"{{contractServiceRelationId}}\",\n    \"valorization_id\": \"{{valorizationId}}\",\n    \"year\": 2026,\n    \"base_price\": \"25.00\",\n    \"discount_pct\": \"5.00\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/customer-rates",
+              "host": ["{{baseUrl}}"],
+              "path": ["customer-rates"]
+            },
+            "description": "Wymaga: contractServiceRelationId i valorizationId (opcjonalnie)"
+          },
+          "response": []
+        },
+        {
+          "name": "List Customer Rates",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/customer-rates",
+              "host": ["{{baseUrl}}"],
+              "path": ["customer-rates"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Customer Rate by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/customer-rates/{{customerRateId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["customer-rates", "{{customerRateId}}"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update Customer Rate",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"base_price\": \"26.00\",\n    \"discount_pct\": \"3.00\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/customer-rates/{{customerRateId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["customer-rates", "{{customerRateId}}"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Customer Rate",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/customer-rates/{{customerRateId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["customer-rates", "{{customerRateId}}"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Documents",
+      "item": [
+        {
+          "name": "Upload Document (contract PDF)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.collectionVariables.set('documentId', jsonData.id);",
+                  "    console.log('Uploaded document:', jsonData.id);",
+                  "    console.log('OCR status:', jsonData.ocr_status);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": [],
+                  "description": "Plik PDF/DOCX/TXT/JPEG/PNG (max 10MB)"
+                },
+                {
+                  "key": "document_type",
+                  "value": "contract",
+                  "type": "text",
+                  "description": "contract | amendment | power_of_attorney | DPA | PPK | report | other"
+                },
+                {
+                  "key": "company_id",
+                  "value": "{{companyId}}",
+                  "type": "text"
+                },
+                {
+                  "key": "customer_id",
+                  "value": "{{customerId}}",
+                  "type": "text"
+                },
+                {
+                  "key": "contract_id",
+                  "value": "{{contractId}}",
+                  "type": "text"
+                },
+                {
+                  "key": "uploaded_by",
+                  "value": "{{userId}}",
+                  "type": "text"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/documents/",
+              "host": ["{{baseUrl}}"],
+              "path": ["documents", ""]
+            },
+            "description": "Multipart form-data upload.\nPo uploadzzie ocr_status=pending → w tle: processing → done.\nEmbeddingi zapisywane do document_chunks (pgvector).\nWymaga: companyId, customerId, contractId, userId."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Document by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/documents/{{documentId}}?requester_user_id={{userId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["documents", "{{documentId}}"],
+              "query": [{ "key": "requester_user_id", "value": "{{userId}}" }]
+            },
+            "description": "Zwraca metadane dokumentu z aktualnym ocr_status."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Document Download URL",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/documents/{{documentId}}/download-url?requester_user_id={{userId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["documents", "{{documentId}}", "download-url"],
+              "query": [{ "key": "requester_user_id", "value": "{{userId}}" }]
+            },
+            "description": "Zwraca presigned URL do pobrania pliku z MinIO/S3. TTL: 300s."
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Document",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/documents/{{documentId}}?requester_user_id={{userId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["documents", "{{documentId}}"],
+              "query": [{ "key": "requester_user_id", "value": "{{userId}}" }]
+            },
+            "description": "Usuwa dokument z DB i S3 oraz wszystkie powiązane chunki."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "RAG",
+      "item": [
+        {
+          "name": "Search Documents (vector, bez AI)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"customer_id\": \"{{customerId}}\",\n    \"query\": \"Jakie są warunki wypowiedzenia umowy?\",\n    \"ai_mode\": false,\n    \"top_k\": 5\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/rag/search",
+              "host": ["{{baseUrl}}"],
+              "path": ["rag", "search"]
+            },
+            "description": "Wyszukiwanie semantyczne. Zwraca chunki z polem highlight (najlepsze zdanie z chunku).\nWymaga: customerId i dokumentu z ocr_status=done."
+          },
+          "response": []
+        },
+        {
+          "name": "Search Documents (vector + AI)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"customer_id\": \"{{customerId}}\",\n    \"query\": \"Kto jest pracownikiem i jakie ma wynagrodzenie?\",\n    \"ai_mode\": true,\n    \"top_k\": 5\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/rag/search",
+              "host": ["{{baseUrl}}"],
+              "path": ["rag", "search"]
+            },
+            "description": "ai_mode=true → LLM (google/gemma-4-31b-it:free via OpenRouter) syntetyzuje odpowiedź na podstawie znalezionych chunków.\nai_answer zawiera odpowiedź w języku polskim.\nWymaga: customerId i dokumentu z ocr_status=done."
+          },
+          "response": []
+        }
+      ]
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [""]
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "exec": [""]
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8000/api/v1",
+      "type": "string"
+    },
+    { "key": "userId", "value": "", "type": "string" },
+    { "key": "companyId", "value": "", "type": "string" },
+    { "key": "customerId", "value": "", "type": "string" },
+    { "key": "serviceGroupId", "value": "", "type": "string" },
+    { "key": "serviceId", "value": "", "type": "string" },
+    { "key": "contractId", "value": "", "type": "string" },
+    { "key": "contractServiceRelationId", "value": "", "type": "string" },
+    { "key": "valorizationId", "value": "", "type": "string" },
+    { "key": "customerRateId", "value": "", "type": "string" },
+    { "key": "documentId", "value": "", "type": "string" },
+    { "key": "contactId", "value": "", "type": "string" },
+    { "key": "secondaryContactId", "value": "", "type": "string" }
+  ]
 }
