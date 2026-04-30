@@ -1,6 +1,7 @@
 import type { CSSProperties } from 'react'
 
 import { cardStyle } from '@/lib/styles'
+import { useAppSelector } from '@/hooks/store'
 
 /* ─── Mock data (inline) ─────────────────────────────────────── */
 const kpis = [
@@ -52,9 +53,11 @@ const card: CSSProperties = cardStyle
 /* ─── Component ──────────────────────────────────────────────── */
 export function DashboardPage() {
   const today = new Intl.DateTimeFormat('pl-PL', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }).format(new Date())
+  const user = useAppSelector((s) => s.auth.user)
+  const firstName = user?.displayName.split(' ')[0] ?? 'użytkowniku'
 
   return (
-    <div style={{ maxWidth: 1200, margin: '0 auto' }}>
+    <div style={{ width: '100%' }}>
       {/* Top bar */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
         <div style={{ fontSize: 12, color: '#9e9389', textTransform: 'capitalize' }}>{today}</div>
@@ -75,7 +78,7 @@ export function DashboardPage() {
 
       {/* Greeting */}
       <div style={{ marginBottom: 22 }}>
-        <h1 style={{ fontSize: 22, fontWeight: 700, color: '#1a1714', margin: 0, marginBottom: 4 }}>Dzień dobry, Małgorzato</h1>
+        <h1 style={{ fontSize: 22, fontWeight: 700, color: '#1a1714', margin: 0, marginBottom: 4 }}>Dzień dobry, {firstName}</h1>
         <p style={{ fontSize: 12.5, color: '#9e9389', margin: 0 }}>Masz 3 alerty wymagające uwagi dzisiaj.</p>
       </div>
 

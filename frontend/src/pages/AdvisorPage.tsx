@@ -105,7 +105,7 @@ export function AdvisorPage() {
   }
 
   return (
-    <div style={{ maxWidth: 1200, margin: '0 auto', height: 'calc(100vh - 48px)', display: 'flex', flexDirection: 'column' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
       {/* Header */}
       <div style={{ marginBottom: 16, flexShrink: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>

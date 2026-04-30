@@ -7,7 +7,7 @@ export function AppLayout() {
     <div className="flex min-h-screen bg-background">
       <AppSidebar />
       <div className="flex flex-1 flex-col min-w-0">
-        <main className="flex-1 p-6 overflow-auto">
+        <main className="flex-1 p-6 overflow-auto flex flex-col min-h-0">
           <Outlet />
         </main>
       </div>

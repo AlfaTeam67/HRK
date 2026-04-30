@@ -23,10 +23,11 @@ RUN poetry install --only=main --no-root
 # ── runtime ───────────────────────────────────────────────────────────────────
 FROM ${PYTHON_BASE_IMAGE} AS runtime
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
+RUN apt-get clean && apt-get update && (DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
     tesseract-ocr \
     tesseract-ocr-pol \
     poppler-utils \
+    || apt-get -f install) \
     && rm -rf /var/lib/apt/lists/*
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
