@@ -702,4 +702,3 @@ def test_valorizations_crud(client: TestClient) -> None:
 
     res = client.delete(f"/api/v1/valorizations/{val_id}")
     assert res.status_code == 204
-de == 204

@@ -4,7 +4,6 @@ import logging
 import uuid
 
 from fastapi import HTTPException, status
-from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.activity import ActivityLog
@@ -163,9 +162,6 @@ class CRMService:
             await self.customer_service.get_customer(customer_id)
             return await self.activity_repo.get_by_customer(customer_id, limit, offset)
 
-        if contract_id is None:
-            return []
-
         await self.contract_service.get_contract(contract_id)
         return await self.activity_repo.get_by_contract(contract_id, limit, offset)
 
@@ -205,7 +201,7 @@ class CRMService:
             result = await self.activity_repo.create(data, performed_by=performed_by)
             await self.db.commit()
             return result
-        except SQLAlchemyError:
+        except Exception:
             await self.db.rollback()
             logger.exception(
                 "Failed to create activity log",

@@ -3,7 +3,7 @@
 import uuid
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Header, Query, status
+from fastapi import APIRouter, Depends, Query, status
 
 from app.api.deps import get_crm_service
 from app.schemas.activity import ActivityLogCreate, ActivityLogRead
@@ -37,6 +37,5 @@ async def list_activity_log(
 async def create_activity_log(
     payload: ActivityLogCreate,
     service: Annotated[CRMService, Depends(get_crm_service)],
-    performed_by: Annotated[uuid.UUID | None, Header(alias="X-User-Id")] = None,
 ) -> ActivityLogRead:
-    return await service.create_activity_log(payload, performed_by=performed_by)
+    return await service.create_activity_log(payload, performed_by=None)

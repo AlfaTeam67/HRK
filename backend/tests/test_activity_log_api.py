@@ -113,14 +113,13 @@ def test_activity_log_create_and_list_for_customer(
             "description": "Quarterly business review",
             "additional_data": {"channel": "onsite"},
         },
-        headers={"X-User-Id": str(fake_activity_service.user_id)},
     )
 
     assert response.status_code == 201
     body = response.json()
     assert body["customer_id"] == str(fake_activity_service.customer_id)
     assert body["activity_type"] == ActivityType.MEETING.value
-    assert body["performed_by"] == str(fake_activity_service.user_id)
+    assert body["performed_by"] is None
 
     list_response = client.get(
         "/api/v1/activity-log",
