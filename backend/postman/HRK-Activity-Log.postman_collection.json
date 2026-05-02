@@ -1,0 +1,263 @@
+{
+  "info": {
+    "_postman_id": "6b6d9f2c-6e77-4b2a-9b7b-6f5a9c3a1a21",
+    "name": "HRK CRM API - Activity Log (Deterministic)",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "Deterministic collection for Activity Log API. All request bodies are fully populated with fixed values and stored variables are used for IDs."
+  },
+  "item": [
+    {
+      "name": "Setup",
+      "item": [
+        {
+          "name": "Create User",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.collectionVariables.set('userId', jsonData.id);",
+                  "    console.log('Created user:', jsonData.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {"key": "Content-Type", "value": "application/json"}
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"login\": \"activitylog.tester\",\n  \"email\": \"activitylog.tester@hrk.pl\"\n}",
+              "options": {"raw": {"language": "json"}}
+            },
+            "url": {
+              "raw": "{{baseUrl}}/users/",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", ""]
+            },
+            "description": "Creates a deterministic test user and stores userId."
+          },
+          "response": []
+        },
+        {
+          "name": "Create Company",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.collectionVariables.set('companyId', jsonData.id);",
+                  "    console.log('Created company:', jsonData.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {"key": "Content-Type", "value": "application/json"}
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"HRK Activity Log Test Company\",\n  \"nip\": \"5210000001\",\n  \"regon\": \"123456780\",\n  \"address_city\": \"Warsaw\",\n  \"address_street\": \"Test Street 1\",\n  \"address_postal\": \"00-001\",\n  \"address_country\": \"PL\",\n  \"phone\": \"+48220000001\",\n  \"email\": \"activitylog.company@hrk.pl\",\n  \"website\": \"https://example-hrk.pl\",\n  \"is_active\": true\n}",
+              "options": {"raw": {"language": "json"}}
+            },
+            "url": {
+              "raw": "{{baseUrl}}/companies/",
+              "host": ["{{baseUrl}}"],
+              "path": ["companies", ""]
+            },
+            "description": "Creates a deterministic test company and stores companyId."
+          },
+          "response": []
+        },
+        {
+          "name": "Create Customer",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.collectionVariables.set('customerId', jsonData.id);",
+                  "    console.log('Created customer:', jsonData.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {"key": "Content-Type", "value": "application/json"}
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ckk\": \"CKK-ACT-0001\",\n  \"ckd\": \"CKD-ACT-0001\",\n  \"company_id\": \"{{companyId}}\",\n  \"account_manager_id\": \"{{userId}}\",\n  \"status\": \"active\",\n  \"segment\": \"enterprise\",\n  \"industry\": \"Professional Services\",\n  \"employee_count\": 250,\n  \"payment_period_days\": 30,\n  \"account_number\": \"PL00123456789012345678901234\",\n  \"billing_nip\": \"5210000001\",\n  \"billing_email\": \"billing@activitylog.pl\",\n  \"invoice_nip\": \"5210000001\",\n  \"phone\": \"+48220000002\",\n  \"address_street\": \"Test Street 2\",\n  \"address_city\": \"Warsaw\",\n  \"address_postal\": \"00-002\",\n  \"address_country\": \"PL\",\n  \"additional_data\": {\n    \"source\": \"postman\",\n    \"campaign\": \"activity-log-deterministic\"\n  }\n}",
+              "options": {"raw": {"language": "json"}}
+            },
+            "url": {
+              "raw": "{{baseUrl}}/customers",
+              "host": ["{{baseUrl}}"],
+              "path": ["customers"]
+            },
+            "description": "Creates a deterministic customer and stores customerId."
+          },
+          "response": []
+        },
+        {
+          "name": "Create Contract",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.collectionVariables.set('contractId', jsonData.id);",
+                  "    console.log('Created contract:', jsonData.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {"key": "Content-Type", "value": "application/json"}
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customer_id\": \"{{customerId}}\",\n  \"account_manager_id\": \"{{userId}}\",\n  \"contract_number\": \"HRK-ACT-2026-001\",\n  \"contract_type\": \"ramowa\",\n  \"status\": \"active\",\n  \"start_date\": \"2026-01-01\",\n  \"end_date\": \"2026-12-31\",\n  \"notice_period_days\": 30,\n  \"notice_conditions\": \"Standard 30-day notice\",\n  \"billing_cycle\": \"monthly\",\n  \"governing_law\": \"PL\",\n  \"parent_contract_id\": null,\n  \"notes\": \"Deterministic contract for activity log tests\",\n  \"additional_data\": {\n    \"source\": \"postman\",\n    \"contract_tag\": \"activity-log\"\n  }\n}",
+              "options": {"raw": {"language": "json"}}
+            },
+            "url": {
+              "raw": "{{baseUrl}}/contracts",
+              "host": ["{{baseUrl}}"],
+              "path": ["contracts"]
+            },
+            "description": "Creates a deterministic contract and stores contractId."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Activity Log",
+      "item": [
+        {
+          "name": "Create Activity Log",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.collectionVariables.set('activityLogId', jsonData.id);",
+                  "    console.log('Created activity log:', jsonData.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {"key": "Content-Type", "value": "application/json"},
+              {"key": "X-User-Id", "value": "{{userId}}"}
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customer_id\": \"{{customerId}}\",\n  \"contract_id\": \"{{contractId}}\",\n  \"activity_type\": \"meeting\",\n  \"description\": \"Kickoff meeting - HRK activity log deterministic test\",\n  \"activity_date\": \"2026-02-10T09:30:00Z\",\n  \"additional_data\": {\n    \"location\": \"Warsaw HQ\",\n    \"participants\": 4,\n    \"outcome\": \"next_steps_defined\"\n  }\n}",
+              "options": {"raw": {"language": "json"}}
+            },
+            "url": {
+              "raw": "{{baseUrl}}/activity-log",
+              "host": ["{{baseUrl}}"],
+              "path": ["activity-log"]
+            },
+            "description": "Creates a deterministic activity log entry with all fields populated."
+          },
+          "response": []
+        },
+        {
+          "name": "List Activity Log by Customer",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/activity-log?customer_id={{customerId}}&limit=50&offset=0",
+              "host": ["{{baseUrl}}"],
+              "path": ["activity-log"],
+              "query": [
+                {"key": "customer_id", "value": "{{customerId}}"},
+                {"key": "limit", "value": "50"},
+                {"key": "offset", "value": "0"}
+              ]
+            },
+            "description": "Lists activity logs for the created customer."
+          },
+          "response": []
+        },
+        {
+          "name": "List Activity Log by Contract",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/activity-log?contract_id={{contractId}}&limit=50&offset=0",
+              "host": ["{{baseUrl}}"],
+              "path": ["activity-log"],
+              "query": [
+                {"key": "contract_id", "value": "{{contractId}}"},
+                {"key": "limit", "value": "50"},
+                {"key": "offset", "value": "0"}
+              ]
+            },
+            "description": "Lists activity logs for the created contract."
+          },
+          "response": []
+        }
+      ]
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [""]
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "exec": [""]
+      }
+    }
+  ],
+  "variable": [
+    {"key": "baseUrl", "value": "http://localhost:8000/api/v1", "type": "string"},
+    {"key": "userId", "value": "", "type": "string"},
+    {"key": "companyId", "value": "", "type": "string"},
+    {"key": "customerId", "value": "", "type": "string"},
+    {"key": "contractId", "value": "", "type": "string"},
+    {"key": "activityLogId", "value": "", "type": "string"}
+  ]
+}

@@ -1,5 +1,6 @@
 """Schemas package."""
 
+from app.schemas.activity import ActivityLogCreate, ActivityLogRead
 from app.schemas.common import MessageResponse, ORMBaseSchema
 from app.schemas.contract_services import ContractServiceCreate, ContractServiceRead
 from app.schemas.contracts import ContractCreate, ContractRead, ContractUpdate
@@ -12,6 +13,8 @@ from app.schemas.valorizations import ValorizationCreate, ValorizationRead, Valo
 __all__ = [
     "ORMBaseSchema",
     "MessageResponse",
+    "ActivityLogCreate",
+    "ActivityLogRead",
     "CustomerCreate",
     "CustomerUpdate",
     "CustomerRead",
