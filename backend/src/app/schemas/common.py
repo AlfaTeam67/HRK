@@ -1,6 +1,11 @@
 """Common schema utilities."""
 
-from pydantic import BaseModel, ConfigDict
+from collections.abc import Sequence
+from typing import Generic, TypeVar
+
+from pydantic import BaseModel, ConfigDict, Field
+
+T = TypeVar("T")
 
 
 class ORMBaseSchema(BaseModel):
@@ -13,12 +18,6 @@ class MessageResponse(BaseModel):
     """Simple message response schema."""
 
     message: str
-from collections.abc import Sequence
-from typing import Generic, TypeVar
-
-from pydantic import BaseModel, Field
-
-T = TypeVar("T")
 
 
 class PaginationParams(BaseModel):

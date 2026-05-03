@@ -32,7 +32,9 @@ async def create_customer_rate(
     return await service.create_customer_rate(payload)
 
 
-@router.get("/customer-rates/{rate_id}", response_model=CustomerRateRead, summary="Get customer rate")
+@router.get(
+    "/customer-rates/{rate_id}", response_model=CustomerRateRead, summary="Get customer rate"
+)
 async def get_customer_rate(
     rate_id: uuid.UUID,
     service: Annotated[CRMService, Depends(get_crm_service)],
@@ -40,7 +42,9 @@ async def get_customer_rate(
     return await service.get_customer_rate(rate_id)
 
 
-@router.patch("/customer-rates/{rate_id}", response_model=CustomerRateRead, summary="Update customer rate")
+@router.patch(
+    "/customer-rates/{rate_id}", response_model=CustomerRateRead, summary="Update customer rate"
+)
 async def update_customer_rate(
     rate_id: uuid.UUID,
     payload: CustomerRateUpdate,
@@ -49,7 +53,11 @@ async def update_customer_rate(
     return await service.update_customer_rate(rate_id, payload)
 
 
-@router.delete("/customer-rates/{rate_id}", status_code=status.HTTP_204_NO_CONTENT, summary="Delete customer rate")
+@router.delete(
+    "/customer-rates/{rate_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Delete customer rate",
+)
 async def delete_customer_rate(
     rate_id: uuid.UUID,
     service: Annotated[CRMService, Depends(get_crm_service)],

@@ -32,7 +32,9 @@ async def create_service_group(
     return await service.create_service_group(payload)
 
 
-@router.get("/service-groups/{group_id}", response_model=ServiceGroupRead, summary="Get service group")
+@router.get(
+    "/service-groups/{group_id}", response_model=ServiceGroupRead, summary="Get service group"
+)
 async def get_service_group(
     group_id: uuid.UUID,
     service: Annotated[CRMService, Depends(get_crm_service)],
@@ -40,7 +42,9 @@ async def get_service_group(
     return await service.get_service_group(group_id)
 
 
-@router.patch("/service-groups/{group_id}", response_model=ServiceGroupRead, summary="Update service group")
+@router.patch(
+    "/service-groups/{group_id}", response_model=ServiceGroupRead, summary="Update service group"
+)
 async def update_service_group(
     group_id: uuid.UUID,
     payload: ServiceGroupUpdate,
@@ -49,7 +53,11 @@ async def update_service_group(
     return await service.update_service_group(group_id, payload)
 
 
-@router.delete("/service-groups/{group_id}", status_code=status.HTTP_204_NO_CONTENT, summary="Delete service group")
+@router.delete(
+    "/service-groups/{group_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Delete service group",
+)
 async def delete_service_group(
     group_id: uuid.UUID,
     service: Annotated[CRMService, Depends(get_crm_service)],

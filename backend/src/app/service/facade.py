@@ -9,32 +9,39 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.activity import ActivityLog
 from app.models.contract import Contract
 from app.models.contract_service import ContractService as ContractServiceModel
-from app.models.customer import Customer
+from app.models.customer import ContactPerson, Customer
 from app.models.enums import ValorizationStatus
+from app.models.note import Note
 from app.models.rate import CustomerRate, Valorization
 from app.models.service import Service
 from app.models.service_group import ServiceGroup
 from app.repo.activity import ActivityLogRepository
+from app.repo.contact_persons import ContactPersonRepository
 from app.repo.contract_services import ContractServiceRepository
 from app.repo.contracts import ContractRepository
 from app.repo.customer_rates import CustomerRateRepository
 from app.repo.customers import CustomerRepository
 from app.repo.lookups import LookupRepository
+from app.repo.notes import NoteRepository
 from app.repo.service_groups import ServiceGroupRepository
 from app.repo.services import ServiceRepository
 from app.repo.valorizations import ValorizationRepository
 from app.schemas.activity import ActivityLogCreate
+from app.schemas.contact_person import ContactPersonCreate, ContactPersonUpdate
 from app.schemas.contract_services import ContractServiceCreate
 from app.schemas.contracts import ContractCreate, ContractUpdate
 from app.schemas.customer_rates import CustomerRateCreate, CustomerRateUpdate
 from app.schemas.customers import CustomerCreate, CustomerUpdate
+from app.schemas.notes import NoteCreate, NoteUpdate
 from app.schemas.service_groups import ServiceGroupCreate, ServiceGroupUpdate
 from app.schemas.services import ServiceCreate, ServiceUpdate
 from app.schemas.valorizations import ValorizationCreate, ValorizationUpdate
+from app.service.contact_persons import ContactPersonService
 from app.service.contract_services import ContractServiceRelationService
 from app.service.contracts import ContractService
 from app.service.customer_rates import CustomerRateCrudService
 from app.service.customers import CustomerService
+from app.service.notes import NoteService
 from app.service.service_groups import ServiceGroupCrudService
 from app.service.services import ServiceCrudService
 from app.service.valorizations import ValorizationCrudService
@@ -57,6 +64,8 @@ class CRMService:
         group_repo = ServiceGroupRepository(db)
         rate_repo = CustomerRateRepository(db)
         val_repo = ValorizationRepository(db)
+        note_repo = NoteRepository(db)
+        contact_person_repo = ContactPersonRepository(db)
 
         self.customer_service = CustomerService(customer_repo, lookup_repo)
         self.contract_service = ContractService(contract_repo, lookup_repo, self.customer_service)
@@ -71,6 +80,8 @@ class CRMService:
         self.group_service = ServiceGroupCrudService(group_repo)
         self.rate_service = CustomerRateCrudService(rate_repo)
         self.valorization_service = ValorizationCrudService(val_repo)
+        self.note_service = NoteService(note_repo, lookup_repo)
+        self.contact_person_service = ContactPersonService(contact_person_repo, lookup_repo)
 
     async def list_customers(self, **kwargs) -> list[Customer]:
         return await self.customer_service.list_customers(**kwargs)
@@ -248,7 +259,9 @@ class CRMService:
         payload: ContractServiceCreate,
     ) -> ContractServiceModel:
         try:
-            result = await self.contract_relation_service.attach_service_to_contract(contract_id, payload)
+            result = await self.contract_relation_service.attach_service_to_contract(
+                contract_id, payload
+            )
             await self.db.commit()
             return result
         except Exception:
@@ -258,9 +271,13 @@ class CRMService:
     async def list_contract_services(self, contract_id: uuid.UUID) -> list[ContractServiceModel]:
         return await self.contract_relation_service.list_contract_services(contract_id)
 
-    async def detach_service_from_contract(self, contract_id: uuid.UUID, relation_id: uuid.UUID) -> None:
+    async def detach_service_from_contract(
+        self, contract_id: uuid.UUID, relation_id: uuid.UUID
+    ) -> None:
         try:
-            await self.contract_relation_service.detach_service_from_contract(contract_id, relation_id)
+            await self.contract_relation_service.detach_service_from_contract(
+                contract_id, relation_id
+            )
             await self.db.commit()
         except Exception:
             await self.db.rollback()
@@ -283,7 +300,9 @@ class CRMService:
             await self.db.rollback()
             raise
 
-    async def update_service_group(self, group_id: uuid.UUID, payload: ServiceGroupUpdate) -> ServiceGroup:
+    async def update_service_group(
+        self, group_id: uuid.UUID, payload: ServiceGroupUpdate
+    ) -> ServiceGroup:
         try:
             result = await self.group_service.update_group(group_id, payload)
             await self.db.commit()
@@ -317,7 +336,9 @@ class CRMService:
             await self.db.rollback()
             raise
 
-    async def update_customer_rate(self, rate_id: uuid.UUID, payload: CustomerRateUpdate) -> CustomerRate:
+    async def update_customer_rate(
+        self, rate_id: uuid.UUID, payload: CustomerRateUpdate
+    ) -> CustomerRate:
         try:
             result = await self.rate_service.update_rate(rate_id, payload)
             await self.db.commit()
@@ -342,7 +363,9 @@ class CRMService:
         year: int | None = None,
         status_: ValorizationStatus | None = None,
     ) -> list[Valorization]:
-        return await self.valorization_service.list_valorizations(contract_id=contract_id, year=year, status_=status_)
+        return await self.valorization_service.list_valorizations(
+            contract_id=contract_id, year=year, status_=status_
+        )
 
     async def get_valorization(self, valorization_id: uuid.UUID) -> Valorization:
         return await self.valorization_service.get_valorization(valorization_id)
@@ -356,7 +379,9 @@ class CRMService:
             await self.db.rollback()
             raise
 
-    async def update_valorization(self, valorization_id: uuid.UUID, payload: ValorizationUpdate) -> Valorization:
+    async def update_valorization(
+        self, valorization_id: uuid.UUID, payload: ValorizationUpdate
+    ) -> Valorization:
         try:
             result = await self.valorization_service.update_valorization(valorization_id, payload)
             await self.db.commit()
@@ -368,6 +393,95 @@ class CRMService:
     async def delete_valorization(self, valorization_id: uuid.UUID) -> None:
         try:
             await self.valorization_service.delete_valorization(valorization_id)
+            await self.db.commit()
+        except Exception:
+            await self.db.rollback()
+            raise
+
+    # --- Notes ---
+
+    async def list_notes_by_customer(
+        self,
+        customer_id: uuid.UUID,
+        *,
+        skip: int = 0,
+        limit: int = 100,
+    ) -> list[Note]:
+        return await self.note_service.list_notes_by_customer(customer_id, skip=skip, limit=limit)
+
+    async def list_notes_by_contract(
+        self,
+        contract_id: uuid.UUID,
+        *,
+        skip: int = 0,
+        limit: int = 100,
+    ) -> list[Note]:
+        return await self.note_service.list_notes_by_contract(contract_id, skip=skip, limit=limit)
+
+    async def get_note(self, note_id: uuid.UUID) -> Note:
+        return await self.note_service.get_note(note_id)
+
+    async def create_note(
+        self, payload: NoteCreate, *, created_by: uuid.UUID | None = None
+    ) -> Note:
+        try:
+            result = await self.note_service.create_note(payload, created_by=created_by)
+            await self.db.commit()
+            return result
+        except Exception:
+            await self.db.rollback()
+            raise
+
+    async def update_note(self, note_id: uuid.UUID, payload: NoteUpdate) -> Note:
+        try:
+            result = await self.note_service.update_note(note_id, payload)
+            await self.db.commit()
+            return result
+        except Exception:
+            await self.db.rollback()
+            raise
+
+    async def delete_note(self, note_id: uuid.UUID) -> None:
+        try:
+            await self.note_service.delete_note(note_id)
+            await self.db.commit()
+        except Exception:
+            await self.db.rollback()
+            raise
+
+    # --- Contact Persons ---
+
+    async def list_contact_persons(self, customer_id: uuid.UUID) -> list[ContactPerson]:
+        return await self.contact_person_service.list_contacts(customer_id)
+
+    async def create_contact_person(self, payload: ContactPersonCreate) -> ContactPerson:
+        try:
+            result = await self.contact_person_service.create_contact(payload)
+            await self.db.commit()
+            return result
+        except Exception:
+            await self.db.rollback()
+            raise
+
+    async def update_contact_person(
+        self,
+        customer_id: uuid.UUID,
+        contact_id: uuid.UUID,
+        payload: ContactPersonUpdate,
+    ) -> ContactPerson:
+        try:
+            result = await self.contact_person_service.update_contact(
+                customer_id, contact_id, payload
+            )
+            await self.db.commit()
+            return result
+        except Exception:
+            await self.db.rollback()
+            raise
+
+    async def delete_contact_person(self, customer_id: uuid.UUID, contact_id: uuid.UUID) -> None:
+        try:
+            await self.contact_person_service.delete_contact(customer_id, contact_id)
             await self.db.commit()
         except Exception:
             await self.db.rollback()

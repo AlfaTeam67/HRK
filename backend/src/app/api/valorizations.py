@@ -40,7 +40,9 @@ async def create_valorization(
     return await service.create_valorization(payload)
 
 
-@router.get("/valorizations/{valorization_id}", response_model=ValorizationRead, summary="Get valorization")
+@router.get(
+    "/valorizations/{valorization_id}", response_model=ValorizationRead, summary="Get valorization"
+)
 async def get_valorization(
     valorization_id: uuid.UUID,
     service: Annotated[CRMService, Depends(get_crm_service)],
@@ -48,7 +50,11 @@ async def get_valorization(
     return await service.get_valorization(valorization_id)
 
 
-@router.patch("/valorizations/{valorization_id}", response_model=ValorizationRead, summary="Update valorization")
+@router.patch(
+    "/valorizations/{valorization_id}",
+    response_model=ValorizationRead,
+    summary="Update valorization",
+)
 async def update_valorization(
     valorization_id: uuid.UUID,
     payload: ValorizationUpdate,
@@ -57,7 +63,11 @@ async def update_valorization(
     return await service.update_valorization(valorization_id, payload)
 
 
-@router.delete("/valorizations/{valorization_id}", status_code=status.HTTP_204_NO_CONTENT, summary="Delete valorization")
+@router.delete(
+    "/valorizations/{valorization_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Delete valorization",
+)
 async def delete_valorization(
     valorization_id: uuid.UUID,
     service: Annotated[CRMService, Depends(get_crm_service)],

@@ -39,25 +39,31 @@ def _split_long(text: str, page: int | None) -> list[tuple[str, int | None]]:
     return parts
 
 
+def _extract_from_pdf(content: bytes) -> list[tuple[str, int | None]]:
+    raw: list[tuple[str, int | None]] = []
+    with pdfplumber.open(io.BytesIO(content)) as pdf:
+        for page_num, page in enumerate(pdf.pages, start=1):
+            text = page.extract_text() or ""
+            for para in text.split("\n\n"):
+                para = para.strip()
+                if para:
+                    raw.append((para, page_num))
+    if not raw:
+        images = convert_from_bytes(content, dpi=200)
+        for page_num, image in enumerate(images, start=1):
+            text = pytesseract.image_to_string(image, lang="pol+eng")
+            for para in text.split("\n\n"):
+                para = para.strip()
+                if para:
+                    raw.append((para, page_num))
+    return raw
+
+
 def _extract_paragraphs(content: bytes, mime_type: str) -> list[tuple[str, int | None]]:
     raw: list[tuple[str, int | None]] = []
 
     if mime_type == _PDF_MIME:
-        with pdfplumber.open(io.BytesIO(content)) as pdf:
-            for page_num, page in enumerate(pdf.pages, start=1):
-                text = page.extract_text() or ""
-                for para in text.split("\n\n"):
-                    para = para.strip()
-                    if para:
-                        raw.append((para, page_num))
-        if not raw:
-            images = convert_from_bytes(content, dpi=200)
-            for page_num, image in enumerate(images, start=1):
-                text = pytesseract.image_to_string(image, lang="pol+eng")
-                for para in text.split("\n\n"):
-                    para = para.strip()
-                    if para:
-                        raw.append((para, page_num))
+        raw = _extract_from_pdf(content)
     elif mime_type == _TEXT_MIME:
         text = content.decode("utf-8", errors="replace")
         for para in text.split("\n\n"):
@@ -135,7 +141,9 @@ class DocumentProcessingService:
 
             attachment = await attachments.get(attachment_id)
             if attachment is None:
-                logger.error("Attachment not found for processing", extra={"id": str(attachment_id)})
+                logger.error(
+                    "Attachment not found for processing", extra={"id": str(attachment_id)}
+                )
                 return
 
             if mime_type not in _PROCESSABLE:

@@ -50,7 +50,9 @@ logger = logging.getLogger(__name__)
 
 
 class DocumentService:
-    def __init__(self, session: AsyncSession, storage_service: StorageService | None = None) -> None:
+    def __init__(
+        self, session: AsyncSession, storage_service: StorageService | None = None
+    ) -> None:
         self._session = session
         self._attachments = AttachmentRepository(session)
         self._customers = CustomerRepository(session)
@@ -74,7 +76,9 @@ class DocumentService:
 
         original_filename, content_type, content = await self._validate_upload_file(file)
 
-        customer, contract = await self._resolve_relations(customer_id=customer_id, contract_id=contract_id)
+        customer, contract = await self._resolve_relations(
+            customer_id=customer_id, contract_id=contract_id
+        )
         await self._get_requesting_user(uploaded_by)
 
         resolved_company_id = self._resolve_company_id(
@@ -87,7 +91,9 @@ class DocumentService:
         logger.info("Uploading document to object storage", extra={"s3_key": object_key})
 
         try:
-            await self._storage.upload_bytes(key=object_key, content=content, content_type=content_type)
+            await self._storage.upload_bytes(
+                key=object_key, content=content, content_type=content_type
+            )
         except StorageServiceError as exc:
             raise DocumentStorageError("Could not store document in object storage.") from exc
 
@@ -131,7 +137,9 @@ class DocumentService:
                 ) from cleanup_exc
             raise DocumentError("Could not persist document metadata.") from exc
 
-    async def get_download_url(self, *, document_id: UUID, requester_user_id: UUID) -> tuple[str, int]:
+    async def get_download_url(
+        self, *, document_id: UUID, requester_user_id: UUID
+    ) -> tuple[str, int]:
         attachment = await self._attachments.get(document_id)
         if not attachment:
             raise DocumentNotFoundError("Document not found.")
@@ -206,7 +214,11 @@ class DocumentService:
     def _resolve_company_id(
         *, explicit_company_id: UUID | None, customer_company_id: UUID | None
     ) -> UUID | None:
-        if explicit_company_id and customer_company_id and explicit_company_id != customer_company_id:
+        if (
+            explicit_company_id
+            and customer_company_id
+            and explicit_company_id != customer_company_id
+        ):
             raise DocumentValidationError("Company does not match linked customer.")
         return explicit_company_id or customer_company_id
 
