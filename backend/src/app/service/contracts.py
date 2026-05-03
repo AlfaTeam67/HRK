@@ -9,8 +9,8 @@ from sqlalchemy.exc import IntegrityError
 from app.models.contract import Contract
 from app.repo.contracts import ContractRepository
 from app.repo.lookups import LookupRepository
-from app.service.customers import CustomerService
 from app.schemas.contracts import ContractCreate, ContractUpdate
+from app.service.customers import CustomerService
 
 
 class ContractService:

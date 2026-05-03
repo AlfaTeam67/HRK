@@ -1,5 +1,6 @@
 """Business logic services module."""
 
+from app.service.contact_persons import ContactPersonService
 from app.service.contract_services import ContractServiceRelationService
 from app.service.contracts import ContractService
 from app.service.customer_rates import CustomerRateCrudService
@@ -20,4 +21,5 @@ __all__ = [
     "CustomerRateCrudService",
     "ValorizationCrudService",
     "NoteService",
+    "ContactPersonService",
 ]

@@ -132,7 +132,10 @@ class ContactPerson(Base, CreatedAtMixin, SoftDeleteMixin):
     """Contact person linked to a Customer."""
 
     __tablename__ = "contact_persons"
-    __table_args__ = (Index("idx_contact_persons_customer", "customer_id"),)
+    __table_args__ = (
+        Index("idx_contact_persons_customer", "customer_id"),
+        Index("idx_contact_persons_email", "email"),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     customer_id: Mapped[uuid.UUID] = mapped_column(

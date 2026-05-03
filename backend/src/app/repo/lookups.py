@@ -30,6 +30,10 @@ class LookupRepository:
         stmt = select(ServiceGroup.id).where(ServiceGroup.id == group_id)
         return (await self.db.execute(stmt)).scalar_one_or_none() is not None
 
+    async def customer_exists(self, customer_id: uuid.UUID) -> bool:
+        stmt = select(Customer.id).where(Customer.id == customer_id, Customer.deleted_at.is_(None))
+        return (await self.db.execute(stmt)).scalar_one_or_none() is not None
+
     async def has_customer_contracts(self, customer_id: uuid.UUID) -> bool:
         stmt = select(Contract.id).where(Contract.customer_id == customer_id, Contract.deleted_at.is_(None))
         return (await self.db.execute(stmt)).scalar_one_or_none() is not None

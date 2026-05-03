@@ -1,5 +1,6 @@
 """Repository layer module."""
 
+from app.repo.contact_persons import ContactPersonRepository
 from app.repo.contract_services import ContractServiceRepository
 from app.repo.contracts import ContractRepository
 from app.repo.customers import CustomerRepository
@@ -14,4 +15,5 @@ __all__ = [
     "ContractServiceRepository",
     "LookupRepository",
     "NoteRepository",
+    "ContactPersonRepository",
 ]

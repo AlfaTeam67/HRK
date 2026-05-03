@@ -1,6 +1,11 @@
 """Schemas package."""
 
 from app.schemas.common import MessageResponse, ORMBaseSchema
+from app.schemas.contact_person import (
+    ContactPersonCreate,
+    ContactPersonRead,
+    ContactPersonUpdate,
+)
 from app.schemas.contract_services import ContractServiceCreate, ContractServiceRead
 from app.schemas.contracts import ContractCreate, ContractRead, ContractUpdate
 from app.schemas.customer_rates import CustomerRateCreate, CustomerRateRead, CustomerRateUpdate
@@ -36,4 +41,7 @@ __all__ = [
     "ValorizationCreate",
     "ValorizationRead",
     "ValorizationUpdate",
+    "ContactPersonCreate",
+    "ContactPersonUpdate",
+    "ContactPersonRead",
 ]
