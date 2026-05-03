@@ -15,8 +15,6 @@ router = APIRouter()
 
 
 @router.post("/search", response_model=RagSearchResponse)
-async def search_documents(
-    req: RagSearchRequest, db: AsyncSession = Depends(get_db)
-) -> Any:
+async def search_documents(req: RagSearchRequest, db: AsyncSession = Depends(get_db)) -> Any:
     service = RAGService(EmbeddingService(), LLMService())
     return await service.search(req, db)

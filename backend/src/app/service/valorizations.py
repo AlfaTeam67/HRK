@@ -29,7 +29,9 @@ class ValorizationCrudService:
     async def get_valorization(self, valorization_id: uuid.UUID) -> Valorization:
         val = await self.valorizations.get(valorization_id)
         if not val:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Valorization not found")
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="Valorization not found"
+            )
         return val
 
     async def create_valorization(self, payload: ValorizationCreate) -> Valorization:
@@ -42,7 +44,9 @@ class ValorizationCrudService:
                 detail="Valorization create failed due to constraint violation",
             ) from exc
 
-    async def update_valorization(self, valorization_id: uuid.UUID, payload: ValorizationUpdate) -> Valorization:
+    async def update_valorization(
+        self, valorization_id: uuid.UUID, payload: ValorizationUpdate
+    ) -> Valorization:
         val = await self.get_valorization(valorization_id)
         data = payload.model_dump(exclude_unset=True)
         try:

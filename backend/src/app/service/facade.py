@@ -12,7 +12,6 @@ from app.models.note import Note
 from app.models.rate import CustomerRate, Valorization
 from app.models.service import Service
 from app.models.service_group import ServiceGroup
-
 from app.repo.contact_persons import ContactPersonRepository
 from app.repo.contract_services import ContractServiceRepository
 from app.repo.contracts import ContractRepository
@@ -26,20 +25,20 @@ from app.repo.valorizations import ValorizationRepository
 from app.schemas.contact_person import ContactPersonCreate, ContactPersonUpdate
 from app.schemas.contract_services import ContractServiceCreate
 from app.schemas.contracts import ContractCreate, ContractUpdate
+from app.schemas.customer_rates import CustomerRateCreate, CustomerRateUpdate
 from app.schemas.customers import CustomerCreate, CustomerUpdate
 from app.schemas.notes import NoteCreate, NoteUpdate
-from app.schemas.services import ServiceCreate, ServiceUpdate
 from app.schemas.service_groups import ServiceGroupCreate, ServiceGroupUpdate
-from app.schemas.customer_rates import CustomerRateCreate, CustomerRateUpdate
+from app.schemas.services import ServiceCreate, ServiceUpdate
 from app.schemas.valorizations import ValorizationCreate, ValorizationUpdate
 from app.service.contact_persons import ContactPersonService
 from app.service.contract_services import ContractServiceRelationService
 from app.service.contracts import ContractService
+from app.service.customer_rates import CustomerRateCrudService
 from app.service.customers import CustomerService
 from app.service.notes import NoteService
-from app.service.services import ServiceCrudService
 from app.service.service_groups import ServiceGroupCrudService
-from app.service.customer_rates import CustomerRateCrudService
+from app.service.services import ServiceCrudService
 from app.service.valorizations import ValorizationCrudService
 
 
@@ -176,7 +175,9 @@ class CRMService:
         payload: ContractServiceCreate,
     ) -> ContractServiceModel:
         try:
-            result = await self.contract_relation_service.attach_service_to_contract(contract_id, payload)
+            result = await self.contract_relation_service.attach_service_to_contract(
+                contract_id, payload
+            )
             await self.db.commit()
             return result
         except Exception:
@@ -186,9 +187,13 @@ class CRMService:
     async def list_contract_services(self, contract_id: uuid.UUID) -> list[ContractServiceModel]:
         return await self.contract_relation_service.list_contract_services(contract_id)
 
-    async def detach_service_from_contract(self, contract_id: uuid.UUID, relation_id: uuid.UUID) -> None:
+    async def detach_service_from_contract(
+        self, contract_id: uuid.UUID, relation_id: uuid.UUID
+    ) -> None:
         try:
-            await self.contract_relation_service.detach_service_from_contract(contract_id, relation_id)
+            await self.contract_relation_service.detach_service_from_contract(
+                contract_id, relation_id
+            )
             await self.db.commit()
         except Exception:
             await self.db.rollback()
@@ -211,7 +216,9 @@ class CRMService:
             await self.db.rollback()
             raise
 
-    async def update_service_group(self, group_id: uuid.UUID, payload: ServiceGroupUpdate) -> ServiceGroup:
+    async def update_service_group(
+        self, group_id: uuid.UUID, payload: ServiceGroupUpdate
+    ) -> ServiceGroup:
         try:
             result = await self.group_service.update_group(group_id, payload)
             await self.db.commit()
@@ -245,7 +252,9 @@ class CRMService:
             await self.db.rollback()
             raise
 
-    async def update_customer_rate(self, rate_id: uuid.UUID, payload: CustomerRateUpdate) -> CustomerRate:
+    async def update_customer_rate(
+        self, rate_id: uuid.UUID, payload: CustomerRateUpdate
+    ) -> CustomerRate:
         try:
             result = await self.rate_service.update_rate(rate_id, payload)
             await self.db.commit()
@@ -270,7 +279,9 @@ class CRMService:
         year: int | None = None,
         status_: ValorizationStatus | None = None,
     ) -> list[Valorization]:
-        return await self.valorization_service.list_valorizations(contract_id=contract_id, year=year, status_=status_)
+        return await self.valorization_service.list_valorizations(
+            contract_id=contract_id, year=year, status_=status_
+        )
 
     async def get_valorization(self, valorization_id: uuid.UUID) -> Valorization:
         return await self.valorization_service.get_valorization(valorization_id)
@@ -284,7 +295,9 @@ class CRMService:
             await self.db.rollback()
             raise
 
-    async def update_valorization(self, valorization_id: uuid.UUID, payload: ValorizationUpdate) -> Valorization:
+    async def update_valorization(
+        self, valorization_id: uuid.UUID, payload: ValorizationUpdate
+    ) -> Valorization:
         try:
             result = await self.valorization_service.update_valorization(valorization_id, payload)
             await self.db.commit()
@@ -324,7 +337,9 @@ class CRMService:
     async def get_note(self, note_id: uuid.UUID) -> Note:
         return await self.note_service.get_note(note_id)
 
-    async def create_note(self, payload: NoteCreate, *, created_by: uuid.UUID | None = None) -> Note:
+    async def create_note(
+        self, payload: NoteCreate, *, created_by: uuid.UUID | None = None
+    ) -> Note:
         try:
             result = await self.note_service.create_note(payload, created_by=created_by)
             await self.db.commit()
@@ -371,7 +386,9 @@ class CRMService:
         payload: ContactPersonUpdate,
     ) -> ContactPerson:
         try:
-            result = await self.contact_person_service.update_contact(customer_id, contact_id, payload)
+            result = await self.contact_person_service.update_contact(
+                customer_id, contact_id, payload
+            )
             await self.db.commit()
             return result
         except Exception:

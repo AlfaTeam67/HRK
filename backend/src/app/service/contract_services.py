@@ -52,7 +52,9 @@ class ContractServiceRelationService:
         await self.contract_service.get_contract(contract_id)
         return await self.contract_services.list_for_contract(contract_id)
 
-    async def detach_service_from_contract(self, contract_id: uuid.UUID, relation_id: uuid.UUID) -> None:
+    async def detach_service_from_contract(
+        self, contract_id: uuid.UUID, relation_id: uuid.UUID
+    ) -> None:
         await self.contract_service.get_contract(contract_id)
         relation = await self.contract_services.get_for_contract(
             contract_id=contract_id,

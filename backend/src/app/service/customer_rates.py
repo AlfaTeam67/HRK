@@ -22,7 +22,9 @@ class CustomerRateCrudService:
     async def get_rate(self, rate_id: uuid.UUID) -> CustomerRate:
         rate = await self.rates.get(rate_id)
         if not rate:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="CustomerRate not found")
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="CustomerRate not found"
+            )
         return rate
 
     async def create_rate(self, payload: CustomerRateCreate) -> CustomerRate:

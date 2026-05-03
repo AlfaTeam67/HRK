@@ -18,7 +18,9 @@ async def list_notes(
     customer_id: uuid.UUID | None = Query(default=None, description="Filter by customer ID"),
     contract_id: uuid.UUID | None = Query(default=None, description="Filter by contract ID"),
     skip: int = Query(default=0, ge=0, description="Number of records to skip"),
-    limit: int = Query(default=100, ge=1, le=1000, description="Maximum number of records to return"),
+    limit: int = Query(
+        default=100, ge=1, le=1000, description="Maximum number of records to return"
+    ),
 ) -> list[NoteRead]:
     """List notes, filtered by customer_id or contract_id."""
     if customer_id and contract_id:

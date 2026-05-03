@@ -22,7 +22,9 @@ class ServiceGroupCrudService:
     async def get_group(self, group_id: uuid.UUID) -> ServiceGroup:
         group = await self.groups.get(group_id)
         if not group:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="ServiceGroup not found")
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="ServiceGroup not found"
+            )
         return group
 
     async def create_group(self, payload: ServiceGroupCreate) -> ServiceGroup:

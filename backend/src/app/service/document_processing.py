@@ -141,7 +141,9 @@ class DocumentProcessingService:
 
             attachment = await attachments.get(attachment_id)
             if attachment is None:
-                logger.error("Attachment not found for processing", extra={"id": str(attachment_id)})
+                logger.error(
+                    "Attachment not found for processing", extra={"id": str(attachment_id)}
+                )
                 return
 
             if mime_type not in _PROCESSABLE:

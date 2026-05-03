@@ -9,14 +9,40 @@ from app.schemas.rag import ChunkResult, RagSearchRequest, RagSearchResponse
 from app.service.embedding import EmbeddingService
 from app.service.llm import LLMService
 
-_STOPWORDS = {"kiedy", "jak", "czy", "co", "się", "na", "w", "z", "i", "a", "że", "jest", "są", "był", "the", "is", "of", "in", "and"}
+_STOPWORDS = {
+    "kiedy",
+    "jak",
+    "czy",
+    "co",
+    "się",
+    "na",
+    "w",
+    "z",
+    "i",
+    "a",
+    "że",
+    "jest",
+    "są",
+    "był",
+    "the",
+    "is",
+    "of",
+    "in",
+    "and",
+}
 
 
 def _best_sentence(query: str, content: str) -> str | None:
-    query_words = {w for w in re.findall(r"\w+", query.lower()) if w not in _STOPWORDS and len(w) > 2}
+    query_words = {
+        w for w in re.findall(r"\w+", query.lower()) if w not in _STOPWORDS and len(w) > 2
+    }
     if not query_words:
         return None
-    sentences = [s.strip() for s in re.split(r"\n|(?<=[.!?])\s+(?=[A-ZŻŹĆĄŚĘŁÓŃ\(])", content) if len(s.strip()) > 5]
+    sentences = [
+        s.strip()
+        for s in re.split(r"\n|(?<=[.!?])\s+(?=[A-ZŻŹĆĄŚĘŁÓŃ\(])", content)
+        if len(s.strip()) > 5
+    ]
     if not sentences:
         return None
 
@@ -61,8 +87,6 @@ class RAGService:
 
         ai_answer: str | None = None
         if req.ai_mode and chunks:
-            ai_answer = await self._llm.generate(
-                req.query, [c.content for c in chunks]
-            )
+            ai_answer = await self._llm.generate(req.query, [c.content for c in chunks])
 
         return RagSearchResponse(chunks=chunks, ai_answer=ai_answer)
