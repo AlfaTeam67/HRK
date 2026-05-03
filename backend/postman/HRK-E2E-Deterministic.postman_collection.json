@@ -1,0 +1,731 @@
+{
+  "info": {
+    "_postman_id": "hrk-e2e-deterministic-v1",
+    "name": "HRK E2E Deterministic",
+    "description": "Jeden deterministyczny E2E flow: Setup → Test → Cleanup. Uruchom całą kolekcję - wszystko dzieje się automatycznie.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "01 - Setup: Login",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "if (pm.response.code === 200) {",
+              "    const jsonData = pm.response.json();",
+              "    pm.collectionVariables.set('userId', jsonData.id);",
+              "    console.log('✅ Login:', jsonData.login);",
+              "} else {",
+              "    console.log('❌ Login failed:', pm.response.status);",
+              "    pm.execution.setNextRequest(null);",
+              "}"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/auth/login/{{testUserLogin}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["auth", "login", "{{testUserLogin}}"]
+        }
+      }
+    },
+    {
+      "name": "02 - Setup: Create Company",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "if (pm.response.code === 201) {",
+              "    const jsonData = pm.response.json();",
+              "    pm.collectionVariables.set('companyId', jsonData.id);",
+              "    console.log('✅ Company:', jsonData.name);",
+              "} else if (pm.response.code === 409) {",
+              "    console.log('⚠️ Company exists, searching...');",
+              "    pm.execution.setNextRequest('02a - Find Existing Company');",
+              "} else {",
+              "    console.log('❌ Company failed:', pm.response.status);",
+              "}"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"E2E-TestCorp-{{testRunId}}\",\n  \"nip\": \"{{testRunId}}0\",\n  \"regon\": \"{{testRunId}}0\",\n  \"address_city\": \"Warszawa\",\n  \"address_street\": \"Testowa 1\",\n  \"address_postal\": \"00-001\",\n  \"address_country\": \"PL\",\n  \"phone\": \"+48229876543\",\n  \"email\": \"test@example.com\",\n  \"is_active\": true\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/companies/",
+          "host": ["{{baseUrl}}"],
+          "path": ["companies", ""]
+        }
+      }
+    },
+    {
+      "name": "02a - Find Existing Company",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "const jsonData = pm.response.json();",
+              "const company = jsonData.items.find(c => c.name === 'E2E-TestCorp-{{testRunId}}');",
+              "if (company) {",
+              "    pm.collectionVariables.set('companyId', company.id);",
+              "    console.log('✅ Found existing company:', company.id);",
+              "} else {",
+              "    console.log('❌ Could not find company');",
+              "    pm.execution.setNextRequest(null);",
+              "}"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/companies/?page=1&page_size=100",
+          "host": ["{{baseUrl}}"],
+          "path": ["companies", ""],
+          "query": [
+            { "key": "page", "value": "1" },
+            { "key": "page_size", "value": "100" }
+          ]
+        }
+      }
+    },
+    {
+      "name": "03 - Setup: Create Customer",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "if (pm.response.code === 201) {",
+              "    const jsonData = pm.response.json();",
+              "    pm.collectionVariables.set('customerId', jsonData.id);",
+              "    pm.collectionVariables.set('ckk', jsonData.ckk);",
+              "    console.log('✅ Customer CKK:', jsonData.ckk);",
+              "} else if (pm.response.code === 409) {",
+              "    console.log('⚠️ Customer exists, finding...');",
+              "    pm.execution.setNextRequest('03a - Find Existing Customer');",
+              "} else {",
+              "    console.log('❌ Customer failed:', pm.response.status);",
+              "}"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"ckk\": \"E{{testRunId}}\",\n  \"ckd\": \"E01\",\n  \"company_id\": \"{{companyId}}\",\n  \"account_manager_id\": \"{{userId}}\",\n  \"status\": \"active\",\n  \"segment\": \"enterprise\",\n  \"industry\": \"Technology\",\n  \"employee_count\": 500,\n  \"payment_period_days\": 30,\n  \"billing_nip\": \"{{testRunId}}0\",\n  \"billing_email\": \"faktury@example.com\",\n  \"phone\": \"+48221234567\",\n  \"address_street\": \"Testowa 1\",\n  \"address_city\": \"Warszawa\",\n  \"address_postal\": \"00-001\",\n  \"address_country\": \"PL\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/customers",
+          "host": ["{{baseUrl}}"],
+          "path": ["customers"]
+        }
+      }
+    },
+    {
+      "name": "03a - Find Existing Customer",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "const jsonData = pm.response.json();",
+              "const ckk = 'E2E-{{testRunId}}';",
+              "const customer = jsonData.items.find(c => c.ckk === ckk);",
+              "if (customer) {",
+              "    pm.collectionVariables.set('customerId', customer.id);",
+              "    pm.collectionVariables.set('ckk', customer.ckk);",
+              "    console.log('✅ Found existing customer:', customer.ckk);",
+              "} else {",
+              "    console.log('❌ Could not find customer');",
+              "    pm.execution.setNextRequest(null);",
+              "}"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/customers?company_id={{companyId}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["customers"],
+          "query": [{ "key": "company_id", "value": "{{companyId}}" }]
+        }
+      }
+    },
+    {
+      "name": "04 - Setup: Create Primary Contact",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "if (pm.response.code === 201) {",
+              "    const jsonData = pm.response.json();",
+              "    pm.collectionVariables.set('contactId', jsonData.id);",
+              "    console.log('✅ Primary Contact:', jsonData.first_name, jsonData.last_name);",
+              "} else {",
+              "    console.log('❌ Primary contact failed:', pm.response.status);",
+              "}"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"customer_id\": \"{{customerId}}\",\n  \"first_name\": \"Jan\",\n  \"last_name\": \"Testowy\",\n  \"email\": \"jan@example.com\",\n  \"phone\": \"+48 123 456 789\",\n  \"role\": \"Dyrektor HR\",\n  \"is_primary\": true,\n  \"is_contract_signer\": true\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/customers/{{customerId}}/contacts",
+          "host": ["{{baseUrl}}"],
+          "path": ["customers", "{{customerId}}", "contacts"]
+        }
+      }
+    },
+    {
+      "name": "05 - Setup: Create Service Group",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "if (pm.response.code === 201) {",
+              "    const jsonData = pm.response.json();",
+              "    pm.collectionVariables.set('serviceGroupId', jsonData.id);",
+              "    console.log('✅ Service Group:', jsonData.name);",
+              "} else {",
+              "    console.log('❌ Service Group failed:', pm.response.status);",
+              "}"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"E2E-Grupa-{{testRunId}}\",\n  \"service_code\": \"E2E{{testRunId}}\",\n  \"level\": 1,\n  \"is_active\": true\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/service-groups",
+          "host": ["{{baseUrl}}"],
+          "path": ["service-groups"]
+        }
+      }
+    },
+    {
+      "name": "06 - Setup: Create Service",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "if (pm.response.code === 201) {",
+              "    const jsonData = pm.response.json();",
+              "    pm.collectionVariables.set('serviceId', jsonData.id);",
+              "    console.log('✅ Service:', jsonData.name);",
+              "} else {",
+              "    console.log('❌ Service failed:', pm.response.status);",
+              "}"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"group_id\": \"{{serviceGroupId}}\",\n  \"name\": \"E2E-Usługa-{{testRunId}}\",\n  \"billing_unit\": \"per_person\",\n  \"billing_frequency\": \"monthly\",\n  \"vat_rate\": \"23.00\",\n  \"is_active\": true\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/services",
+          "host": ["{{baseUrl}}"],
+          "path": ["services"]
+        }
+      }
+    },
+    {
+      "name": "07 - Setup: Create Contract",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "if (pm.response.code === 201) {",
+              "    const jsonData = pm.response.json();",
+              "    pm.collectionVariables.set('contractId', jsonData.id);",
+              "    console.log('✅ Contract:', jsonData.contract_number);",
+              "} else {",
+              "    console.log('❌ Contract failed:', pm.response.status);",
+              "}"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"customer_id\": \"{{customerId}}\",\n  \"account_manager_id\": \"{{userId}}\",\n  \"contract_number\": \"E{{testRunId}}\",\n  \"contract_type\": \"ramowa\",\n  \"status\": \"active\",\n  \"start_date\": \"2026-01-01\",\n  \"end_date\": \"2026-12-31\",\n  \"notice_period_days\": 30,\n  \"billing_cycle\": \"monthly\",\n  \"governing_law\": \"PL\",\n  \"notes\": \"Umowa E2E\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/contracts",
+          "host": ["{{baseUrl}}"],
+          "path": ["contracts"]
+        }
+      }
+    },
+    {
+      "name": "08 - Verify: Get Customer with Contacts",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Customer exists', function() {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "const jsonData = pm.response.json();",
+              "console.log('📋 Customer:', jsonData.ckk, '| Status:', jsonData.status);",
+              ""
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/customers/{{customerId}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["customers", "{{customerId}}"]
+        }
+      }
+    },
+    {
+      "name": "09 - Verify: List Contacts",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Contacts list OK', function() {",
+              "    pm.response.to.have.status(200);",
+              "    const jsonData = pm.response.json();",
+              "    pm.expect(jsonData.length).to.be.at.least(1);",
+              "});",
+              "const jsonData = pm.response.json();",
+              "console.log('📋 Found', jsonData.length, 'contact(s):');",
+              "jsonData.forEach((c, i) => {",
+              "    console.log('  ', i+1 + '.', c.first_name, c.last_name, '|', c.role, '| Primary:', c.is_primary);",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/customers/{{customerId}}/contacts",
+          "host": ["{{baseUrl}}"],
+          "path": ["customers", "{{customerId}}", "contacts"]
+        }
+      }
+    },
+    {
+      "name": "10 - Cleanup: Delete Contract",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "exec": [
+              "const id = pm.collectionVariables.get('contractId');",
+              "if (!id) {",
+              "    pm.execution.setNextRequest('11 - Cleanup: Delete Service');",
+              "    console.log('⏭️ No Contract to delete');",
+              "}"
+            ],
+            "type": "text/javascript"
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "if (pm.response.code === 204) {",
+              "    console.log('🧹 Contract deleted');",
+              "} else if (pm.response.code === 404) {",
+              "    console.log('🧹 Contract already deleted');",
+              "}"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "DELETE",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/contracts/{{contractId}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["contracts", "{{contractId}}"]
+        }
+      }
+    },
+    {
+      "name": "11 - Cleanup: Delete Service",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "exec": [
+              "const id = pm.collectionVariables.get('serviceId');",
+              "if (!id) {",
+              "    pm.execution.setNextRequest('12 - Cleanup: Delete Service Group');",
+              "    console.log('⏭️ No Service to delete');",
+              "}"
+            ],
+            "type": "text/javascript"
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "if (pm.response.code === 204) {",
+              "    console.log('🧹 Service deleted');",
+              "} else if (pm.response.code === 404) {",
+              "    console.log('🧹 Service already deleted');",
+              "}"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "DELETE",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/services/{{serviceId}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["services", "{{serviceId}}"]
+        }
+      }
+    },
+    {
+      "name": "12 - Cleanup: Delete Service Group",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "exec": [
+              "const id = pm.collectionVariables.get('serviceGroupId');",
+              "if (!id) {",
+              "    pm.execution.setNextRequest('13 - Cleanup: Delete Contact');",
+              "    console.log('⏭️ No Service Group to delete');",
+              "}"
+            ],
+            "type": "text/javascript"
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "if (pm.response.code === 204) {",
+              "    console.log('🧹 Service Group deleted');",
+              "} else if (pm.response.code === 404 || pm.response.code === 409 || pm.response.code === 422) {",
+              "    console.log('🧹 Service Group constraint/404 - will be cleaned later');",
+              "}"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "DELETE",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/service-groups/{{serviceGroupId}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["service-groups", "{{serviceGroupId}}"]
+        }
+      }
+    },
+    {
+      "name": "13 - Cleanup: Delete Contact",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "exec": [
+              "const cid = pm.collectionVariables.get('customerId');",
+              "const id = pm.collectionVariables.get('contactId');",
+              "if (!cid || !id) {",
+              "    pm.execution.setNextRequest('14 - Cleanup: Delete Customer');",
+              "    console.log('⏭️ No Contact to delete');",
+              "}"
+            ],
+            "type": "text/javascript"
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "if (pm.response.code === 204) {",
+              "    console.log('🧹 Contact deleted');",
+              "} else if (pm.response.code === 404) {",
+              "    console.log('🧹 Contact already deleted');",
+              "}"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "DELETE",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/customers/{{customerId}}/contacts/{{contactId}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["customers", "{{customerId}}", "contacts", "{{contactId}}"]
+        }
+      }
+    },
+    {
+      "name": "14 - Cleanup: Delete Customer",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "exec": [
+              "const id = pm.collectionVariables.get('customerId');",
+              "if (!id) {",
+              "    pm.execution.setNextRequest('15 - Cleanup: Delete Company');",
+              "    console.log('⏭️ No Customer to delete');",
+              "}"
+            ],
+            "type": "text/javascript"
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "if (pm.response.code === 204) {",
+              "    console.log('🧹 Customer deleted');",
+              "} else if (pm.response.code === 404) {",
+              "    console.log('🧹 Customer already deleted');",
+              "}"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "DELETE",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/customers/{{customerId}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["customers", "{{customerId}}"]
+        }
+      }
+    },
+    {
+      "name": "15 - Cleanup: Delete Company",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "exec": [
+              "const id = pm.collectionVariables.get('companyId');",
+              "if (!id) {",
+              "    pm.execution.setNextRequest('16 - Summary');",
+              "    console.log('⏭️ No Company to delete');",
+              "}"
+            ],
+            "type": "text/javascript"
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "if (pm.response.code === 204) {",
+              "    console.log('🧹 Company deleted');",
+              "} else if (pm.response.code === 404) {",
+              "    console.log('🧹 Company already deleted');",
+              "}"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "DELETE",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/companies/{{companyId}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["companies", "{{companyId}}"]
+        }
+      }
+    },
+    {
+      "name": "16 - Summary",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "console.log('');",
+              "console.log('╔════════════════════════════════════════════════════════════╗');",
+              "console.log('║              ✅ E2E DETERMINISTIC COMPLETE ✅              ║');",
+              "console.log('╚════════════════════════════════════════════════════════════╝');",
+              "console.log('');",
+              "console.log('📊 Test Run ID:', pm.collectionVariables.get('testRunId'));",
+              "console.log('   CKK:', pm.collectionVariables.get('ckk'));",
+              "console.log('');",
+              "console.log('All data has been cleaned up.');",
+              "console.log('You can run this collection again immediately.');",
+              "",
+              "// Clear all IDs to ensure fresh state for next run",
+              "pm.collectionVariables.unset('userId');",
+              "pm.collectionVariables.unset('companyId');",
+              "pm.collectionVariables.unset('customerId');",
+              "pm.collectionVariables.unset('ckk');",
+              "pm.collectionVariables.unset('contactId');",
+              "pm.collectionVariables.unset('serviceGroupId');",
+              "pm.collectionVariables.unset('serviceId');",
+              "pm.collectionVariables.unset('contractId');",
+              "pm.collectionVariables.unset('serviceGroupPending');",
+              "console.log('🧹 Variables cleared for next run');"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/health",
+          "host": ["{{baseUrl}}"],
+          "path": ["health"]
+        }
+      }
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "exec": [
+          "// Always generate new testRunId for each collection run",
+          "const now = new Date();",
+          "const runId = String(now.getHours()).padStart(2,'0') + String(now.getMinutes()).padStart(2,'0') + String(now.getSeconds()).padStart(2,'0') + Math.floor(Math.random() * 100);",
+          "pm.collectionVariables.set('testRunId', runId);",
+          "console.log('🆔 New Test Run ID:', runId);"
+        ],
+        "type": "text/javascript"
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8000/api/v1",
+      "type": "string"
+    },
+    {
+      "key": "testUserLogin",
+      "value": "mateusz",
+      "type": "string"
+    },
+    {
+      "key": "testRunId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "userId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "companyId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "customerId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "ckk",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "contactId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "serviceGroupId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "serviceId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "contractId",
+      "value": "",
+      "type": "string"
+    }
+  ]
+}

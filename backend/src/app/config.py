@@ -21,7 +21,7 @@ class Settings(BaseSettings):
     port: int = 8000
 
     # CORS
-    fe_domain: str = "http://localhost:3000"
+    fe_domain: str = "http://localhost:4173"
     allowed_hosts: list[str] = ["localhost", "127.0.0.1"]
 
     # AD integration
