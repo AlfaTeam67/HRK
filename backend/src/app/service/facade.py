@@ -10,6 +10,7 @@ from app.models.contract_service import ContractService as ContractServiceModel
 from app.models.customer import Customer
 from app.models.service import Service
 from app.models.service_group import ServiceGroup
+from app.models.note import Note
 from app.models.rate import CustomerRate, Valorization
 from app.models.enums import ValorizationStatus
 
@@ -306,7 +307,7 @@ class CRMService:
         *,
         skip: int = 0,
         limit: int = 100,
-    ) -> list:
+    ) -> list[Note]:
         return await self.note_service.list_notes_by_customer(customer_id, skip=skip, limit=limit)
 
     async def list_notes_by_contract(
@@ -315,13 +316,13 @@ class CRMService:
         *,
         skip: int = 0,
         limit: int = 100,
-    ) -> list:
+    ) -> list[Note]:
         return await self.note_service.list_notes_by_contract(contract_id, skip=skip, limit=limit)
 
-    async def get_note(self, note_id: uuid.UUID):
+    async def get_note(self, note_id: uuid.UUID) -> Note:
         return await self.note_service.get_note(note_id)
 
-    async def create_note(self, payload: NoteCreate, *, created_by: uuid.UUID | None = None):
+    async def create_note(self, payload: NoteCreate, *, created_by: uuid.UUID | None = None) -> Note:
         try:
             result = await self.note_service.create_note(payload, created_by=created_by)
             await self.db.commit()
@@ -330,7 +331,7 @@ class CRMService:
             await self.db.rollback()
             raise
 
-    async def update_note(self, note_id: uuid.UUID, payload: NoteUpdate):
+    async def update_note(self, note_id: uuid.UUID, payload: NoteUpdate) -> Note:
         try:
             result = await self.note_service.update_note(note_id, payload)
             await self.db.commit()

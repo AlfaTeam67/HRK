@@ -1,6 +1,7 @@
 """Note repository."""
 
 import uuid
+from datetime import UTC, datetime
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -72,13 +73,7 @@ class NoteRepository:
         await self.db.refresh(note)
         return note
 
-    async def delete(self, note_id: uuid.UUID) -> bool:
-        """Soft delete a note by ID."""
-        from datetime import UTC, datetime
-
-        note = await self.get(note_id)
-        if not note:
-            return False
+    async def delete(self, note: Note) -> None:
+        """Soft delete a note instance."""
         note.deleted_at = datetime.now(UTC)
         await self.db.flush()
-        return True

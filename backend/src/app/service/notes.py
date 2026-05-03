@@ -74,8 +74,8 @@ class NoteService:
 
     async def delete_note(self, note_id: uuid.UUID) -> None:
         """Soft delete a note."""
-        await self.get_note(note_id)  # Validate note exists
-        await self.notes.delete(note_id)
+        note = await self.get_note(note_id)
+        await self.notes.delete(note)
 
     async def _validate_refs(self, data: dict) -> None:
         """Validate foreign key references."""
