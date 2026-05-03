@@ -1,0 +1,610 @@
+{
+  "info": {
+    "_postman_id": "hrk-e2e-deterministic-full-v1",
+    "name": "HRK E2E Deterministic Full",
+    "description": "Deterministyczny scenariusz E2E (Setup -> Verify -> Cleanup) obejmujący pełny łańcuch CRM: customer, contacts, services, contracts, contract-services, valorizations, customer-rates, notes, activity-log.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "01 - Login",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Login OK', function () { pm.response.to.have.status(200); });",
+              "const jsonData = pm.response.json();",
+              "pm.collectionVariables.set('userId', jsonData.id);"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/auth/login/{{testUserLogin}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["auth", "login", "{{testUserLogin}}"]
+        }
+      }
+    },
+    {
+      "name": "02 - Find Company",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('List companies OK', function () { pm.response.to.have.status(200); });",
+              "const jsonData = pm.response.json();",
+              "const targetName = `E2E-Company-${pm.collectionVariables.get('testRunId')}`;",
+              "const found = jsonData.items.find(c => c.name === targetName);",
+              "if (found) {",
+              "  pm.collectionVariables.set('companyId', found.id);",
+              "  pm.execution.setNextRequest('04 - Create Customer');",
+              "} else {",
+              "  pm.execution.setNextRequest('03 - Create Company');",
+              "}"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/companies/?page=1&page_size=100",
+          "host": ["{{baseUrl}}"],
+          "path": ["companies", ""],
+          "query": [
+            { "key": "page", "value": "1" },
+            { "key": "page_size", "value": "100" }
+          ]
+        }
+      }
+    },
+    {
+      "name": "03 - Create Company",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Create company OK', function () { pm.response.to.have.status(201); });",
+              "const jsonData = pm.response.json();",
+              "pm.collectionVariables.set('companyId', jsonData.id);"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"E2E-Company-{{testRunId}}\",\n  \"nip\": \"521000{{testRunId}}\",\n  \"regon\": \"12345{{testRunId}}\",\n  \"address_city\": \"Warszawa\",\n  \"address_street\": \"Deterministyczna 1\",\n  \"address_postal\": \"00-001\",\n  \"address_country\": \"PL\",\n  \"phone\": \"+48220000000\",\n  \"email\": \"e2e-company-{{testRunId}}@hrk.pl\",\n  \"is_active\": true\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/companies/",
+          "host": ["{{baseUrl}}"],
+          "path": ["companies", ""]
+        }
+      }
+    },
+    {
+      "name": "04 - Create Customer",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Create customer', function () { pm.expect([201, 400]).to.include(pm.response.code); });",
+              "if (pm.response.code === 201) {",
+              "  const jsonData = pm.response.json();",
+              "  pm.collectionVariables.set('customerId', jsonData.id);",
+              "}"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"ckk\": \"E2E-{{testRunId}}\",\n  \"ckd\": \"E01\",\n  \"company_id\": \"{{companyId}}\",\n  \"account_manager_id\": \"{{userId}}\",\n  \"status\": \"active\",\n  \"segment\": \"enterprise\",\n  \"industry\": \"Technology\",\n  \"employee_count\": 100,\n  \"payment_period_days\": 30,\n  \"billing_nip\": \"521000{{testRunId}}\",\n  \"billing_email\": \"billing-{{testRunId}}@hrk.pl\",\n  \"phone\": \"+48223334444\",\n  \"address_street\": \"Deterministyczna 2\",\n  \"address_city\": \"Warszawa\",\n  \"address_postal\": \"00-002\",\n  \"address_country\": \"PL\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/customers",
+          "host": ["{{baseUrl}}"],
+          "path": ["customers"]
+        }
+      }
+    },
+    {
+      "name": "05 - List Customers (find deterministic)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('List customers OK', function () { pm.response.to.have.status(200); });",
+              "const jsonData = pm.response.json();",
+              "const targetCkk = `E2E-${pm.collectionVariables.get('testRunId')}`;",
+              "const found = jsonData.find(c => c.ckk === targetCkk);",
+              "pm.test('Deterministic customer found', function () { pm.expect(found).to.exist; });",
+              "pm.collectionVariables.set('customerId', found.id);"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/customers?company_id={{companyId}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["customers"],
+          "query": [{ "key": "company_id", "value": "{{companyId}}" }]
+        }
+      }
+    },
+    {
+      "name": "06 - Create Contact",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Create contact', function () { pm.response.to.have.status(201); });",
+              "const jsonData = pm.response.json();",
+              "pm.collectionVariables.set('contactId', jsonData.id);"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"customer_id\": \"{{customerId}}\",\n  \"first_name\": \"Jan\",\n  \"last_name\": \"Deterministyczny\",\n  \"email\": \"kontakt-{{testRunId}}@hrk.pl\",\n  \"phone\": \"+48 500 600 700\",\n  \"role\": \"Dyrektor HR\",\n  \"is_primary\": true,\n  \"is_contract_signer\": true\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/customers/{{customerId}}/contacts",
+          "host": ["{{baseUrl}}"],
+          "path": ["customers", "{{customerId}}", "contacts"]
+        }
+      }
+    },
+    {
+      "name": "07 - Create Service Group",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Create service group', function () { pm.response.to.have.status(201); });",
+              "const jsonData = pm.response.json();",
+              "pm.collectionVariables.set('serviceGroupId', jsonData.id);"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"E2E-ServiceGroup-{{testRunId}}\",\n  \"service_code\": \"E2E{{testRunId}}\",\n  \"level\": 1,\n  \"is_active\": true\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/service-groups",
+          "host": ["{{baseUrl}}"],
+          "path": ["service-groups"]
+        }
+      }
+    },
+    {
+      "name": "08 - Create Service",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Create service', function () { pm.response.to.have.status(201); });",
+              "const jsonData = pm.response.json();",
+              "pm.collectionVariables.set('serviceId', jsonData.id);"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"group_id\": \"{{serviceGroupId}}\",\n  \"name\": \"E2E-Service-{{testRunId}}\",\n  \"billing_unit\": \"per_person\",\n  \"billing_frequency\": \"monthly\",\n  \"vat_rate\": \"23.00\",\n  \"is_active\": true\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/services",
+          "host": ["{{baseUrl}}"],
+          "path": ["services"]
+        }
+      }
+    },
+    {
+      "name": "09 - Create Contract",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Create contract', function () { pm.response.to.have.status(201); });",
+              "const jsonData = pm.response.json();",
+              "pm.collectionVariables.set('contractId', jsonData.id);"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"customer_id\": \"{{customerId}}\",\n  \"account_manager_id\": \"{{userId}}\",\n  \"contract_number\": \"E2E-CONTRACT-{{testRunId}}\",\n  \"contract_type\": \"ramowa\",\n  \"status\": \"active\",\n  \"start_date\": \"2026-01-01\",\n  \"end_date\": \"2026-12-31\",\n  \"notice_period_days\": 30,\n  \"billing_cycle\": \"monthly\",\n  \"governing_law\": \"PL\",\n  \"notes\": \"Deterministyczna umowa E2E\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/contracts",
+          "host": ["{{baseUrl}}"],
+          "path": ["contracts"]
+        }
+      }
+    },
+    {
+      "name": "10 - Attach Service to Contract",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Attach service', function () { pm.response.to.have.status(201); });",
+              "const jsonData = pm.response.json();",
+              "pm.collectionVariables.set('contractServiceRelationId', jsonData.id);"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"service_id\": \"{{serviceId}}\",\n  \"scope_description\": \"Deterministyczny zakres\",\n  \"volume_limit\": 100,\n  \"volume_unit\": \"osoby\",\n  \"is_billable\": true,\n  \"valid_from\": \"2026-01-01\",\n  \"valid_to\": \"2026-12-31\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/contracts/{{contractId}}/services",
+          "host": ["{{baseUrl}}"],
+          "path": ["contracts", "{{contractId}}", "services"]
+        }
+      }
+    },
+    {
+      "name": "11 - Create Valorization",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Create valorization', function () { pm.response.to.have.status(201); });",
+              "const jsonData = pm.response.json();",
+              "pm.collectionVariables.set('valorizationId', jsonData.id);"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"contract_id\": \"{{contractId}}\",\n  \"year\": 2026,\n  \"index_type\": \"GUS_CPI\",\n  \"index_value\": \"3.20\",\n  \"planned_date\": \"2026-03-01\",\n  \"status\": \"pending\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/valorizations",
+          "host": ["{{baseUrl}}"],
+          "path": ["valorizations"]
+        }
+      }
+    },
+    {
+      "name": "12 - Create Customer Rate",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Create customer rate', function () { pm.response.to.have.status(201); });",
+              "const jsonData = pm.response.json();",
+              "pm.collectionVariables.set('customerRateId', jsonData.id);"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"contract_service_id\": \"{{contractServiceRelationId}}\",\n  \"valorization_id\": \"{{valorizationId}}\",\n  \"year\": 2026,\n  \"base_price\": \"100.00\",\n  \"discount_pct\": \"2.50\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/customer-rates",
+          "host": ["{{baseUrl}}"],
+          "path": ["customer-rates"]
+        }
+      }
+    },
+    {
+      "name": "13 - Create Note",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Create note', function () { pm.response.to.have.status(201); });",
+              "const jsonData = pm.response.json();",
+              "pm.collectionVariables.set('noteId', jsonData.id);"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"customer_id\": \"{{customerId}}\",\n  \"note_type\": \"other\",\n  \"content\": \"Deterministyczna notatka E2E\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/notes",
+          "host": ["{{baseUrl}}"],
+          "path": ["notes"]
+        }
+      }
+    },
+    {
+      "name": "14 - Create Activity",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Create activity', function () { pm.response.to.have.status(201); });",
+              "const jsonData = pm.response.json();",
+              "pm.collectionVariables.set('activityLogId', jsonData.id);"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"customer_id\": \"{{customerId}}\",\n  \"contract_id\": \"{{contractId}}\",\n  \"activity_type\": \"meeting\",\n  \"description\": \"Deterministyczna aktywność E2E\",\n  \"activity_date\": \"2026-01-20T10:00:00Z\",\n  \"additional_data\": {\n    \"source\": \"deterministic-full\"\n  }\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/activity-log",
+          "host": ["{{baseUrl}}"],
+          "path": ["activity-log"]
+        }
+      }
+    },
+    {
+      "name": "15 - Verify Notes List",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Notes list OK', function () { pm.response.to.have.status(200); });",
+              "const notes = pm.response.json();",
+              "pm.test('At least one note exists', function () { pm.expect(notes.length).to.be.at.least(1); });"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/notes?customer_id={{customerId}}&skip=0&limit=100",
+          "host": ["{{baseUrl}}"],
+          "path": ["notes"],
+          "query": [
+            { "key": "customer_id", "value": "{{customerId}}" },
+            { "key": "skip", "value": "0" },
+            { "key": "limit", "value": "100" }
+          ]
+        }
+      }
+    },
+    {
+      "name": "16 - Cleanup Delete Note",
+      "request": {
+        "method": "DELETE",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/notes/{{noteId}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["notes", "{{noteId}}"]
+        }
+      }
+    },
+    {
+      "name": "17 - Cleanup Delete Customer Rate",
+      "request": {
+        "method": "DELETE",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/customer-rates/{{customerRateId}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["customer-rates", "{{customerRateId}}"]
+        }
+      }
+    },
+    {
+      "name": "18 - Cleanup Detach Contract Service",
+      "request": {
+        "method": "DELETE",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/contracts/{{contractId}}/services/{{contractServiceRelationId}}",
+          "host": ["{{baseUrl}}"],
+          "path": [
+            "contracts",
+            "{{contractId}}",
+            "services",
+            "{{contractServiceRelationId}}"
+          ]
+        }
+      }
+    },
+    {
+      "name": "19 - Cleanup Delete Valorization",
+      "request": {
+        "method": "DELETE",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/valorizations/{{valorizationId}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["valorizations", "{{valorizationId}}"]
+        }
+      }
+    },
+    {
+      "name": "20 - Cleanup Delete Contract",
+      "request": {
+        "method": "DELETE",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/contracts/{{contractId}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["contracts", "{{contractId}}"]
+        }
+      }
+    },
+    {
+      "name": "21 - Cleanup Delete Service",
+      "request": {
+        "method": "DELETE",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/services/{{serviceId}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["services", "{{serviceId}}"]
+        }
+      }
+    },
+    {
+      "name": "22 - Cleanup Delete Service Group",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Cleanup service-group accepted statuses', function () {",
+              "  pm.expect([204, 404, 409]).to.include(pm.response.code);",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "DELETE",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/service-groups/{{serviceGroupId}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["service-groups", "{{serviceGroupId}}"]
+        }
+      }
+    },
+    {
+      "name": "23 - Cleanup Delete Contact",
+      "request": {
+        "method": "DELETE",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/customers/{{customerId}}/contacts/{{contactId}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["customers", "{{customerId}}", "contacts", "{{contactId}}"]
+        }
+      }
+    },
+    {
+      "name": "24 - Cleanup Delete Customer",
+      "request": {
+        "method": "DELETE",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/customers/{{customerId}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["customers", "{{customerId}}"]
+        }
+      }
+    },
+    {
+      "name": "25 - Cleanup Delete Company",
+      "request": {
+        "method": "DELETE",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/companies/{{companyId}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["companies", "{{companyId}}"]
+        }
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8000/api/v1",
+      "type": "string"
+    },
+    { "key": "testUserLogin", "value": "mateusz", "type": "string" },
+    { "key": "testRunId", "value": "1001", "type": "string" },
+    { "key": "userId", "value": "", "type": "string" },
+    { "key": "companyId", "value": "", "type": "string" },
+    { "key": "customerId", "value": "", "type": "string" },
+    { "key": "contactId", "value": "", "type": "string" },
+    { "key": "serviceGroupId", "value": "", "type": "string" },
+    { "key": "serviceId", "value": "", "type": "string" },
+    { "key": "contractId", "value": "", "type": "string" },
+    { "key": "contractServiceRelationId", "value": "", "type": "string" },
+    { "key": "valorizationId", "value": "", "type": "string" },
+    { "key": "customerRateId", "value": "", "type": "string" },
+    { "key": "noteId", "value": "", "type": "string" },
+    { "key": "activityLogId", "value": "", "type": "string" }
+  ]
+}

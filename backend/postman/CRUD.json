@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "8d745582-7e4a-4b9a-9e1e-c2f35d67890a",
     "name": "HRK CRM API - CRUD",
-    "description": "Kompletna kolekcja CRUD dla HRK CRM. Kolejność folderów = kolejność wywołań potrzebna do uploadu dokumentu: Auth → Users → Companies → Customers → Service Groups → Services → Contracts → Contract Services → Valorizations → Customer Rates → Documents → RAG.",
+    "description": "Kompletna kolekcja CRUD dla HRK CRM. Kolejność folderów = kolejność wywołań potrzebna do pełnego flow: Auth → Users → Companies → Customers → Contact Persons → Service Groups → Services → Contracts → Contract Services → Valorizations → Customer Rates → Notes → Activity Log → Documents → RAG.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "item": [
@@ -1035,6 +1035,180 @@
       ]
     },
     {
+      "name": "Notes",
+      "item": [
+        {
+          "name": "Create Note (customer)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.collectionVariables.set('noteId', jsonData.id);",
+                  "    console.log('Created note:', jsonData.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"customer_id\": \"{{customerId}}\",\n    \"note_type\": \"other\",\n    \"content\": \"Notatka testowa CRUD dla klienta\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/notes",
+              "host": ["{{baseUrl}}"],
+              "path": ["notes"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "List Notes (by customer)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/notes?customer_id={{customerId}}&skip=0&limit=100",
+              "host": ["{{baseUrl}}"],
+              "path": ["notes"],
+              "query": [
+                { "key": "customer_id", "value": "{{customerId}}" },
+                { "key": "skip", "value": "0" },
+                { "key": "limit", "value": "100" }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Note by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/notes/{{noteId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["notes", "{{noteId}}"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update Note",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"content\": \"Zaktualizowana notatka testowa CRUD\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/notes/{{noteId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["notes", "{{noteId}}"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Note",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/notes/{{noteId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["notes", "{{noteId}}"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Activity Log",
+      "item": [
+        {
+          "name": "Create Activity Log",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.collectionVariables.set('activityLogId', jsonData.id);",
+                  "    console.log('Created activity log:', jsonData.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"customer_id\": \"{{customerId}}\",\n    \"contract_id\": \"{{contractId}}\",\n    \"activity_type\": \"meeting\",\n    \"description\": \"Wpis aktywności z kolekcji CRUD\",\n    \"activity_date\": \"2026-01-15T09:00:00Z\",\n    \"additional_data\": {\n      \"source\": \"postman-crud\"\n    }\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/activity-log",
+              "host": ["{{baseUrl}}"],
+              "path": ["activity-log"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "List Activity Log (by customer)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/activity-log?customer_id={{customerId}}&limit=50&offset=0",
+              "host": ["{{baseUrl}}"],
+              "path": ["activity-log"],
+              "query": [
+                { "key": "customer_id", "value": "{{customerId}}" },
+                { "key": "limit", "value": "50" },
+                { "key": "offset", "value": "0" }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "List Activity Log (by contract)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/activity-log?contract_id={{contractId}}&limit=50&offset=0",
+              "host": ["{{baseUrl}}"],
+              "path": ["activity-log"],
+              "query": [
+                { "key": "contract_id", "value": "{{contractId}}" },
+                { "key": "limit", "value": "50" },
+                { "key": "offset", "value": "0" }
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
       "name": "Documents",
       "item": [
         {
@@ -1226,6 +1400,8 @@
     { "key": "contractServiceRelationId", "value": "", "type": "string" },
     { "key": "valorizationId", "value": "", "type": "string" },
     { "key": "customerRateId", "value": "", "type": "string" },
+    { "key": "noteId", "value": "", "type": "string" },
+    { "key": "activityLogId", "value": "", "type": "string" },
     { "key": "documentId", "value": "", "type": "string" },
     { "key": "contactId", "value": "", "type": "string" },
     { "key": "secondaryContactId", "value": "", "type": "string" }

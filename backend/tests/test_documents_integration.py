@@ -14,7 +14,7 @@ from app.config import settings
 from app.core.database import AsyncSessionLocal, get_db
 from app.main import app
 from app.models.customer import Customer
-from app.models.enums import CustomerStatus, UserRole
+from app.models.enums import CustomerStatus
 from app.models.user import User
 from app.repo.attachment import AttachmentRepository
 from app.service.document import DocumentService
@@ -25,12 +25,8 @@ from app.utils.s3_client import S3ClientAdapter
 async def _create_user_and_customer() -> tuple[UUID, UUID]:
     async with AsyncSessionLocal() as session:
         user = User(
-            ad_username=f"user_{uuid4().hex[:12]}",
+            login=f"user_{uuid4().hex[:12]}",
             email=f"user_{uuid4().hex[:12]}@example.com",
-            first_name="Test",
-            last_name="Uploader",
-            role=UserRole.ACCOUNT_MANAGER,
-            is_active=True,
         )
         session.add(user)
         await session.flush()

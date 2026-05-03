@@ -129,6 +129,7 @@ All commands should be run from the `backend/` directory:
 make install    # Install dependencies with Poetry
 make run        # Run the application locally
 make test       # Run pytest
+make test-docker # Run pytest with Docker-backed dependencies (db/minio/ad/...)
 make lint       # Run ruff linter
 make format     # Format code with ruff
 make typecheck  # Run mypy type checking

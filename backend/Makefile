@@ -1,4 +1,4 @@
-.PHONY: help install run test lint format typecheck security migrate makemigration check \
+.PHONY: help install run test test-docker lint format typecheck security migrate makemigration check \
 	up docker-up docker-down docker-build docker-logs docker-logs-ad docker-logs-schema-manager docker-migrate minio-init
 
 help:
@@ -8,6 +8,7 @@ help:
 	@echo "  make install        - Install dependencies with Poetry"
 	@echo "  make run            - Run the application locally"
 	@echo "  make test           - Run pytest"
+	@echo "  make test-docker    - Run pytest against Docker-backed dependencies"
 	@echo "  make lint           - Run ruff linter"
 	@echo "  make format         - Format code with ruff"
 	@echo "  make typecheck      - Run mypy type checking"
@@ -34,6 +35,10 @@ run:
 	PYTHONPATH=src poetry run uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 
 test:
+	PYTHONPATH=src poetry run pytest
+
+test-docker:
+	docker compose up -d db minio minio-init ad schema-manager ollama
 	PYTHONPATH=src poetry run pytest
 
 lint:

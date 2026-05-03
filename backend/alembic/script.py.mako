@@ -7,7 +7,7 @@ Create Date: ${create_date}
 """
 from alembic import op
 import sqlalchemy as sa
-${"\n".join(sorted(imports))}
+${"\n".join(sorted(imports)) if imports else ""}
 
 # revision identifiers
 revision = ${repr(up_revision)}

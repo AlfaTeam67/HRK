@@ -1,6 +1,7 @@
 """API tests for CRM CRUD endpoints."""
 
 import uuid
+from decimal import Decimal
 from datetime import UTC, date, datetime
 from types import SimpleNamespace
 from typing import Any
@@ -672,7 +673,7 @@ def test_customer_rates_crud(client: TestClient) -> None:
 
     res = client.patch(f"/api/v1/customer-rates/{rate_id}", json={"base_price": "150.00"})
     assert res.status_code == 200
-    assert res.json()["base_price"] == "150.0"
+    assert Decimal(res.json()["base_price"]) == Decimal("150.00")
 
     res = client.delete(f"/api/v1/customer-rates/{rate_id}")
     assert res.status_code == 204
