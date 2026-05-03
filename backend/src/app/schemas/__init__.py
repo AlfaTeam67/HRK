@@ -10,6 +10,7 @@ from app.schemas.contract_services import ContractServiceCreate, ContractService
 from app.schemas.contracts import ContractCreate, ContractRead, ContractUpdate
 from app.schemas.customer_rates import CustomerRateCreate, CustomerRateRead, CustomerRateUpdate
 from app.schemas.customers import CustomerCreate, CustomerRead, CustomerUpdate
+from app.schemas.notes import NoteCreate, NoteRead, NoteUpdate
 from app.schemas.service_groups import ServiceGroupCreate, ServiceGroupRead, ServiceGroupUpdate
 from app.schemas.services import ServiceCreate, ServiceRead, ServiceUpdate
 from app.schemas.valorizations import ValorizationCreate, ValorizationRead, ValorizationUpdate
@@ -17,26 +18,29 @@ from app.schemas.valorizations import ValorizationCreate, ValorizationRead, Valo
 __all__ = [
     "ORMBaseSchema",
     "MessageResponse",
-    "CustomerCreate",
-    "CustomerUpdate",
-    "CustomerRead",
     "ContractCreate",
-    "ContractUpdate",
     "ContractRead",
-    "ServiceCreate",
-    "ServiceUpdate",
-    "ServiceRead",
     "ContractServiceCreate",
     "ContractServiceRead",
-    "ServiceGroupCreate",
-    "ServiceGroupUpdate",
-    "ServiceGroupRead",
+    "ContractUpdate",
+    "CustomerCreate",
     "CustomerRateCreate",
-    "CustomerRateUpdate",
     "CustomerRateRead",
+    "CustomerRateUpdate",
+    "CustomerRead",
+    "CustomerUpdate",
+    "NoteCreate",
+    "NoteRead",
+    "NoteUpdate",
+    "ServiceCreate",
+    "ServiceGroupCreate",
+    "ServiceGroupRead",
+    "ServiceGroupUpdate",
+    "ServiceRead",
+    "ServiceUpdate",
     "ValorizationCreate",
-    "ValorizationUpdate",
     "ValorizationRead",
+    "ValorizationUpdate",
     "ContactPersonCreate",
     "ContactPersonUpdate",
     "ContactPersonRead",

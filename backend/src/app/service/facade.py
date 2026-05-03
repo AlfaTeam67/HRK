@@ -8,33 +8,38 @@ from app.models.contract import Contract
 from app.models.contract_service import ContractService as ContractServiceModel
 from app.models.customer import ContactPerson, Customer
 from app.models.enums import ValorizationStatus
+from app.models.note import Note
 from app.models.rate import CustomerRate, Valorization
 from app.models.service import Service
 from app.models.service_group import ServiceGroup
+
 from app.repo.contact_persons import ContactPersonRepository
 from app.repo.contract_services import ContractServiceRepository
 from app.repo.contracts import ContractRepository
 from app.repo.customer_rates import CustomerRateRepository
 from app.repo.customers import CustomerRepository
 from app.repo.lookups import LookupRepository
+from app.repo.notes import NoteRepository
 from app.repo.service_groups import ServiceGroupRepository
 from app.repo.services import ServiceRepository
 from app.repo.valorizations import ValorizationRepository
 from app.schemas.contact_person import ContactPersonCreate, ContactPersonUpdate
 from app.schemas.contract_services import ContractServiceCreate
 from app.schemas.contracts import ContractCreate, ContractUpdate
-from app.schemas.customer_rates import CustomerRateCreate, CustomerRateUpdate
 from app.schemas.customers import CustomerCreate, CustomerUpdate
-from app.schemas.service_groups import ServiceGroupCreate, ServiceGroupUpdate
+from app.schemas.notes import NoteCreate, NoteUpdate
 from app.schemas.services import ServiceCreate, ServiceUpdate
+from app.schemas.service_groups import ServiceGroupCreate, ServiceGroupUpdate
+from app.schemas.customer_rates import CustomerRateCreate, CustomerRateUpdate
 from app.schemas.valorizations import ValorizationCreate, ValorizationUpdate
 from app.service.contact_persons import ContactPersonService
 from app.service.contract_services import ContractServiceRelationService
 from app.service.contracts import ContractService
-from app.service.customer_rates import CustomerRateCrudService
 from app.service.customers import CustomerService
-from app.service.service_groups import ServiceGroupCrudService
+from app.service.notes import NoteService
 from app.service.services import ServiceCrudService
+from app.service.service_groups import ServiceGroupCrudService
+from app.service.customer_rates import CustomerRateCrudService
 from app.service.valorizations import ValorizationCrudService
 
 
@@ -52,6 +57,7 @@ class CRMService:
         group_repo = ServiceGroupRepository(db)
         rate_repo = CustomerRateRepository(db)
         val_repo = ValorizationRepository(db)
+        note_repo = NoteRepository(db)
         contact_person_repo = ContactPersonRepository(db)
 
         self.customer_service = CustomerService(customer_repo, lookup_repo)
@@ -65,6 +71,7 @@ class CRMService:
         self.group_service = ServiceGroupCrudService(group_repo)
         self.rate_service = CustomerRateCrudService(rate_repo)
         self.valorization_service = ValorizationCrudService(val_repo)
+        self.note_service = NoteService(note_repo, lookup_repo)
         self.contact_person_service = ContactPersonService(contact_person_repo, lookup_repo)
 
     async def list_customers(self, **kwargs) -> list[Customer]:
@@ -289,6 +296,55 @@ class CRMService:
     async def delete_valorization(self, valorization_id: uuid.UUID) -> None:
         try:
             await self.valorization_service.delete_valorization(valorization_id)
+            await self.db.commit()
+        except Exception:
+            await self.db.rollback()
+            raise
+
+    # --- Notes ---
+
+    async def list_notes_by_customer(
+        self,
+        customer_id: uuid.UUID,
+        *,
+        skip: int = 0,
+        limit: int = 100,
+    ) -> list[Note]:
+        return await self.note_service.list_notes_by_customer(customer_id, skip=skip, limit=limit)
+
+    async def list_notes_by_contract(
+        self,
+        contract_id: uuid.UUID,
+        *,
+        skip: int = 0,
+        limit: int = 100,
+    ) -> list[Note]:
+        return await self.note_service.list_notes_by_contract(contract_id, skip=skip, limit=limit)
+
+    async def get_note(self, note_id: uuid.UUID) -> Note:
+        return await self.note_service.get_note(note_id)
+
+    async def create_note(self, payload: NoteCreate, *, created_by: uuid.UUID | None = None) -> Note:
+        try:
+            result = await self.note_service.create_note(payload, created_by=created_by)
+            await self.db.commit()
+            return result
+        except Exception:
+            await self.db.rollback()
+            raise
+
+    async def update_note(self, note_id: uuid.UUID, payload: NoteUpdate) -> Note:
+        try:
+            result = await self.note_service.update_note(note_id, payload)
+            await self.db.commit()
+            return result
+        except Exception:
+            await self.db.rollback()
+            raise
+
+    async def delete_note(self, note_id: uuid.UUID) -> None:
+        try:
+            await self.note_service.delete_note(note_id)
             await self.db.commit()
         except Exception:
             await self.db.rollback()
