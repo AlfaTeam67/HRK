@@ -1,44 +1,40 @@
 """Facade service for API workflows."""
 
 import uuid
-from typing import Optional
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.contract import Contract
 from app.models.contract_service import ContractService as ContractServiceModel
 from app.models.customer import ContactPerson, Customer
+from app.models.enums import ValorizationStatus
+from app.models.rate import CustomerRate, Valorization
 from app.models.service import Service
 from app.models.service_group import ServiceGroup
-from app.models.rate import CustomerRate, Valorization
-from app.models.enums import ValorizationStatus
-
 from app.repo.contact_persons import ContactPersonRepository
 from app.repo.contract_services import ContractServiceRepository
 from app.repo.contracts import ContractRepository
+from app.repo.customer_rates import CustomerRateRepository
 from app.repo.customers import CustomerRepository
 from app.repo.lookups import LookupRepository
-from app.repo.services import ServiceRepository
 from app.repo.service_groups import ServiceGroupRepository
-from app.repo.customer_rates import CustomerRateRepository
+from app.repo.services import ServiceRepository
 from app.repo.valorizations import ValorizationRepository
-
 from app.schemas.contact_person import ContactPersonCreate, ContactPersonUpdate
 from app.schemas.contract_services import ContractServiceCreate
 from app.schemas.contracts import ContractCreate, ContractUpdate
-from app.schemas.customers import CustomerCreate, CustomerUpdate
-from app.schemas.services import ServiceCreate, ServiceUpdate
-from app.schemas.service_groups import ServiceGroupCreate, ServiceGroupUpdate
 from app.schemas.customer_rates import CustomerRateCreate, CustomerRateUpdate
+from app.schemas.customers import CustomerCreate, CustomerUpdate
+from app.schemas.service_groups import ServiceGroupCreate, ServiceGroupUpdate
+from app.schemas.services import ServiceCreate, ServiceUpdate
 from app.schemas.valorizations import ValorizationCreate, ValorizationUpdate
-
 from app.service.contact_persons import ContactPersonService
 from app.service.contract_services import ContractServiceRelationService
 from app.service.contracts import ContractService
-from app.service.customers import CustomerService
-from app.service.services import ServiceCrudService
-from app.service.service_groups import ServiceGroupCrudService
 from app.service.customer_rates import CustomerRateCrudService
+from app.service.customers import CustomerService
+from app.service.service_groups import ServiceGroupCrudService
+from app.service.services import ServiceCrudService
 from app.service.valorizations import ValorizationCrudService
 
 
@@ -263,9 +259,9 @@ class CRMService:
 
     async def list_valorizations(
         self,
-        contract_id: Optional[uuid.UUID] = None,
-        year: Optional[int] = None,
-        status_: Optional[ValorizationStatus] = None,
+        contract_id: uuid.UUID | None = None,
+        year: int | None = None,
+        status_: ValorizationStatus | None = None,
     ) -> list[Valorization]:
         return await self.valorization_service.list_valorizations(contract_id=contract_id, year=year, status_=status_)
 

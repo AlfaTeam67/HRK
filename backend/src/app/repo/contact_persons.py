@@ -1,6 +1,7 @@
 """ContactPerson repository."""
 
 import uuid
+from datetime import UTC, datetime
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -43,15 +44,12 @@ class ContactPersonRepository:
 
     async def update(self, contact: ContactPerson, data: dict) -> ContactPerson:
         for key, value in data.items():
-            if value is not None:
-                setattr(contact, key, value)
+            setattr(contact, key, value)
         await self.db.flush()
         await self.db.refresh(contact)
         return contact
 
     async def delete(self, contact: ContactPerson) -> None:
         """Soft delete contact person."""
-        from datetime import datetime, timezone
-
-        contact.deleted_at = datetime.now(timezone.utc)
+        contact.deleted_at = datetime.now(UTC)
         await self.db.flush()

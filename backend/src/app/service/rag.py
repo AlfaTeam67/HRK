@@ -21,7 +21,7 @@ def _best_sentence(query: str, content: str) -> str | None:
         return None
 
     def score(s: str) -> tuple[int, int]:
-        words = {w for w in re.findall(r"\w+", s.lower())}
+        words = set(re.findall(r"\w+", s.lower()))
         overlap = len(words & query_words)
         return (overlap, len(s))
 

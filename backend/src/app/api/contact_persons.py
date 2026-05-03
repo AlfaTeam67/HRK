@@ -3,7 +3,7 @@
 import uuid
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Response, status
 
 from app.api.deps import get_crm_service
 from app.schemas.contact_person import (
@@ -43,8 +43,6 @@ async def create_contact_person(
     """Add a new contact person to a customer."""
     # Ensure customer_id in path matches payload
     if payload.customer_id != customer_id:
-        from fastapi import HTTPException
-
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="customer_id in path must match payload",

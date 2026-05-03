@@ -1,7 +1,6 @@
 """ContactPerson business service."""
 
 import uuid
-from datetime import UTC, datetime
 
 from fastapi import HTTPException, status
 from sqlalchemy.exc import IntegrityError
