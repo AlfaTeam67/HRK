@@ -1,9 +1,12 @@
 """Facade service for API workflows."""
 
+import logging
 import uuid
 
+from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.models.activity import ActivityLog
 from app.models.contract import Contract
 from app.models.contract_service import ContractService as ContractServiceModel
 from app.models.customer import ContactPerson, Customer
@@ -12,6 +15,7 @@ from app.models.note import Note
 from app.models.rate import CustomerRate, Valorization
 from app.models.service import Service
 from app.models.service_group import ServiceGroup
+from app.repo.activity import ActivityLogRepository
 from app.repo.contact_persons import ContactPersonRepository
 from app.repo.contract_services import ContractServiceRepository
 from app.repo.contracts import ContractRepository
@@ -22,6 +26,7 @@ from app.repo.notes import NoteRepository
 from app.repo.service_groups import ServiceGroupRepository
 from app.repo.services import ServiceRepository
 from app.repo.valorizations import ValorizationRepository
+from app.schemas.activity import ActivityLogCreate
 from app.schemas.contact_person import ContactPersonCreate, ContactPersonUpdate
 from app.schemas.contract_services import ContractServiceCreate
 from app.schemas.contracts import ContractCreate, ContractUpdate
@@ -41,6 +46,8 @@ from app.service.service_groups import ServiceGroupCrudService
 from app.service.services import ServiceCrudService
 from app.service.valorizations import ValorizationCrudService
 
+logger = logging.getLogger(__name__)
+
 
 class CRMService:
     """Facade exposing operations expected by API layer."""
@@ -53,6 +60,7 @@ class CRMService:
         service_repo = ServiceRepository(db)
         relation_repo = ContractServiceRepository(db)
         lookup_repo = LookupRepository(db)
+        activity_repo = ActivityLogRepository(db)
         group_repo = ServiceGroupRepository(db)
         rate_repo = CustomerRateRepository(db)
         val_repo = ValorizationRepository(db)
@@ -67,6 +75,8 @@ class CRMService:
             self.contract_service,
             self.service_service,
         )
+        self.activity_repo = activity_repo
+        self.lookup_repo = lookup_repo
         self.group_service = ServiceGroupCrudService(group_repo)
         self.rate_service = CustomerRateCrudService(rate_repo)
         self.valorization_service = ValorizationCrudService(val_repo)
@@ -139,6 +149,80 @@ class CRMService:
 
     async def list_services(self, **kwargs) -> list[Service]:
         return await self.service_service.list_services(**kwargs)
+
+    async def list_activity_logs(
+        self,
+        *,
+        customer_id: uuid.UUID | None,
+        contract_id: uuid.UUID | None,
+        limit: int,
+        offset: int,
+    ) -> list[ActivityLog]:
+        if customer_id is None and contract_id is None:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="Either customer_id or contract_id must be provided",
+            )
+        if customer_id is not None and contract_id is not None:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="Only one of customer_id or contract_id can be provided",
+            )
+
+        if customer_id is not None:
+            await self.customer_service.get_customer(customer_id)
+            return await self.activity_repo.get_by_customer(customer_id, limit, offset)
+
+        await self.contract_service.get_contract(contract_id)
+        return await self.activity_repo.get_by_contract(contract_id, limit, offset)
+
+    async def create_activity_log(
+        self,
+        payload: ActivityLogCreate,
+        *,
+        performed_by: uuid.UUID | None,
+    ) -> ActivityLog:
+        data = payload.model_dump()
+        customer_id = data.get("customer_id")
+        contract_id = data.get("contract_id")
+
+        if customer_id is None and contract_id is None:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="At least one of customer_id or contract_id must be provided",
+            )
+
+        if customer_id is not None:
+            await self.customer_service.get_customer(customer_id)
+
+        if contract_id is not None:
+            contract = await self.contract_service.get_contract(contract_id)
+            if customer_id is not None and contract.customer_id != customer_id:
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    detail="Provided customer_id does not match contract.customer_id",
+                )
+            if customer_id is None:
+                data["customer_id"] = contract.customer_id
+
+        if performed_by is not None and not await self.lookup_repo.user_exists(performed_by):
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+
+        try:
+            result = await self.activity_repo.create(data, performed_by=performed_by)
+            await self.db.commit()
+            return result
+        except Exception:
+            await self.db.rollback()
+            logger.exception(
+                "Failed to create activity log",
+                extra={
+                    "customer_id": str(data.get("customer_id")),
+                    "contract_id": str(data.get("contract_id")),
+                    "performed_by": str(performed_by) if performed_by is not None else None,
+                },
+            )
+            raise
 
     async def get_service(self, service_id: uuid.UUID) -> Service:
         return await self.service_service.get_service(service_id)
