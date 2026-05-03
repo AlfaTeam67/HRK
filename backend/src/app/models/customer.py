@@ -15,7 +15,7 @@ from sqlalchemy import (
     text,
 )
 from sqlalchemy.dialects.postgresql import JSONB, UUID
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.orm import Mapped, mapped_column, relationship, selectinload
 
 from app.models.base import (
     AuditMixin,
@@ -105,6 +105,11 @@ class Customer(Base, TimestampMixin, SoftDeleteMixin, AuditMixin):
     additional_data: Mapped[dict] = mapped_column(
         JSONB, server_default=text("'{}'::jsonb"), nullable=False
     )
+
+    @property
+    def company_name(self) -> str | None:
+        """Returns name of the linked company."""
+        return self.company.name if self.company else None
 
     # Relationships
     company: Mapped[Company | None] = relationship("Company", back_populates="customers")
