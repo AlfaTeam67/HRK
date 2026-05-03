@@ -2,22 +2,10 @@ import type { CSSProperties } from 'react'
 
 import { cardStyle } from '@/lib/styles'
 import { useAppSelector } from '@/hooks/store'
+import { useAlerts, useDashboardKpi } from '@/hooks/alerts'
 
 /* ─── Mock data (inline) ─────────────────────────────────────── */
-const kpis = [
-  { label: 'AKTYWNYCH KLIENTÓW', value: '12', trend: '+2 nowych w tym kwartale', trendUp: true },
-  { label: 'AKTYWNYCH UMÓW', value: '18', trend: '♦ 3 kończą się w tym miesiącu', trendUp: false },
-  { label: 'WALORYZACJE DO ZROBIENIA', value: '3', trend: '⚡ 1 po terminie', trendUp: false },
-  { label: 'PRACOWNICY (ŁĄCZNIE)', value: '1 847', trend: '▲ 54 od ostatniego miesiąca', trendUp: true },
-]
-
 type AlertType = 'urgent' | 'warning' | 'info' | 'neutral'
-const alerts: Array<{ type: AlertType; title: string; detail: string }> = [
-  { type: 'urgent',  title: 'Empik – umowa kończy się za 28 dni',      detail: 'Umowa nr 000123/43 · data wypowiedzenia: 30 dni' },
-  { type: 'warning', title: 'Waloryzacja po terminie – MediaMarkt',     detail: 'Planowana na 01.03.2026 · brak reakcji' },
-  { type: 'info',    title: 'Rossmann – brak kontaktu od 87 dni',       detail: 'Ostatni kontakt: 04.01.2026' },
-  { type: 'neutral', title: 'Biedronka – waloryzacja za 14 dni',        detail: 'GUS inflacja: 4,5% · sugestia według gotowe' },
-]
 
 const smartPulse = [
   { name: 'Empik',      badge: 'Ryzyko utraty', type: 'warn' as const },
@@ -56,6 +44,30 @@ export function DashboardPage() {
   const user = useAppSelector((s) => s.auth.user)
   const firstName = user?.displayName.split(' ')[0] ?? 'użytkowniku'
 
+  const { data: kpiData } = useDashboardKpi(user?.id)
+  const { data: realAlerts } = useAlerts(user?.id)
+
+  const kpis = kpiData ? [
+    { label: 'AKTYWNYCH KLIENTÓW', value: String(kpiData.active_customers), trend: 'aktualne dane', trendUp: true },
+    { label: 'AKTYWNYCH UMÓW', value: String(kpiData.active_contracts), trend: `♦ ${kpiData.contracts_expiring_30d} kończy się w 30 dni`, trendUp: kpiData.contracts_expiring_30d === 0 },
+    { label: 'WALORYZACJE DO ZROBIENIA', value: String(kpiData.valorizations_pending), trend: `⚡ ${kpiData.valorizations_overdue} po terminie`, trendUp: kpiData.valorizations_overdue === 0 },
+    { label: 'PRACOWNICY (ŁĄCZNIE)', value: '1 847', trend: '▲ 54 od ostatniego miesiąca', trendUp: true },
+  ] : []
+
+  const severityToType: Record<string, AlertType> = {
+    urgent: 'urgent',
+    high: 'warning',
+    medium: 'info'
+  }
+
+  const alerts = realAlerts?.map(a => ({
+    type: severityToType[a.severity] || 'neutral',
+    title: a.title,
+    detail: a.detail
+  })) || []
+
+  const urgentCount = alerts.filter(a => a.type === 'urgent').length
+
   return (
     <div style={{ width: '100%' }}>
       {/* Top bar */}
@@ -79,7 +91,7 @@ export function DashboardPage() {
       {/* Greeting */}
       <div style={{ marginBottom: 22 }}>
         <h1 style={{ fontSize: 22, fontWeight: 700, color: '#1a1714', margin: 0, marginBottom: 4 }}>Dzień dobry, {firstName}</h1>
-        <p style={{ fontSize: 12.5, color: '#9e9389', margin: 0 }}>Masz 3 alerty wymagające uwagi dzisiaj.</p>
+        <p style={{ fontSize: 12.5, color: '#9e9389', margin: 0 }}>Masz {alerts.length} alerty wymagające uwagi dzisiaj.</p>
       </div>
 
       {/* KPI cards */}
@@ -101,14 +113,18 @@ export function DashboardPage() {
           <div style={{ ...card, padding: '16px 18px', marginBottom: 16 }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
               <div style={{ fontSize: 14, fontWeight: 700, color: '#1a1714' }}>Alerty i terminy</div>
-              <span style={{ background: '#e85c04', color: 'white', fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 20 }}>3 pilne</span>
+              <span style={{ background: '#e85c04', color: 'white', fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 20 }}>{urgentCount} pilne</span>
             </div>
-            {alerts.map((a) => (
-              <div key={a.title} style={ALERT_STYLE[a.type]}>
-                <div style={{ fontSize: 13, fontWeight: 600, color: '#1a1714', marginBottom: 2 }}>{a.title}</div>
-                <div style={{ fontSize: 11.5, color: '#6b6b6b' }}>{a.detail}</div>
-              </div>
-            ))}
+            {alerts.length === 0 ? (
+              <div style={{ fontSize: 13, color: '#6b6b6b' }}>Brak alertów.</div>
+            ) : (
+              alerts.map((a) => (
+                <div key={a.title} style={ALERT_STYLE[a.type]}>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: '#1a1714', marginBottom: 2 }}>{a.title}</div>
+                  <div style={{ fontSize: 11.5, color: '#6b6b6b' }}>{a.detail}</div>
+                </div>
+              ))
+            )}
           </div>
 
           {/* Activity table */}
