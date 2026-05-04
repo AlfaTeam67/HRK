@@ -10,6 +10,7 @@ from fastapi.testclient import TestClient
 
 from app import main as main_module
 from app.api.deps import get_crm_service
+from app.core.auth import get_current_user
 from app.main import app
 from app.models.enums import ActivityType
 
@@ -96,6 +97,7 @@ def fake_activity_service() -> FakeActivityCRMService:
 def client(fake_activity_service: FakeActivityCRMService, monkeypatch: pytest.MonkeyPatch) -> TestClient:
     monkeypatch.setattr(main_module, "get_storage_service", lambda: _DummyStorageService())
     app.dependency_overrides[get_crm_service] = lambda: fake_activity_service
+    app.dependency_overrides[get_current_user] = lambda: SimpleNamespace(id=fake_activity_service.user_id)
     with TestClient(app) as test_client:
         yield test_client
     app.dependency_overrides.clear()

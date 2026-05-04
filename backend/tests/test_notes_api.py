@@ -6,8 +6,10 @@ from typing import Any
 
 import pytest
 from fastapi.testclient import TestClient
+from types import SimpleNamespace
 
 from app.api.deps import get_crm_service
+from app.core.auth import get_current_user
 from app.main import app
 
 
@@ -155,6 +157,10 @@ def client():
         return fake_service
 
     app.dependency_overrides[get_crm_service] = override_get_crm_service
+    app.dependency_overrides[get_current_user] = lambda: SimpleNamespace(
+        id=uuid.uuid4(),
+        login="note_user",
+    )
 
     with TestClient(app) as test_client:
         yield test_client

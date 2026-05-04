@@ -6,6 +6,8 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, status
 
 from app.api.deps import get_crm_service
+from app.core.auth import get_current_user
+from app.models.user import User
 from app.schemas.customer_rates import CustomerRateCreate, CustomerRateRead, CustomerRateUpdate
 from app.service import CRMService
 
@@ -15,6 +17,7 @@ router = APIRouter(tags=["customer-rates"])
 @router.get("/customer-rates", response_model=list[CustomerRateRead], summary="List customer rates")
 async def list_customer_rates(
     service: Annotated[CRMService, Depends(get_crm_service)],
+    _: Annotated[User, Depends(get_current_user)],
 ) -> list[CustomerRateRead]:
     return await service.list_customer_rates()
 
@@ -28,6 +31,7 @@ async def list_customer_rates(
 async def create_customer_rate(
     payload: CustomerRateCreate,
     service: Annotated[CRMService, Depends(get_crm_service)],
+    _: Annotated[User, Depends(get_current_user)],
 ) -> CustomerRateRead:
     return await service.create_customer_rate(payload)
 
@@ -38,6 +42,7 @@ async def create_customer_rate(
 async def get_customer_rate(
     rate_id: uuid.UUID,
     service: Annotated[CRMService, Depends(get_crm_service)],
+    _: Annotated[User, Depends(get_current_user)],
 ) -> CustomerRateRead:
     return await service.get_customer_rate(rate_id)
 
@@ -49,6 +54,7 @@ async def update_customer_rate(
     rate_id: uuid.UUID,
     payload: CustomerRateUpdate,
     service: Annotated[CRMService, Depends(get_crm_service)],
+    _: Annotated[User, Depends(get_current_user)],
 ) -> CustomerRateRead:
     return await service.update_customer_rate(rate_id, payload)
 
@@ -61,5 +67,6 @@ async def update_customer_rate(
 async def delete_customer_rate(
     rate_id: uuid.UUID,
     service: Annotated[CRMService, Depends(get_crm_service)],
+    _: Annotated[User, Depends(get_current_user)],
 ) -> None:
     await service.delete_customer_rate(rate_id)

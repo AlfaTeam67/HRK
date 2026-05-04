@@ -6,7 +6,9 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Query, status
 
 from app.api.deps import get_crm_service
+from app.core.auth import get_current_user
 from app.schemas.activity import ActivityLogCreate, ActivityLogRead
+from app.models.user import User
 from app.service import CRMService
 
 router = APIRouter(tags=["crm-activity-log"])
@@ -15,6 +17,7 @@ router = APIRouter(tags=["crm-activity-log"])
 @router.get("/activity-log", response_model=list[ActivityLogRead], summary="List activity log")
 async def list_activity_log(
     service: Annotated[CRMService, Depends(get_crm_service)],
+    _: Annotated[User, Depends(get_current_user)],
     customer_id: uuid.UUID | None = Query(default=None),
     contract_id: uuid.UUID | None = Query(default=None),
     limit: int = Query(default=50, ge=1, le=200),
@@ -37,5 +40,6 @@ async def list_activity_log(
 async def create_activity_log(
     payload: ActivityLogCreate,
     service: Annotated[CRMService, Depends(get_crm_service)],
+    _: Annotated[User, Depends(get_current_user)],
 ) -> ActivityLogRead:
     return await service.create_activity_log(payload, performed_by=None)

@@ -104,6 +104,7 @@ async def test_company_create_allows_admin(client: AsyncClient) -> None:
 @pytest.mark.asyncio
 async def test_company_list_returns_only_scoped_companies_for_non_admin(client: AsyncClient) -> None:
     user = await _create_user(login=f"scoped_{uuid4().hex[:8]}", email=f"{uuid4().hex[:8]}@hrk.eu")
+    await _assign_role(user_id=user.id, role=UserRole.VIEWER)
     allowed_company = await _create_company(
         name=f"Allowed {uuid4().hex[:6]}",
         nip=f"{uuid4().int % 10**10:010d}",

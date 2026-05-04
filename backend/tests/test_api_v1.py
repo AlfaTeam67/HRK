@@ -37,13 +37,13 @@ def _auth_headers(login: str) -> dict[str, str]:
 async def test_create_company_smoke(client: AsyncClient) -> None:
     company_data = {"name": "Test Company", "nip": "1234567890", "is_active": True}
     response = await client.post("/api/v1/companies/", json=company_data)
-    assert response.status_code in [201, 400, 403, 500]
+    assert response.status_code in [201, 400, 403]
 
 
 @pytest.mark.asyncio
 async def test_list_companies_smoke(client: AsyncClient) -> None:
     response = await client.get("/api/v1/companies/")
-    assert response.status_code in [200, 403, 500]
+    assert response.status_code in [200, 403]
 
 
 @pytest.mark.asyncio
@@ -53,7 +53,7 @@ async def test_create_user_smoke(client: AsyncClient) -> None:
         "email": "test@example.com",
     }
     response = await client.post("/api/v1/users/", json=user_data)
-    assert response.status_code in [201, 400, 403, 500]
+    assert response.status_code in [201, 400, 403]
 
 
 @pytest.mark.asyncio
@@ -69,7 +69,7 @@ async def test_upload_document_requires_parent(client: AsyncClient) -> None:
 @pytest.mark.asyncio
 async def test_get_document_download_url_smoke(client: AsyncClient) -> None:
     response = await client.get(f"/api/v1/documents/{uuid4()}/download-url")
-    assert response.status_code in [400, 403, 404, 500]
+    assert response.status_code in [400, 403, 404]
 
 
 @pytest.mark.asyncio

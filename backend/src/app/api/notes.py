@@ -6,6 +6,8 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 
 from app.api.deps import get_crm_service
+from app.core.auth import get_current_user
+from app.models.user import User
 from app.schemas.notes import NoteCreate, NoteRead, NoteUpdate
 from app.service import CRMService
 
@@ -15,6 +17,7 @@ router = APIRouter(prefix="/notes", tags=["crm-notes"])
 @router.get("", response_model=list[NoteRead], summary="List notes")
 async def list_notes(
     service: Annotated[CRMService, Depends(get_crm_service)],
+    _: Annotated[User, Depends(get_current_user)],
     customer_id: uuid.UUID | None = Query(default=None, description="Filter by customer ID"),
     contract_id: uuid.UUID | None = Query(default=None, description="Filter by contract ID"),
     skip: int = Query(default=0, ge=0, description="Number of records to skip"),
@@ -50,6 +53,7 @@ async def list_notes(
 async def create_note(
     payload: NoteCreate,
     service: Annotated[CRMService, Depends(get_crm_service)],
+    _: Annotated[User, Depends(get_current_user)],
 ) -> NoteRead:
     """Create a new note."""
     # TODO: Get created_by from current user when auth is implemented
@@ -60,6 +64,7 @@ async def create_note(
 async def get_note(
     note_id: uuid.UUID,
     service: Annotated[CRMService, Depends(get_crm_service)],
+    _: Annotated[User, Depends(get_current_user)],
 ) -> NoteRead:
     """Get a single note by ID."""
     return await service.get_note(note_id)
@@ -70,6 +75,7 @@ async def update_note(
     note_id: uuid.UUID,
     payload: NoteUpdate,
     service: Annotated[CRMService, Depends(get_crm_service)],
+    _: Annotated[User, Depends(get_current_user)],
 ) -> NoteRead:
     """Update an existing note."""
     return await service.update_note(note_id, payload)
@@ -83,6 +89,7 @@ async def update_note(
 async def delete_note(
     note_id: uuid.UUID,
     service: Annotated[CRMService, Depends(get_crm_service)],
+    _: Annotated[User, Depends(get_current_user)],
 ) -> Response:
     """Soft delete a note."""
     await service.delete_note(note_id)

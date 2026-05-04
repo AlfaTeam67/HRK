@@ -10,20 +10,24 @@ from moto import mock_aws
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.v1.documents import get_document_service
+from app.core.auth import get_current_user
 from app.config import settings
 from app.core.database import AsyncSessionLocal, get_db
 from app.main import app
 from app.models.customer import Customer
 from app.models.enums import CustomerStatus
 from app.models.user import User
+from app.models.user_company_access import UserCompanyAccess
+from app.models.user_role import UserRoleAssignment
 from app.repo.attachment import AttachmentRepository
 from app.service.document import DocumentService
 from app.service.storage import StorageService
 from app.utils.s3_client import S3ClientAdapter
 
 
-async def _create_user_and_customer() -> tuple[UUID, UUID]:
+async def _create_user_and_customer() -> tuple[UUID, UUID, UUID]:
     async with AsyncSessionLocal() as session:
+        company_id = uuid4()
         user = User(
             login=f"user_{uuid4().hex[:12]}",
             email=f"user_{uuid4().hex[:12]}@example.com",
@@ -31,14 +35,18 @@ async def _create_user_and_customer() -> tuple[UUID, UUID]:
         session.add(user)
         await session.flush()
 
+        session.add(UserRoleAssignment(user_id=user.id, role="consultant"))
+        session.add(UserCompanyAccess(user_id=user.id, company_id=company_id))
+
         customer = Customer(
             ckk=uuid4().hex[:10],
             account_manager_id=user.id,
+            company_id=company_id,
             status=CustomerStatus.ACTIVE,
         )
         session.add(customer)
         await session.commit()
-        return user.id, customer.id
+        return user.id, customer.id, company_id
 
 
 @pytest.mark.asyncio
@@ -60,7 +68,12 @@ async def test_upload_document_persists_s3_and_db(client: AsyncClient, monkeypat
         app.dependency_overrides[get_document_service] = override_document_service
 
         try:
-            user_id, customer_id = await _create_user_and_customer()
+            user_id, customer_id, _company_id = await _create_user_and_customer()
+            app.dependency_overrides[get_current_user] = lambda: User(
+                id=user_id,
+                login="doc_user",
+                email="doc_user@example.com",
+            )
 
             response = await client.post(
                 "/api/v1/documents/",
@@ -68,7 +81,6 @@ async def test_upload_document_persists_s3_and_db(client: AsyncClient, monkeypat
                 data={
                     "document_type": "contract",
                     "customer_id": str(customer_id),
-                    "uploaded_by": str(user_id),
                 },
             )
 
@@ -91,3 +103,4 @@ async def test_upload_document_persists_s3_and_db(client: AsyncClient, monkeypat
             assert s3_object["ContentLength"] > 0
         finally:
             app.dependency_overrides.pop(get_document_service, None)
+            app.dependency_overrides.pop(get_current_user, None)

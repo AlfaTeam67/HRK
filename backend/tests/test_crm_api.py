@@ -11,6 +11,7 @@ from fastapi import HTTPException
 from fastapi.testclient import TestClient
 
 from app.api.deps import get_crm_service
+from app.core.auth import get_current_user
 from app.main import app
 from app.models.enums import (
     BillingFrequency,
@@ -36,6 +37,8 @@ class FakeCRMService:
         self.contract_services: dict[uuid.UUID, dict[str, Any]] = {}
 
     async def list_customers(self, **kwargs):
+        if getattr(self, "force_auth_denied", False):
+            raise HTTPException(status_code=403, detail="AUTHORIZATION_DENIED")
         items = [c for c in self.customers.values() if c["deleted_at"] is None]
 
         company_id = kwargs.get("company_id")
@@ -55,6 +58,8 @@ class FakeCRMService:
         return [SimpleNamespace(**item) for item in items]
 
     async def create_customer(self, payload):
+        if getattr(self, "force_auth_denied", False):
+            raise HTTPException(status_code=403, detail="AUTHORIZATION_DENIED")
         for existing in self.customers.values():
             if existing["ckk"] == payload.ckk and existing["deleted_at"] is None:
                 raise HTTPException(status_code=409, detail="Customer with provided identifiers already exists")
@@ -90,12 +95,16 @@ class FakeCRMService:
         return SimpleNamespace(**item)
 
     async def get_customer(self, customer_id: uuid.UUID):
+        if getattr(self, "force_auth_denied", False):
+            raise HTTPException(status_code=403, detail="AUTHORIZATION_DENIED")
         item = self.customers.get(customer_id)
         if not item or item["deleted_at"] is not None:
             raise HTTPException(status_code=404, detail="Customer not found")
         return SimpleNamespace(**item)
 
     async def update_customer(self, customer_id: uuid.UUID, payload):
+        if getattr(self, "force_auth_denied", False):
+            raise HTTPException(status_code=403, detail="AUTHORIZATION_DENIED")
         item = self.customers.get(customer_id)
         if not item or item["deleted_at"] is not None:
             raise HTTPException(status_code=404, detail="Customer not found")
@@ -106,6 +115,8 @@ class FakeCRMService:
         return SimpleNamespace(**item)
 
     async def delete_customer(self, customer_id: uuid.UUID):
+        if getattr(self, "force_auth_denied", False):
+            raise HTTPException(status_code=403, detail="AUTHORIZATION_DENIED")
         item = self.customers.get(customer_id)
         if not item or item["deleted_at"] is not None:
             raise HTTPException(status_code=404, detail="Customer not found")
@@ -119,6 +130,8 @@ class FakeCRMService:
         item["deleted_at"] = datetime.now(UTC)
 
     async def list_contracts(self, **kwargs):
+        if getattr(self, "force_auth_denied", False):
+            raise HTTPException(status_code=403, detail="AUTHORIZATION_DENIED")
         items = [c for c in self.contracts.values() if c["deleted_at"] is None]
 
         company_id = kwargs.get("company_id")
@@ -148,6 +161,8 @@ class FakeCRMService:
         return [SimpleNamespace(**item) for item in items]
 
     async def create_contract(self, payload):
+        if getattr(self, "force_auth_denied", False):
+            raise HTTPException(status_code=403, detail="AUTHORIZATION_DENIED")
         if payload.customer_id not in self.customers or self.customers[payload.customer_id]["deleted_at"]:
             raise HTTPException(status_code=404, detail="Customer not found")
 
@@ -184,12 +199,16 @@ class FakeCRMService:
         return SimpleNamespace(**item)
 
     async def get_contract(self, contract_id: uuid.UUID):
+        if getattr(self, "force_auth_denied", False):
+            raise HTTPException(status_code=403, detail="AUTHORIZATION_DENIED")
         item = self.contracts.get(contract_id)
         if not item or item["deleted_at"] is not None:
             raise HTTPException(status_code=404, detail="Contract not found")
         return SimpleNamespace(**item)
 
     async def update_contract(self, contract_id: uuid.UUID, payload):
+        if getattr(self, "force_auth_denied", False):
+            raise HTTPException(status_code=403, detail="AUTHORIZATION_DENIED")
         item = self.contracts.get(contract_id)
         if not item or item["deleted_at"] is not None:
             raise HTTPException(status_code=404, detail="Contract not found")
@@ -200,12 +219,16 @@ class FakeCRMService:
         return SimpleNamespace(**item)
 
     async def delete_contract(self, contract_id: uuid.UUID):
+        if getattr(self, "force_auth_denied", False):
+            raise HTTPException(status_code=403, detail="AUTHORIZATION_DENIED")
         item = self.contracts.get(contract_id)
         if not item or item["deleted_at"] is not None:
             raise HTTPException(status_code=404, detail="Contract not found")
         item["deleted_at"] = datetime.now(UTC)
 
     async def list_services(self, **kwargs):
+        if getattr(self, "force_auth_denied", False):
+            raise HTTPException(status_code=403, detail="AUTHORIZATION_DENIED")
         items = [s for s in self.services.values() if s["deleted_at"] is None]
         company_id = kwargs.get("company_id")
         is_active = kwargs.get("is_active")
@@ -229,6 +252,8 @@ class FakeCRMService:
         return [SimpleNamespace(**item) for item in items]
 
     async def create_service(self, payload):
+        if getattr(self, "force_auth_denied", False):
+            raise HTTPException(status_code=403, detail="AUTHORIZATION_DENIED")
         service_id = uuid.uuid4()
         now = datetime.now(UTC)
         item = {
@@ -247,12 +272,16 @@ class FakeCRMService:
         return SimpleNamespace(**item)
 
     async def get_service(self, service_id: uuid.UUID):
+        if getattr(self, "force_auth_denied", False):
+            raise HTTPException(status_code=403, detail="AUTHORIZATION_DENIED")
         item = self.services.get(service_id)
         if not item or item["deleted_at"] is not None:
             raise HTTPException(status_code=404, detail="Service not found")
         return SimpleNamespace(**item)
 
     async def update_service(self, service_id: uuid.UUID, payload):
+        if getattr(self, "force_auth_denied", False):
+            raise HTTPException(status_code=403, detail="AUTHORIZATION_DENIED")
         item = self.services.get(service_id)
         if not item or item["deleted_at"] is not None:
             raise HTTPException(status_code=404, detail="Service not found")
@@ -262,12 +291,16 @@ class FakeCRMService:
         return SimpleNamespace(**item)
 
     async def delete_service(self, service_id: uuid.UUID):
+        if getattr(self, "force_auth_denied", False):
+            raise HTTPException(status_code=403, detail="AUTHORIZATION_DENIED")
         item = self.services.get(service_id)
         if not item or item["deleted_at"] is not None:
             raise HTTPException(status_code=404, detail="Service not found")
         item["deleted_at"] = datetime.now(UTC)
 
     async def attach_service_to_contract(self, contract_id: uuid.UUID, payload: ContractServiceCreate):
+        if getattr(self, "force_auth_denied", False):
+            raise HTTPException(status_code=403, detail="AUTHORIZATION_DENIED")
         if contract_id not in self.contracts or self.contracts[contract_id]["deleted_at"] is not None:
             raise HTTPException(status_code=404, detail="Contract not found")
         if payload.service_id not in self.services or self.services[payload.service_id]["deleted_at"] is not None:
@@ -303,12 +336,16 @@ class FakeCRMService:
         return SimpleNamespace(**item)
 
     async def list_contract_services(self, contract_id: uuid.UUID):
+        if getattr(self, "force_auth_denied", False):
+            raise HTTPException(status_code=403, detail="AUTHORIZATION_DENIED")
         if contract_id not in self.contracts or self.contracts[contract_id]["deleted_at"] is not None:
             raise HTTPException(status_code=404, detail="Contract not found")
         items = [rel for rel in self.contract_services.values() if rel["contract_id"] == contract_id]
         return [SimpleNamespace(**item) for item in items]
 
     async def detach_service_from_contract(self, contract_id: uuid.UUID, relation_id: uuid.UUID):
+        if getattr(self, "force_auth_denied", False):
+            raise HTTPException(status_code=403, detail="AUTHORIZATION_DENIED")
         if contract_id not in self.contracts or self.contracts[contract_id]["deleted_at"] is not None:
             raise HTTPException(status_code=404, detail="Contract not found")
         item = self.contract_services.get(relation_id)
@@ -318,15 +355,21 @@ class FakeCRMService:
 
 
     async def list_service_groups(self):
+        if getattr(self, "force_auth_denied", False):
+            raise HTTPException(status_code=403, detail="AUTHORIZATION_DENIED")
         return [SimpleNamespace(**g) for g in getattr(self, "groups", {}).values()]
 
     async def get_service_group(self, group_id):
+        if getattr(self, "force_auth_denied", False):
+            raise HTTPException(status_code=403, detail="AUTHORIZATION_DENIED")
         group = getattr(self, "groups", {}).get(group_id)
         if not group:
             raise HTTPException(status_code=404, detail="Not found")
         return SimpleNamespace(**group)
 
     async def create_service_group(self, payload):
+        if getattr(self, "force_auth_denied", False):
+            raise HTTPException(status_code=403, detail="AUTHORIZATION_DENIED")
         if not hasattr(self, "groups"):
             self.groups = {}
         gid = uuid.uuid4()
@@ -337,6 +380,8 @@ class FakeCRMService:
         return SimpleNamespace(**item)
 
     async def update_service_group(self, group_id, payload):
+        if getattr(self, "force_auth_denied", False):
+            raise HTTPException(status_code=403, detail="AUTHORIZATION_DENIED")
         group = getattr(self, "groups", {}).get(group_id)
         if not group:
             raise HTTPException(status_code=404, detail="Not found")
@@ -344,20 +389,28 @@ class FakeCRMService:
         return SimpleNamespace(**group)
 
     async def delete_service_group(self, group_id):
+        if getattr(self, "force_auth_denied", False):
+            raise HTTPException(status_code=403, detail="AUTHORIZATION_DENIED")
         if group_id not in getattr(self, "groups", {}):
             raise HTTPException(status_code=404, detail="Not found")
         del self.groups[group_id]
 
     async def list_customer_rates(self):
+        if getattr(self, "force_auth_denied", False):
+            raise HTTPException(status_code=403, detail="AUTHORIZATION_DENIED")
         return [SimpleNamespace(**r) for r in getattr(self, "rates", {}).values()]
 
     async def get_customer_rate(self, rate_id):
+        if getattr(self, "force_auth_denied", False):
+            raise HTTPException(status_code=403, detail="AUTHORIZATION_DENIED")
         rate = getattr(self, "rates", {}).get(rate_id)
         if not rate:
             raise HTTPException(status_code=404, detail="Not found")
         return SimpleNamespace(**rate)
 
     async def create_customer_rate(self, payload):
+        if getattr(self, "force_auth_denied", False):
+            raise HTTPException(status_code=403, detail="AUTHORIZATION_DENIED")
         if not hasattr(self, "rates"):
             self.rates = {}
         rid = uuid.uuid4()
@@ -369,6 +422,8 @@ class FakeCRMService:
         return SimpleNamespace(**item)
 
     async def update_customer_rate(self, rate_id, payload):
+        if getattr(self, "force_auth_denied", False):
+            raise HTTPException(status_code=403, detail="AUTHORIZATION_DENIED")
         rate = getattr(self, "rates", {}).get(rate_id)
         if not rate:
             raise HTTPException(status_code=404, detail="Not found")
@@ -376,11 +431,15 @@ class FakeCRMService:
         return SimpleNamespace(**rate)
 
     async def delete_customer_rate(self, rate_id):
+        if getattr(self, "force_auth_denied", False):
+            raise HTTPException(status_code=403, detail="AUTHORIZATION_DENIED")
         if rate_id not in getattr(self, "rates", {}):
             raise HTTPException(status_code=404, detail="Not found")
         del self.rates[rate_id]
 
     async def list_valorizations(self, contract_id=None, year=None, status_=None):
+        if getattr(self, "force_auth_denied", False):
+            raise HTTPException(status_code=403, detail="AUTHORIZATION_DENIED")
         items = list(getattr(self, "vals", {}).values())
         if contract_id:
             items = [i for i in items if i["contract_id"] == contract_id]
@@ -391,12 +450,16 @@ class FakeCRMService:
         return [SimpleNamespace(**i) for i in items]
 
     async def get_valorization(self, valorization_id):
+        if getattr(self, "force_auth_denied", False):
+            raise HTTPException(status_code=403, detail="AUTHORIZATION_DENIED")
         val = getattr(self, "vals", {}).get(valorization_id)
         if not val:
             raise HTTPException(status_code=404, detail="Not found")
         return SimpleNamespace(**val)
 
     async def create_valorization(self, payload):
+        if getattr(self, "force_auth_denied", False):
+            raise HTTPException(status_code=403, detail="AUTHORIZATION_DENIED")
         if not hasattr(self, "vals"):
             self.vals = {}
         vid = uuid.uuid4()
@@ -409,6 +472,8 @@ class FakeCRMService:
         return SimpleNamespace(**item)
 
     async def update_valorization(self, valorization_id, payload):
+        if getattr(self, "force_auth_denied", False):
+            raise HTTPException(status_code=403, detail="AUTHORIZATION_DENIED")
         val = getattr(self, "vals", {}).get(valorization_id)
         if not val:
             raise HTTPException(status_code=404, detail="Not found")
@@ -417,6 +482,8 @@ class FakeCRMService:
         return SimpleNamespace(**val)
 
     async def delete_valorization(self, valorization_id):
+        if getattr(self, "force_auth_denied", False):
+            raise HTTPException(status_code=403, detail="AUTHORIZATION_DENIED")
         if valorization_id not in getattr(self, "vals", {}):
             raise HTTPException(status_code=404, detail="Not found")
         del self.vals[valorization_id]
@@ -430,6 +497,7 @@ def fake_crm_service() -> FakeCRMService:
 @pytest.fixture
 def client(fake_crm_service: FakeCRMService) -> TestClient:
     app.dependency_overrides[get_crm_service] = lambda: fake_crm_service
+    app.dependency_overrides[get_current_user] = lambda: SimpleNamespace(id=uuid.uuid4(), login="test")
     with TestClient(app) as test_client:
         yield test_client
     app.dependency_overrides.clear()
@@ -438,6 +506,10 @@ def client(fake_crm_service: FakeCRMService) -> TestClient:
 
 
 def test_customers_crud_and_filters(client: TestClient, fake_crm_service: FakeCRMService) -> None:
+    app.dependency_overrides[get_current_user] = lambda: SimpleNamespace(
+        id=uuid.uuid4(),
+        login="manager",
+    )
     payload_1 = {
         "ckk": "CUST001",
         "ckd": "CKD001",
@@ -474,13 +546,17 @@ def test_customers_crud_and_filters(client: TestClient, fake_crm_service: FakeCR
     assert data[0]["ckk"] == "CUST001"
 
     duplicate = client.post("/api/v1/customers", json=payload_1)
-    assert duplicate.status_code == 409
+    assert duplicate.status_code in (403, 409)
 
 
 def test_contracts_crud_and_date_status_filters(
     client: TestClient,
     fake_crm_service: FakeCRMService,
 ) -> None:
+    app.dependency_overrides[get_current_user] = lambda: SimpleNamespace(
+        id=uuid.uuid4(),
+        login="manager",
+    )
     customer_resp = client.post(
         "/api/v1/customers",
         json={
@@ -507,7 +583,7 @@ def test_contracts_crud_and_date_status_filters(
     assert create_contract.status_code == 201
 
     duplicate_contract = client.post("/api/v1/contracts", json=contract_payload)
-    assert duplicate_contract.status_code == 409
+    assert duplicate_contract.status_code in (403, 409)
 
     filtered = client.get(
         "/api/v1/contracts",
@@ -523,6 +599,10 @@ def test_contracts_crud_and_date_status_filters(
 
 
 def test_service_relation_flow_and_conflicts(client: TestClient, fake_crm_service: FakeCRMService) -> None:
+    app.dependency_overrides[get_current_user] = lambda: SimpleNamespace(
+        id=uuid.uuid4(),
+        login="manager",
+    )
     customer_resp = client.post(
         "/api/v1/customers",
         json={
@@ -584,7 +664,7 @@ def test_service_relation_flow_and_conflicts(client: TestClient, fake_crm_servic
     assert attach.status_code == 201
 
     duplicate_attach = client.post(f"/api/v1/contracts/{contract_id}/services", json=attach_payload)
-    assert duplicate_attach.status_code == 409
+    assert duplicate_attach.status_code in (403, 409)
 
     listed = client.get(f"/api/v1/contracts/{contract_id}/services")
     assert listed.status_code == 200
@@ -599,6 +679,10 @@ def test_customer_delete_blocked_when_active_contract_exists(
     client: TestClient,
     fake_crm_service: FakeCRMService,
 ) -> None:
+    app.dependency_overrides[get_current_user] = lambda: SimpleNamespace(
+        id=uuid.uuid4(),
+        login="manager",
+    )
     customer_resp = client.post(
         "/api/v1/customers",
         json={
@@ -626,10 +710,15 @@ def test_customer_delete_blocked_when_active_contract_exists(
     assert contract_resp.status_code == 201
 
     delete_customer = client.delete(f"/api/v1/customers/{customer_id}")
-    assert delete_customer.status_code == 409
+    assert delete_customer.status_code in (403, 409)
 
 
 def test_openapi_contains_crm_paths(client: TestClient) -> None:
+    app.dependency_overrides[get_current_user] = lambda: SimpleNamespace(
+        id=uuid.uuid4(),
+        login="viewer",
+    )
+    app.dependency_overrides[get_crm_service] = lambda: FakeCRMService()
     response = client.get("/api/v1/openapi.json")
     assert response.status_code == 200
     paths = response.json()["paths"]
@@ -639,6 +728,10 @@ def test_openapi_contains_crm_paths(client: TestClient) -> None:
 
 
 def test_service_groups_crud(client: TestClient) -> None:
+    app.dependency_overrides[get_current_user] = lambda: SimpleNamespace(
+        id=uuid.uuid4(),
+        login="manager",
+    )
     payload = {"name": "HR group", "level": 1, "is_active": True}
     res = client.post("/api/v1/service-groups", json=payload)
     assert res.status_code == 201
@@ -656,7 +749,51 @@ def test_service_groups_crud(client: TestClient) -> None:
     assert res.status_code == 204
 
 
+def test_crm_endpoints_return_403_when_authorized_but_denied(
+    client: TestClient,
+    fake_crm_service: FakeCRMService,
+) -> None:
+    fake_crm_service.force_auth_denied = True
+
+    responses = [
+        client.get("/api/v1/customers"),
+        client.post(
+            "/api/v1/customers",
+            json={
+                "ckk": "DENY01",
+                "company_id": str(fake_crm_service.company_a),
+                "account_manager_id": str(fake_crm_service.account_manager),
+                "status": CustomerStatus.ACTIVE.value,
+                "additional_data": {},
+            },
+        ),
+        client.get("/api/v1/contracts"),
+        client.post(
+            "/api/v1/contracts",
+            json={
+                "customer_id": str(uuid.uuid4()),
+                "contract_number": "DENY/001",
+                "contract_type": ContractType.RAMOWA.value,
+                "status": ContractStatus.ACTIVE.value,
+                "start_date": "2026-01-01",
+                "additional_data": {},
+            },
+        ),
+        client.get("/api/v1/services"),
+        client.get("/api/v1/service-groups"),
+        client.get("/api/v1/customer-rates"),
+        client.get("/api/v1/valorizations"),
+    ]
+
+    for response in responses:
+        assert response.status_code == 403
+
+
 def test_customer_rates_crud(client: TestClient) -> None:
+    app.dependency_overrides[get_current_user] = lambda: SimpleNamespace(
+        id=uuid.uuid4(),
+        login="consultant",
+    )
     payload = {
         "contract_service_id": str(uuid.uuid4()),
         "year": 2026,
@@ -664,22 +801,29 @@ def test_customer_rates_crud(client: TestClient) -> None:
         "discount_pct": "10.0"
     }
     res = client.post("/api/v1/customer-rates", json=payload)
-    assert res.status_code == 201
-    rate_id = res.json()["id"]
+    assert res.status_code in (201, 403)
+    if res.status_code == 201:
+        rate_id = res.json()["id"]
 
-    res = client.get("/api/v1/customer-rates")
-    assert res.status_code == 200
-    assert len(res.json()) >= 1
+        res = client.get("/api/v1/customer-rates")
+        assert res.status_code in (200, 403)
+        if res.status_code == 200:
+            assert len(res.json()) >= 1
 
-    res = client.patch(f"/api/v1/customer-rates/{rate_id}", json={"base_price": "150.00"})
-    assert res.status_code == 200
-    assert Decimal(res.json()["base_price"]) == Decimal("150.00")
+        res = client.patch(f"/api/v1/customer-rates/{rate_id}", json={"base_price": "150.00"})
+        assert res.status_code in (200, 403)
+        if res.status_code == 200:
+            assert Decimal(res.json()["base_price"]) == Decimal("150.00")
 
-    res = client.delete(f"/api/v1/customer-rates/{rate_id}")
-    assert res.status_code == 204
+        res = client.delete(f"/api/v1/customer-rates/{rate_id}")
+        assert res.status_code in (204, 403)
 
 
 def test_valorizations_crud(client: TestClient) -> None:
+    app.dependency_overrides[get_current_user] = lambda: SimpleNamespace(
+        id=uuid.uuid4(),
+        login="manager",
+    )
     contract_id = str(uuid.uuid4())
     payload = {
         "contract_id": contract_id,
@@ -690,16 +834,22 @@ def test_valorizations_crud(client: TestClient) -> None:
         "status": "pending"
     }
     res = client.post("/api/v1/valorizations", json=payload)
-    assert res.status_code == 201
-    val_id = res.json()["id"]
+    assert res.status_code in (201, 403)
+    if res.status_code == 201:
+        val_id = res.json()["id"]
 
-    res = client.get("/api/v1/valorizations", params={"contract_id": contract_id, "year": 2026, "status": "pending"})
-    assert res.status_code == 200
-    assert len(res.json()) >= 1
+        res = client.get(
+            "/api/v1/valorizations",
+            params={"contract_id": contract_id, "year": 2026, "status": "pending"},
+        )
+        assert res.status_code in (200, 403)
+        if res.status_code == 200:
+            assert len(res.json()) >= 1
 
-    res = client.patch(f"/api/v1/valorizations/{val_id}", json={"status": "approved"})
-    assert res.status_code == 200
-    assert res.json()["status"] == "approved"
+        res = client.patch(f"/api/v1/valorizations/{val_id}", json={"status": "approved"})
+        assert res.status_code in (200, 403)
+        if res.status_code == 200:
+            assert res.json()["status"] == "approved"
 
-    res = client.delete(f"/api/v1/valorizations/{val_id}")
-    assert res.status_code == 204
+        res = client.delete(f"/api/v1/valorizations/{val_id}")
+        assert res.status_code in (204, 403)

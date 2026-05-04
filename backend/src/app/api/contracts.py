@@ -7,7 +7,9 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Query, Response, status
 
 from app.api.deps import get_crm_service
+from app.core.auth import get_current_user
 from app.models.enums import ContractStatus
+from app.models.user import User
 from app.schemas.contract_services import ContractServiceCreate, ContractServiceRead
 from app.schemas.contracts import (
     ContractCreate,
@@ -22,6 +24,7 @@ router = APIRouter(tags=["crm-contracts"])
 @router.get("/contracts", response_model=list[ContractRead], summary="List contracts")
 async def list_contracts(
     service: Annotated[CRMService, Depends(get_crm_service)],
+    _: Annotated[User, Depends(get_current_user)],
     company_id: uuid.UUID | None = Query(default=None),
     statuses: list[ContractStatus] | None = Query(default=None),
     start_from: date | None = Query(default=None),
@@ -48,6 +51,7 @@ async def list_contracts(
 async def create_contract(
     payload: ContractCreate,
     service: Annotated[CRMService, Depends(get_crm_service)],
+    _: Annotated[User, Depends(get_current_user)],
 ) -> ContractRead:
     return await service.create_contract(payload)
 
@@ -56,6 +60,7 @@ async def create_contract(
 async def get_contract(
     contract_id: uuid.UUID,
     service: Annotated[CRMService, Depends(get_crm_service)],
+    _: Annotated[User, Depends(get_current_user)],
 ) -> ContractRead:
     return await service.get_contract(contract_id)
 
@@ -65,6 +70,7 @@ async def update_contract(
     contract_id: uuid.UUID,
     payload: ContractUpdate,
     service: Annotated[CRMService, Depends(get_crm_service)],
+    _: Annotated[User, Depends(get_current_user)],
 ) -> ContractRead:
     return await service.update_contract(contract_id, payload)
 
@@ -77,6 +83,7 @@ async def update_contract(
 async def delete_contract(
     contract_id: uuid.UUID,
     service: Annotated[CRMService, Depends(get_crm_service)],
+    _: Annotated[User, Depends(get_current_user)],
 ) -> Response:
     await service.delete_contract(contract_id)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
@@ -90,6 +97,7 @@ async def delete_contract(
 async def list_contract_services(
     contract_id: uuid.UUID,
     service: Annotated[CRMService, Depends(get_crm_service)],
+    _: Annotated[User, Depends(get_current_user)],
 ) -> list[ContractServiceRead]:
     return await service.list_contract_services(contract_id)
 
@@ -104,6 +112,7 @@ async def attach_service_to_contract(
     contract_id: uuid.UUID,
     payload: ContractServiceCreate,
     service: Annotated[CRMService, Depends(get_crm_service)],
+    _: Annotated[User, Depends(get_current_user)],
 ) -> ContractServiceRead:
     return await service.attach_service_to_contract(contract_id, payload)
 
@@ -117,6 +126,7 @@ async def detach_service_from_contract(
     contract_id: uuid.UUID,
     relation_id: uuid.UUID,
     service: Annotated[CRMService, Depends(get_crm_service)],
+    _: Annotated[User, Depends(get_current_user)],
 ) -> Response:
     await service.detach_service_from_contract(contract_id, relation_id)
     return Response(status_code=status.HTTP_204_NO_CONTENT)

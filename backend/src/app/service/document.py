@@ -87,7 +87,7 @@ class DocumentService:
         )
         await self._authorize_document_action(
             user=current_user,
-            action="write",
+            action="upload",
             company_id=resolved_company_id,
             contract_id=contract.id if contract else None,
         )
