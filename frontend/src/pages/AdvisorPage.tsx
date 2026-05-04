@@ -64,12 +64,16 @@ const clientOptions = ['Empik Sp. z o.o.', 'Rossmann Polska', 'Biedronka', 'Lidl
 
 const card: CSSProperties = cardStyle
 
+import { Modal } from '@/components/ui/modal'
+
 /* ─── Component ──────────────────────────────────────────────── */
 export function AdvisorPage() {
   const [messages, setMessages] = useState<ChatMessage[]>(initialMessages)
   const [input, setInput] = useState('')
   const [isTyping, setIsTyping] = useState(false)
   const [activeClient, setActiveClient] = useState('Empik Sp. z o.o.')
+  const [isAiMode, setIsAiMode] = useState(false)
+  const [isInfoModalOpen, setIsInfoModalOpen] = useState(false)
   const nextIdRef = useRef(6)
   const timeoutIdsRef = useRef<number[]>([])
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -92,15 +96,20 @@ export function AdvisorPage() {
     setMessages((prev) => [...prev, { id: nextIdRef.current++, role: 'user', content: text, ts: now }])
     setInput('')
     setIsTyping(true)
+
+    // AI Mode response simulation
+    const delay = isAiMode ? 3500 : 1800
     const timeoutId = window.setTimeout(() => {
       setMessages((prev) => [...prev, {
         id: nextIdRef.current++, role: 'assistant', ts: new Date().toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' }),
-        content: `Analizuję dane dla klienta **${activeClient}**...\n\nNa podstawie dokumentów w systemie: to pytanie dotyczy kluczowych informacji kontraktowych. W środowisku produkcyjnym ta odpowiedź byłaby oparta o rzeczywiste dokumenty klienta z indeksu RAG.`,
-        sources: [{ title: 'Baza CRM HRK', page: 'wyszukiwanie semantyczne' }],
+        content: isAiMode 
+          ? `Dokładna analiza prawno-biznesowa dla klienta **${activeClient}** zakończona.\n\nZastosowałem zaawansowane wnioskowanie na podstawie wszystkich umów i aneksów. Moja interpretacja: zapytanie dotyczy ryzyka operacyjnego. Wymaga to uwzględnienia paragrafów o karach umownych oraz terminach wypowiedzenia zawartych w umowie ramowej i aneksie z 2025 roku.`
+          : `Analizuję dane dla klienta **${activeClient}**...\n\nNa podstawie dokumentów w systemie: to pytanie dotyczy kluczowych informacji kontraktowych. W środowisku produkcyjnym ta odpowiedź byłaby oparta o rzeczywiste dokumenty klienta z indeksu RAG.`,
+        sources: [{ title: 'Baza CRM HRK', page: isAiMode ? 'analiza semantyczna + LLM reasoning' : 'wyszukiwanie semantyczne' }],
       }])
       setIsTyping(false)
       timeoutIdsRef.current = timeoutIdsRef.current.filter((id) => id !== timeoutId)
-    }, 1800)
+    }, delay)
     timeoutIdsRef.current.push(timeoutId)
   }
 
@@ -120,10 +129,52 @@ export function AdvisorPage() {
             <select id={clientContextSelectId} value={activeClient} onChange={(e) => setActiveClient(e.target.value)} style={{ border: '1px solid #e3e0db', borderRadius: 6, padding: '6px 12px', fontSize: 13, fontWeight: 600, color: '#1a1714', background: 'white', cursor: 'pointer', outline: 'none' }}>
               {clientOptions.map((c) => <option key={c}>{c}</option>)}
             </select>
-            <div style={{ background: '#e85c04', color: 'white', fontSize: 10, fontWeight: 800, padding: '3px 10px', borderRadius: 20, letterSpacing: '0.06em' }}>AI AKTYWNY</div>
           </div>
         </div>
       </div>
+
+      <Modal isOpen={isInfoModalOpen} onClose={() => setIsInfoModalOpen(false)} title="Tryby pracy Asystenta AI">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+          <div style={{ display: 'flex', gap: 14 }}>
+            <div style={{ width: 40, height: 40, borderRadius: 10, background: '#f5f2ef', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: 20 }}>🔍</div>
+            <div>
+              <div style={{ fontSize: 14, fontWeight: 700, color: '#1a1714', marginBottom: 4 }}>Tryb Wyszukiwania (Standard)</div>
+              <div style={{ fontSize: 12.5, color: '#6b6b6b', lineHeight: 1.5 }}>
+                Szybkie przeszukiwanie bazy wektorowej (RAG). Idealne do prostych pytań o fakty, np.:
+                <ul style={{ margin: '8px 0', paddingLeft: 20 }}>
+                  <li>"Do kiedy trwa umowa?"</li>
+                  <li>"Jakie są stawki w aneksie nr 2?"</li>
+                  <li>"Kto jest opiekunem firmy X?"</li>
+                </ul>
+                Odpowiedź otrzymasz w ciągu 1-2 sekund.
+              </div>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', gap: 14 }}>
+            <div style={{ width: 40, height: 40, borderRadius: 10, background: '#fff5f0', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: 20 }}>🧠</div>
+            <div>
+              <div style={{ fontSize: 14, fontWeight: 700, color: '#e85c04', marginBottom: 4 }}>Tryb Rozumowania AI (Głębokie wnioskowanie)</div>
+              <div style={{ fontSize: 12.5, color: '#6b6b6b', lineHeight: 1.5 }}>
+                Model nie tylko szuka fragmentów, ale <strong>interpretuje i syntetyzuje</strong> dane z wielu źródeł. Wykorzystaj go do trudnych zadań:
+                <ul style={{ margin: '8px 0', paddingLeft: 20 }}>
+                  <li>"Jakie ryzyka grożą nam przy zerwaniu umowy?"</li>
+                  <li>"Porównaj warunki SLA u 3 największych klientów."</li>
+                  <li>"Przygotuj argumentację do negocjacji stawek."</li>
+                </ul>
+                Proces trwa dłużej (5-10 sekund), ale daje znacznie głębszą analizę.
+              </div>
+            </div>
+          </div>
+
+          <button 
+            onClick={() => setIsInfoModalOpen(false)}
+            style={{ padding: '12px', borderRadius: 8, border: 'none', background: '#e85c04', color: 'white', fontSize: 13, fontWeight: 700, cursor: 'pointer', marginTop: 10 }}
+          >
+            Rozumiem
+          </button>
+        </div>
+      </Modal>
 
       {/* Main */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 280px', gap: 16, flex: 1, minHeight: 0 }}>
@@ -192,16 +243,129 @@ export function AdvisorPage() {
           </div>
 
           {/* Input */}
-          <div style={{ padding: '12px 16px', borderTop: '1px solid #f2f0ed', display: 'flex', gap: 8 }}>
-            <input
-              name="assistant-question"
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && sendMessage(input)}
-              placeholder="Zadaj pytanie o klienta, umowę lub waloryzację…"
-              style={{ flex: 1, border: '1px solid #e3e0db', borderRadius: 8, padding: '9px 14px', fontSize: 13, outline: 'none', color: '#1a1714' }}
-            />
-            <button onClick={() => sendMessage(input)} style={{ background: '#e85c04', border: 'none', borderRadius: 8, padding: '9px 16px', cursor: 'pointer', color: 'white', fontSize: 13, fontWeight: 600 }}>Wyślij</button>
+          <div style={{ padding: '16px 20px', borderTop: '1px solid #f2f0ed', display: 'flex', gap: 10, alignItems: 'center', background: 'white' }}>
+            <div style={{ flex: 1, position: 'relative', display: 'flex', alignItems: 'center' }}>
+              <input
+                name="assistant-question"
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && sendMessage(input)}
+                placeholder="Zadaj pytanie o klienta, umowę lub waloryzację…"
+                style={{ 
+                  flex: 1, 
+                  border: '1px solid #e3e0db', 
+                  borderRadius: 12, 
+                  padding: '12px 16px', 
+                  paddingRight: 40,
+                  fontSize: 14, 
+                  outline: 'none', 
+                  color: '#1a1714',
+                  transition: 'all 0.2s',
+                  background: '#fafaf9',
+                  boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.02)'
+                }}
+                onFocus={(e) => {
+                  e.currentTarget.style.borderColor = '#e85c04'
+                  e.currentTarget.style.background = 'white'
+                  e.currentTarget.style.boxShadow = '0 0 0 3px rgba(232, 92, 4, 0.1)'
+                }}
+                onBlur={(e) => {
+                  e.currentTarget.style.borderColor = '#e3e0db'
+                  e.currentTarget.style.background = '#fafaf9'
+                  e.currentTarget.style.boxShadow = 'inset 0 1px 2px rgba(0,0,0,0.02)'
+                }}
+              />
+            </div>
+            
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#f5f2ef', padding: '4px', borderRadius: 14, border: '1px solid #e3e0db' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                <button 
+                  onClick={() => setIsAiMode(false)}
+                  style={{ 
+                    padding: '8px 14px', 
+                    borderRadius: 10, 
+                    border: 'none', 
+                    background: !isAiMode ? 'white' : 'transparent', 
+                    color: !isAiMode ? '#1a1714' : '#9e9389', 
+                    fontSize: 10, 
+                    fontWeight: 800, 
+                    cursor: 'pointer', 
+                    transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)', 
+                    boxShadow: !isAiMode ? '0 2px 8px rgba(0,0,0,0.08)' : 'none',
+                    letterSpacing: '0.02em'
+                  }}
+                >
+                  WYSZUKIWANIE
+                </button>
+                <button 
+                  onClick={() => setIsAiMode(true)}
+                  style={{ 
+                    padding: '8px 14px', 
+                    borderRadius: 10, 
+                    border: 'none', 
+                    background: isAiMode ? '#e85c04' : 'transparent', 
+                    color: isAiMode ? 'white' : '#9e9389', 
+                    fontSize: 10, 
+                    fontWeight: 800, 
+                    cursor: 'pointer', 
+                    transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)', 
+                    boxShadow: isAiMode ? '0 4px 12px rgba(232, 92, 4, 0.25)' : 'none',
+                    letterSpacing: '0.02em'
+                  }}
+                >
+                  ROZUMOWANIE AI
+                </button>
+              </div>
+              <div style={{ width: 1, height: 16, background: '#e3e0db', margin: '0 2px' }} />
+              <button 
+                onClick={() => setIsInfoModalOpen(true)}
+                style={{ background: 'white', border: '1px solid #e3e0db', color: '#9e9389', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', width: 28, height: 28, borderRadius: 8, transition: 'all 0.2s' }}
+                onMouseEnter={e => {
+                  e.currentTarget.style.color = '#e85c04'
+                  e.currentTarget.style.borderColor = '#fdd5b8'
+                }}
+                onMouseLeave={e => {
+                  e.currentTarget.style.color = '#9e9389'
+                  e.currentTarget.style.borderColor = '#e3e0db'
+                }}
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/>
+                </svg>
+              </button>
+            </div>
+
+            <button 
+              onClick={() => sendMessage(input)} 
+              style={{ 
+                background: 'linear-gradient(135deg, #e85c04, #c94f02)', 
+                border: 'none', 
+                borderRadius: 12, 
+                padding: '12px 20px', 
+                cursor: 'pointer', 
+                color: 'white', 
+                fontSize: 14, 
+                fontWeight: 700,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+                transition: 'all 0.2s',
+                boxShadow: '0 4px 12px rgba(232, 92, 4, 0.2)'
+              }}
+              onMouseEnter={e => {
+                e.currentTarget.style.transform = 'translateY(-1px)'
+                e.currentTarget.style.boxShadow = '0 6px 16px rgba(232, 92, 4, 0.3)'
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.transform = 'translateY(0)'
+                e.currentTarget.style.boxShadow = '0 4px 12px rgba(232, 92, 4, 0.2)'
+              }}
+            >
+              Wyślij
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
+              </svg>
+            </button>
           </div>
         </div>
 
@@ -228,9 +392,9 @@ export function AdvisorPage() {
             </div>
             {[
               { label: 'Klient',    value: activeClient        },
-              { label: 'Dokumenty', value: '7 w indeksie'      },
-              { label: 'Notatki',   value: '12 rekordów'       },
-              { label: 'Model',     value: 'phi-3.5 (Ollama)'  },
+              { label: 'Dokumenty', value: '14 w indeksie'     },
+              { label: 'Vektory',   value: '2 841 fragmentów'  },
+              { label: 'Model',     value: 'Gemma 4 (Ollama)'  },
             ].map((item) => (
               <div key={item.label} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginBottom: 5 }}>
                 <span style={{ color: '#9e9389' }}>{item.label}</span>

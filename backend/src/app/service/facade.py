@@ -3,6 +3,7 @@
 import logging
 import uuid
 from datetime import datetime
+from typing import Any
 
 from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -41,7 +42,7 @@ from app.schemas.timeline import TimelineEventRead, TimelineEventType
 from app.schemas.valorizations import ValorizationCreate, ValorizationUpdate
 from app.service.contact_persons import ContactPersonService
 from app.service.contract_services import ContractServiceRelationService
-from app.service.contracts import ContractService
+from app.service.contracts import ContractCrudService
 from app.service.customer_rates import CustomerRateCrudService
 from app.service.customers import CustomerService
 from app.service.notes import NoteService
@@ -72,7 +73,7 @@ class CRMService:
         contact_person_repo = ContactPersonRepository(db)
 
         self.customer_service = CustomerService(customer_repo, lookup_repo)
-        self.contract_service = ContractService(contract_repo, lookup_repo, self.customer_service)
+        self.contract_service = ContractCrudService(contract_repo, lookup_repo, self.customer_service)
         self.service_service = ServiceCrudService(service_repo, lookup_repo)
         self.contract_relation_service = ContractServiceRelationService(
             relation_repo,
@@ -88,8 +89,11 @@ class CRMService:
         self.contact_person_service = ContactPersonService(contact_person_repo, lookup_repo)
         self.timeline_service = TimelineService(TimelineRepository(db))
 
-    async def list_customers(self, **kwargs) -> list[Customer]:
+    async def list_customers(self, **kwargs: Any) -> list[Customer]:
         return await self.customer_service.list_customers(**kwargs)
+
+    async def list_managed_customers(self, manager_id: uuid.UUID) -> list[Customer]:
+        return await self.customer_service.list_by_manager(manager_id)
 
     async def get_customer(self, customer_id: uuid.UUID) -> Customer:
         return await self.customer_service.get_customer(customer_id)
@@ -120,7 +124,7 @@ class CRMService:
             await self.db.rollback()
             raise
 
-    async def list_contracts(self, **kwargs) -> list[Contract]:
+    async def list_contracts(self, **kwargs: Any) -> list[Contract]:
         return await self.contract_service.list_contracts(**kwargs)
 
     async def get_contract(self, contract_id: uuid.UUID) -> Contract:
@@ -152,7 +156,7 @@ class CRMService:
             await self.db.rollback()
             raise
 
-    async def list_services(self, **kwargs) -> list[Service]:
+    async def list_services(self, **kwargs: Any) -> list[Service]:
         return await self.service_service.list_services(**kwargs)
 
     async def list_activity_logs(
@@ -178,6 +182,7 @@ class CRMService:
             await self.customer_service.get_customer(customer_id)
             return await self.activity_repo.get_by_customer(customer_id, limit, offset)
 
+        assert contract_id is not None
         await self.contract_service.get_contract(contract_id)
         return await self.activity_repo.get_by_contract(contract_id, limit, offset)
 

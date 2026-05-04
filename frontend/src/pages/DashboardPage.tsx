@@ -15,8 +15,11 @@ type AlertType = 'urgent' | 'warning' | 'info' | 'neutral'
 const alerts: Array<{ type: AlertType; title: string; detail: string }> = [
   { type: 'urgent',  title: 'Empik – umowa kończy się za 28 dni',      detail: 'Umowa nr 000123/43 · data wypowiedzenia: 30 dni' },
   { type: 'warning', title: 'Waloryzacja po terminie – MediaMarkt',     detail: 'Planowana na 01.03.2026 · brak reakcji' },
+  { type: 'urgent',  title: 'TechNova – błąd w rozliczeniu PPK',        detail: 'Niezgodność składek dla 12 pracowników · wymagana korekta' },
   { type: 'info',    title: 'Rossmann – brak kontaktu od 87 dni',       detail: 'Ostatni kontakt: 04.01.2026' },
   { type: 'neutral', title: 'Biedronka – waloryzacja za 14 dni',        detail: 'GUS inflacja: 4,5% · sugestia według gotowe' },
+  { type: 'warning', title: 'Lidl – brak podpisanego aneksu nr 4',      detail: 'Wysłano 10.02.2026 · status: weryfikacja prawna' },
+  { type: 'info',    title: 'Nowe zapytanie – Carrefour',               detail: 'Klient pyta o rozszerzenie outsourcingu IT' },
 ]
 
 const smartPulse = [
@@ -24,6 +27,8 @@ const smartPulse = [
   { name: 'Rossmann',   badge: 'Wymaga uwagi',  type: 'warn' as const },
   { name: 'Biedronka',  badge: 'Dobra relacja', type: 'good' as const },
   { name: 'Lidl Polska',badge: 'Dobra relacja', type: 'good' as const },
+  { name: 'MediaMarkt', badge: 'Negocjacje',    type: 'warn' as const },
+  { name: 'TechNova',   badge: 'Wzrost skali',  type: 'good' as const },
 ]
 
 const activity = [
@@ -31,6 +36,9 @@ const activity = [
   { client: 'Biedronka',        action: 'Podpisano aneks nr 6 – aktualizacja stawek PPK',          type: 'Dokument'    as const, date: '15.03.2026', person: 'A. Kowalski' },
   { client: 'Rossmann',         action: 'Notatka: brak odpowiedzi na wysłaną nową usługę',         type: 'Notatka'     as const, date: '20.03.2026', person: 'M. Janowska' },
   { client: 'Lidl Polska',      action: 'Weryfikacja danych pracownika – Jan Kowalczyk',           type: 'Weryfikacja' as const, date: '19.03.2026', person: 'System AI'   },
+  { client: 'MediaMarkt',       action: 'Wysłano ofertę na obsługę kadr i płac (nowy moduł)',     type: 'Dokument'    as const, date: '21.03.2026', person: 'T. Nowak'     },
+  { client: 'TechNova',         action: 'Telefoniczne potwierdzenie warunków SLA na kwiecień',     type: 'Spotkanie'   as const, date: '21.03.2026', person: 'M. Nowak'     },
+  { client: 'Carrefour',        action: 'Założono kartę klienta – nowe zapytanie ofertowe',        type: 'Notatka'     as const, date: '22.03.2026', person: 'K. Lis'       },
 ]
 
 /* ─── Style maps ─────────────────────────────────────────────── */
@@ -50,8 +58,12 @@ const BADGE_STYLE: Record<typeof activity[number]['type'], CSSProperties> = {
 
 const card: CSSProperties = cardStyle
 
+import { useState } from 'react'
+import { Modal } from '@/components/ui/modal'
+
 /* ─── Component ──────────────────────────────────────────────── */
 export function DashboardPage() {
+  const [isAnnexModalOpen, setIsAnnexModalOpen] = useState(false)
   const today = new Intl.DateTimeFormat('pl-PL', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }).format(new Date())
   const user = useAppSelector((s) => s.auth.user)
   const firstName = user?.displayName.split(' ')[0] ?? 'użytkowniku'
@@ -69,12 +81,73 @@ export function DashboardPage() {
             </svg>
             Odśwież
           </button>
-          <button style={{ background: '#e85c04', border: 'none', borderRadius: 6, padding: '6px 16px', cursor: 'pointer', color: 'white', fontSize: 13, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>
+          <button 
+            onClick={() => setIsAnnexModalOpen(true)}
+            style={{ background: '#e85c04', border: 'none', borderRadius: 6, padding: '6px 16px', cursor: 'pointer', color: 'white', fontSize: 13, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}
+          >
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-            Nowy aneks
+            Generuj aneks
           </button>
         </div>
       </div>
+
+      <Modal isOpen={isAnnexModalOpen} onClose={() => setIsAnnexModalOpen(false)} title="Generuj aneks do umowy">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <label style={{ fontSize: 12, fontWeight: 700, color: '#4a4340' }}>Wybierz klienta</label>
+            <select style={{ padding: '8px 12px', borderRadius: 6, border: '1px solid #e3e0db', fontSize: 13, outline: 'none' }}>
+              <option>Empik Sp. z o.o. (HRK/EMP/2024/07)</option>
+              <option>Rossmann Polska (HRK/ROS/2025/01)</option>
+              <option>Biedronka (HRK/BIE/2024/03)</option>
+              <option>Lidl Polska (HRK/LID/2024/08)</option>
+            </select>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <label style={{ fontSize: 12, fontWeight: 700, color: '#4a4340' }}>Powód aneksu</label>
+            <select style={{ padding: '8px 12px', borderRadius: 6, border: '1px solid #e3e0db', fontSize: 13, outline: 'none' }}>
+              <option>Waloryzacja (inflacja/GUS)</option>
+              <option>Zmiana stawek za usługę</option>
+              <option>Przedłużenie okresu obowiązywania</option>
+              <option>Zmiana warunków SLA</option>
+              <option>Inny...</option>
+            </select>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <label style={{ fontSize: 12, fontWeight: 700, color: '#4a4340' }}>Data obowiązywania</label>
+              <input type="date" defaultValue="2026-04-01" style={{ padding: '8px 12px', borderRadius: 6, border: '1px solid #e3e0db', fontSize: 13, outline: 'none' }} />
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <label style={{ fontSize: 12, fontWeight: 700, color: '#4a4340' }}>Nowa stawka (opcjonalnie)</label>
+              <input type="text" placeholder="np. 4500 PLN" style={{ padding: '8px 12px', borderRadius: 6, border: '1px solid #e3e0db', fontSize: 13, outline: 'none' }} />
+            </div>
+          </div>
+
+          <div style={{ background: '#f5f2ef', padding: '12px', borderRadius: 8, border: '1px solid #e3e0db' }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: '#e85c04', marginBottom: 4 }}>💡 Podpowiedź AI</div>
+            <div style={{ fontSize: 11, color: '#6b6b6b', lineHeight: 1.4 }}>
+              Dla klienta Empik sugerowana waloryzacja wynosi <strong>4.8%</strong> (zgodnie z komunikatem GUS ze stycznia).
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', gap: 10, marginTop: 10 }}>
+            <button 
+              onClick={() => setIsAnnexModalOpen(false)}
+              style={{ flex: 1, padding: '10px', borderRadius: 6, border: '1px solid #e3e0db', background: 'white', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
+            >
+              Anuluj
+            </button>
+            <button 
+              onClick={() => setIsAnnexModalOpen(false)}
+              style={{ flex: 1, padding: '10px', borderRadius: 6, border: 'none', background: '#e85c04', color: 'white', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
+            >
+              Generuj dokument
+            </button>
+          </div>
+        </div>
+      </Modal>
 
       {/* Greeting */}
       <div style={{ marginBottom: 22 }}>

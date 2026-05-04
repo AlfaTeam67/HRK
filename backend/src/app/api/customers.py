@@ -2,7 +2,7 @@
 
 import uuid
 from datetime import date, datetime
-from typing import Annotated
+from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, Query, Response, status
 
@@ -20,10 +20,13 @@ async def list_customers(
     service: Annotated[CRMService, Depends(get_crm_service)],
     q: str | None = Query(default=None),
     company_id: uuid.UUID | None = Query(default=None),
+    manager_id: uuid.UUID | None = Query(default=None),
     statuses: list[CustomerStatus] | None = Query(default=None),
     created_from: date | None = Query(default=None),
     created_to: date | None = Query(default=None),
-) -> list[CustomerRead]:
+) -> Any:
+    if manager_id:
+        return await service.list_managed_customers(manager_id)
     return await service.list_customers(
         q=q,
         company_id=company_id,
@@ -42,7 +45,7 @@ async def list_customers(
 async def create_customer(
     payload: CustomerCreate,
     service: Annotated[CRMService, Depends(get_crm_service)],
-) -> CustomerRead:
+) -> Any:
     return await service.create_customer(payload)
 
 
@@ -50,7 +53,7 @@ async def create_customer(
 async def get_customer(
     customer_id: uuid.UUID,
     service: Annotated[CRMService, Depends(get_crm_service)],
-) -> CustomerRead:
+) -> Any:
     return await service.get_customer(customer_id)
 
 
@@ -59,7 +62,7 @@ async def update_customer(
     customer_id: uuid.UUID,
     payload: CustomerUpdate,
     service: Annotated[CRMService, Depends(get_crm_service)],
-) -> CustomerRead:
+) -> Any:
     return await service.update_customer(customer_id, payload)
 
 
@@ -88,7 +91,7 @@ async def get_customer_timeline(
     to_date: datetime | None = Query(default=None),
     event_types: list[TimelineEventType] | None = Query(default=None),
     limit: int = Query(default=100, ge=1, le=500),
-) -> list[TimelineEventRead]:
+) -> Any:
     await service.get_customer(customer_id)
     return await service.get_customer_timeline(
         customer_id,

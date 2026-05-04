@@ -6,9 +6,9 @@ import io
 import logging
 from uuid import UUID
 
-import pdfplumber  # type: ignore[import-untyped]
-import pytesseract
-from pdf2image import convert_from_bytes  # type: ignore[import-untyped]
+import pdfplumber
+import pytesseract  # type: ignore[import-untyped]
+from pdf2image import convert_from_bytes
 from PIL import Image
 
 from app.core.database import AsyncSessionLocal

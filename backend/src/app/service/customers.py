@@ -2,6 +2,7 @@
 
 import uuid
 from datetime import UTC, datetime
+from typing import Any
 
 from fastapi import HTTPException, status
 from sqlalchemy.exc import IntegrityError
@@ -19,8 +20,11 @@ class CustomerService:
         self.customers = customer_repo
         self.lookup = lookup_repo
 
-    async def list_customers(self, **kwargs) -> list[Customer]:
-        return await self.customers.list(**kwargs)
+    async def list_customers(self, **kwargs: Any) -> list[Customer]:
+        return await self.customers.list_all(**kwargs)
+
+    async def list_by_manager(self, manager_id: uuid.UUID) -> list[Customer]:
+        return await self.customers.list_by_account_manager(manager_id)
 
     async def get_customer(self, customer_id: uuid.UUID) -> Customer:
         customer = await self.customers.get(customer_id)

@@ -9,6 +9,7 @@ import { ClientsPageApi } from '@/pages/ClientsPage'
 import { ContractsPage } from '@/pages/ContractsPage'
 import { DashboardPage } from '@/pages/DashboardPage'
 import { LoginPage } from '@/pages/LoginPage'
+import { ManagerDashboardPage } from '@/pages/ManagerDashboardPage'
 import { ReportsPage } from '@/pages/ReportsPage'
 import { SettingsPage } from '@/pages/SettingsPage'
 import { ValorizationPage } from '@/pages/ValorizationPage'
@@ -18,6 +19,14 @@ function RequireAuth() {
   const token = useAppSelector((s) => s.auth.token)
   if (!user || !token) return <Navigate to="/login" replace />
   return <Outlet />
+}
+
+function DashboardRedirect() {
+  const user = useAppSelector((s) => s.auth.user)
+  if (user?.department === 'Opiekun klienta') {
+    return <Navigate to="/managed-dashboard" replace />
+  }
+  return <DashboardPage />
 }
 
 function App() {
@@ -37,7 +46,8 @@ function App() {
 
       <Route element={<RequireAuth />}>
         <Route element={<AppLayout />}>
-          <Route index element={<DashboardPage />} />
+          <Route index element={<DashboardRedirect />} />
+          <Route path="managed-dashboard" element={<ManagerDashboardPage />} />
           <Route path="clients" element={<ClientsPageApi />} />
           <Route path="contracts" element={<ContractsPage />} />
           <Route path="valorization" element={<ValorizationPage />} />

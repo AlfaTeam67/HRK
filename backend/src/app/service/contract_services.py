@@ -5,9 +5,10 @@ import uuid
 from fastapi import HTTPException, status
 from sqlalchemy.exc import IntegrityError
 
+from app.models.contract_service import ContractService as ContractServiceModel
 from app.repo.contract_services import ContractServiceRepository
 from app.schemas.contract_services import ContractServiceCreate
-from app.service.contracts import ContractService
+from app.service.contracts import ContractCrudService
 from app.service.services import ServiceCrudService
 
 
@@ -17,7 +18,7 @@ class ContractServiceRelationService:
     def __init__(
         self,
         relation_repo: ContractServiceRepository,
-        contract_service: ContractService,
+        contract_service: ContractCrudService,
         service_service: ServiceCrudService,
     ) -> None:
         self.contract_services = relation_repo
@@ -28,7 +29,7 @@ class ContractServiceRelationService:
         self,
         contract_id: uuid.UUID,
         payload: ContractServiceCreate,
-    ):
+    ) -> ContractServiceModel:
         await self.contract_service.get_contract(contract_id)
         await self.service_service.get_service(payload.service_id)
 
@@ -48,7 +49,7 @@ class ContractServiceRelationService:
                 detail="Service is already attached for the same validity start date",
             ) from exc
 
-    async def list_contract_services(self, contract_id: uuid.UUID):
+    async def list_contract_services(self, contract_id: uuid.UUID) -> list[ContractServiceModel]:
         await self.contract_service.get_contract(contract_id)
         return await self.contract_services.list_for_contract(contract_id)
 

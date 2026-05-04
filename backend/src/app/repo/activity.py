@@ -15,7 +15,9 @@ class ActivityLogRepository:
     def __init__(self, db: AsyncSession) -> None:
         self.db = db
 
-    async def get_by_customer(self, customer_id: uuid.UUID, limit: int, offset: int) -> list[ActivityLog]:
+    async def get_by_customer(
+        self, customer_id: uuid.UUID, limit: int, offset: int
+    ) -> list[ActivityLog]:
         stmt = (
             select(ActivityLog)
             .where(ActivityLog.customer_id == customer_id)
@@ -26,7 +28,9 @@ class ActivityLogRepository:
         result = await self.db.execute(stmt)
         return list(result.scalars().all())
 
-    async def get_by_contract(self, contract_id: uuid.UUID, limit: int, offset: int) -> list[ActivityLog]:
+    async def get_by_contract(
+        self, contract_id: uuid.UUID, limit: int, offset: int
+    ) -> list[ActivityLog]:
         stmt = (
             select(ActivityLog)
             .where(ActivityLog.contract_id == contract_id)

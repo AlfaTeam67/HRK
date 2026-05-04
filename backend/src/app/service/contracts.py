@@ -2,6 +2,7 @@
 
 import uuid
 from datetime import UTC, datetime
+from typing import Any
 
 from fastapi import HTTPException, status
 from sqlalchemy.exc import IntegrityError
@@ -13,7 +14,7 @@ from app.schemas.contracts import ContractCreate, ContractUpdate
 from app.service.customers import CustomerService
 
 
-class ContractService:
+class ContractCrudService:
     """Business operations for contracts."""
 
     def __init__(
@@ -26,7 +27,7 @@ class ContractService:
         self.lookup = lookup_repo
         self.customer_service = customer_service
 
-    async def list_contracts(self, **kwargs) -> list[Contract]:
+    async def list_contracts(self, **kwargs: Any) -> list[Contract]:
         return await self.contracts.list(**kwargs)
 
     async def get_contract(self, contract_id: uuid.UUID) -> Contract:

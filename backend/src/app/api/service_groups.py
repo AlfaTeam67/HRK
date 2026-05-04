@@ -1,7 +1,7 @@
 """ServiceGroup API endpoints."""
 
 import uuid
-from typing import Annotated
+from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, status
 
@@ -15,7 +15,7 @@ router = APIRouter(tags=["service-groups"])
 @router.get("/service-groups", response_model=list[ServiceGroupRead], summary="List service groups")
 async def list_service_groups(
     service: Annotated[CRMService, Depends(get_crm_service)],
-) -> list[ServiceGroupRead]:
+) -> Any:
     return await service.list_service_groups()
 
 
@@ -28,7 +28,7 @@ async def list_service_groups(
 async def create_service_group(
     payload: ServiceGroupCreate,
     service: Annotated[CRMService, Depends(get_crm_service)],
-) -> ServiceGroupRead:
+) -> Any:
     return await service.create_service_group(payload)
 
 
@@ -38,7 +38,7 @@ async def create_service_group(
 async def get_service_group(
     group_id: uuid.UUID,
     service: Annotated[CRMService, Depends(get_crm_service)],
-) -> ServiceGroupRead:
+) -> Any:
     return await service.get_service_group(group_id)
 
 
@@ -49,7 +49,7 @@ async def update_service_group(
     group_id: uuid.UUID,
     payload: ServiceGroupUpdate,
     service: Annotated[CRMService, Depends(get_crm_service)],
-) -> ServiceGroupRead:
+) -> Any:
     return await service.update_service_group(group_id, payload)
 
 

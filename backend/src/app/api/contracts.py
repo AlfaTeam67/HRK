@@ -2,7 +2,7 @@
 
 import uuid
 from datetime import date
-from typing import Annotated
+from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, Query, Response, status
 
@@ -29,7 +29,7 @@ async def list_contracts(
     start_to: date | None = Query(default=None),
     end_from: date | None = Query(default=None),
     end_to: date | None = Query(default=None),
-) -> list[ContractRead]:
+) -> Any:
     return await service.list_contracts(
         company_id=company_id,
         customer_id=customer_id,
@@ -50,7 +50,7 @@ async def list_contracts(
 async def create_contract(
     payload: ContractCreate,
     service: Annotated[CRMService, Depends(get_crm_service)],
-) -> ContractRead:
+) -> Any:
     return await service.create_contract(payload)
 
 
@@ -58,7 +58,7 @@ async def create_contract(
 async def get_contract(
     contract_id: uuid.UUID,
     service: Annotated[CRMService, Depends(get_crm_service)],
-) -> ContractRead:
+) -> Any:
     return await service.get_contract(contract_id)
 
 
@@ -67,7 +67,7 @@ async def update_contract(
     contract_id: uuid.UUID,
     payload: ContractUpdate,
     service: Annotated[CRMService, Depends(get_crm_service)],
-) -> ContractRead:
+) -> Any:
     return await service.update_contract(contract_id, payload)
 
 
@@ -92,7 +92,7 @@ async def delete_contract(
 async def list_contract_services(
     contract_id: uuid.UUID,
     service: Annotated[CRMService, Depends(get_crm_service)],
-) -> list[ContractServiceRead]:
+) -> Any:
     return await service.list_contract_services(contract_id)
 
 
@@ -106,7 +106,7 @@ async def attach_service_to_contract(
     contract_id: uuid.UUID,
     payload: ContractServiceCreate,
     service: Annotated[CRMService, Depends(get_crm_service)],
-) -> ContractServiceRead:
+) -> Any:
     return await service.attach_service_to_contract(contract_id, payload)
 
 

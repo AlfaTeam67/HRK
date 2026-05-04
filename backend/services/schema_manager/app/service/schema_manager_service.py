@@ -8,7 +8,6 @@ from fastapi import HTTPException, status
 from sqlalchemy import create_engine, text
 from sqlalchemy.exc import SQLAlchemyError
 
-
 _IDENTIFIER_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 _ALLOWED_COLUMN_TYPES = {
     "TEXT": "TEXT",
