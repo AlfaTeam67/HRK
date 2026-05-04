@@ -23,6 +23,7 @@ router = APIRouter(tags=["crm-contracts"])
 async def list_contracts(
     service: Annotated[CRMService, Depends(get_crm_service)],
     company_id: uuid.UUID | None = Query(default=None),
+    customer_id: uuid.UUID | None = Query(default=None),
     statuses: list[ContractStatus] | None = Query(default=None),
     start_from: date | None = Query(default=None),
     start_to: date | None = Query(default=None),
@@ -31,6 +32,7 @@ async def list_contracts(
 ) -> list[ContractRead]:
     return await service.list_contracts(
         company_id=company_id,
+        customer_id=customer_id,
         statuses=[status.value for status in statuses] if statuses else None,
         start_from=start_from,
         start_to=start_to,

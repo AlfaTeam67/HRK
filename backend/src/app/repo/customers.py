@@ -4,6 +4,7 @@ import uuid
 from datetime import date
 
 from sqlalchemy import func, select
+from sqlalchemy.orm import joinedload
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.customer import Customer
@@ -16,7 +17,11 @@ class CustomerRepository:
         self.db = db
 
     async def get(self, customer_id: uuid.UUID) -> Customer | None:
-        stmt = select(Customer).where(Customer.id == customer_id, Customer.deleted_at.is_(None))
+        stmt = (
+            select(Customer)
+            .options(joinedload(Customer.company))
+            .where(Customer.id == customer_id, Customer.deleted_at.is_(None))
+        )
         result = await self.db.execute(stmt)
         return result.scalar_one_or_none()
 
@@ -28,7 +33,7 @@ class CustomerRepository:
         created_from: date | None,
         created_to: date | None,
     ) -> list[Customer]:
-        stmt = select(Customer).where(Customer.deleted_at.is_(None))
+        stmt = select(Customer).options(joinedload(Customer.company)).where(Customer.deleted_at.is_(None))
         if company_id:
             stmt = stmt.where(Customer.company_id == company_id)
         if statuses:

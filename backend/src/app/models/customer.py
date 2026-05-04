@@ -106,6 +106,11 @@ class Customer(Base, TimestampMixin, SoftDeleteMixin, AuditMixin):
         JSONB, server_default=text("'{}'::jsonb"), nullable=False
     )
 
+    @property
+    def company_name(self) -> str | None:
+        """Returns name of the linked company."""
+        return self.company.name if self.company else None
+
     # Relationships
     company: Mapped[Company | None] = relationship("Company", back_populates="customers")
     account_manager: Mapped[User] = relationship(

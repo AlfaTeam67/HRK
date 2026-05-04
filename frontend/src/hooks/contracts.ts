@@ -7,6 +7,7 @@ const BASE = '/api/v1'
 
 export interface ContractsFilters {
   company_id?: string
+  customer_id?: string
   statuses?: ContractStatus[]
   start_from?: string
   start_to?: string

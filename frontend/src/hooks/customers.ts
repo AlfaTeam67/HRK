@@ -6,6 +6,7 @@ import type { Customer, CustomerCreate, CustomerStatus, CustomerUpdate } from '@
 const BASE = '/api/v1'
 
 export interface CustomersFilters {
+  q?: string
   company_id?: string
   statuses?: CustomerStatus[]
   created_from?: string

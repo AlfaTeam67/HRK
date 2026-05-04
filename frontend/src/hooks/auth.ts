@@ -2,7 +2,7 @@ import { useMutation } from '@tanstack/react-query'
 import { useDispatch } from 'react-redux'
 
 import { apiClient } from '@/lib/axios'
-import { type AuthUser, setUser } from '@/store/slices/authSlice'
+import { type AuthUser, setToken, setUser } from '@/store/slices/authSlice'
 import type { User } from '@/types/models'
 
 // Symulowane dane AD — mapowanie login → dane wyświetlane
@@ -44,6 +44,7 @@ export function useLogin() {
     },
     onSuccess: ({ apiUser, username }) => {
       dispatch(setUser(buildAuthUser(apiUser, username)))
+      dispatch(setToken(apiUser.login))
     },
   })
 }

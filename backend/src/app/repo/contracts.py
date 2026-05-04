@@ -25,6 +25,7 @@ class ContractRepository:
         self,
         *,
         company_id: uuid.UUID | None,
+        customer_id: uuid.UUID | None = None,
         statuses: list[str] | None,
         start_from: date | None,
         start_to: date | None,
@@ -38,6 +39,8 @@ class ContractRepository:
         )
         if company_id:
             stmt = stmt.where(Customer.company_id == company_id)
+        if customer_id:
+            stmt = stmt.where(Contract.customer_id == customer_id)
         if statuses:
             stmt = stmt.where(Contract.status.in_(statuses))
         if start_from:
