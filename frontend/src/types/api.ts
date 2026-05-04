@@ -4,6 +4,23 @@
  */
 
 export interface paths {
+    "/api/v1/alerts/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Alerts */
+        get: operations["get_alerts_api_v1_alerts__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/auth/login/{username}": {
         parameters: {
             query?: never;
@@ -58,6 +75,23 @@ export interface paths {
         patch: operations["update_company_api_v1_companies__id__patch"];
         trace?: never;
     };
+    "/api/v1/dashboard/kpi": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Dashboard Kpi */
+        get: operations["get_dashboard_kpi_api_v1_dashboard_kpi_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/documents/": {
         parameters: {
             query?: never;
@@ -104,6 +138,23 @@ export interface paths {
         get: operations["get_download_url_api_v1_documents__id__download_url_get"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/rag/search": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Search Documents */
+        post: operations["search_documents_api_v1_rag_search_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -583,6 +634,100 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /**
+         * ActivityLogCreate
+         * @description Request payload for creating an activity log entry.
+         */
+        ActivityLogCreate: {
+            /** Customer Id */
+            customer_id?: string | null;
+            /** Contract Id */
+            contract_id?: string | null;
+            activity_type: components["schemas"]["ActivityType"];
+            /** Description */
+            description: string;
+            /**
+             * Activity Date
+             * Format: date-time
+             */
+            activity_date?: string;
+            /** Additional Data */
+            additional_data?: {
+                [key: string]: unknown;
+            };
+        };
+        /**
+         * ActivityLogRead
+         * @description Activity log API response.
+         */
+        ActivityLogRead: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Customer Id */
+            customer_id: string | null;
+            /** Contract Id */
+            contract_id: string | null;
+            activity_type: components["schemas"]["ActivityType"];
+            /** Description */
+            description: string;
+            /** Performed By */
+            performed_by: string | null;
+            /**
+             * Activity Date
+             * Format: date-time
+             */
+            activity_date: string;
+            /** Additional Data */
+            additional_data: {
+                [key: string]: unknown;
+            };
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+        };
+        /**
+         * ActivityType
+         * @enum {string}
+         */
+        ActivityType: "meeting" | "email" | "note" | "document" | "verification" | "call" | "system";
+        /** AlertRead */
+        AlertRead: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Type
+             * @enum {string}
+             */
+            type: "contract_expiry_30" | "contract_expiry_60" | "contract_expiry_90" | "valorization_overdue" | "valorization_pending" | "no_contact";
+            /**
+             * Severity
+             * @enum {string}
+             */
+            severity: "urgent" | "high" | "medium";
+            /** Title */
+            title: string;
+            /** Detail */
+            detail: string;
+            /** Contract Id */
+            contract_id: string | null;
+            /** Customer Id */
+            customer_id: string | null;
+            /** Due Date */
+            due_date: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+        };
         /**
          * ActivityLogCreate
          * @description Request payload for creating an activity log entry.
@@ -1369,6 +1514,19 @@ export interface components {
                 [key: string]: unknown;
             } | null;
         };
+        /** DashboardKpi */
+        DashboardKpi: {
+            /** Active Customers */
+            active_customers: number;
+            /** Active Contracts */
+            active_contracts: number;
+            /** Contracts Expiring 30D */
+            contracts_expiring_30d: number;
+            /** Valorizations Pending */
+            valorizations_pending: number;
+            /** Valorizations Overdue */
+            valorizations_overdue: number;
+        };
         /** DocumentDownloadURLRead */
         DocumentDownloadURLRead: {
             /** Url */
@@ -1866,6 +2024,37 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    get_alerts_api_v1_alerts__get: {
+        parameters: {
+            query?: {
+                account_manager_id?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AlertRead"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     login_api_v1_auth_login__username__post: {
         parameters: {
             query?: never;
@@ -2044,6 +2233,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CompanyRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_dashboard_kpi_api_v1_dashboard_kpi_get: {
+        parameters: {
+            query?: {
+                account_manager_id?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DashboardKpi"];
                 };
             };
             /** @description Validation Error */
@@ -2384,7 +2604,6 @@ export interface operations {
         parameters: {
             query?: {
                 company_id?: string | null;
-                customer_id?: string | null;
                 statuses?: components["schemas"]["ContractStatus"][] | null;
                 start_from?: string | null;
                 start_to?: string | null;
