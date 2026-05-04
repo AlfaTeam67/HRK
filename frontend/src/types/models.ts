@@ -93,11 +93,6 @@ export type BillingFrequency = S['BillingFrequency']
 export type ValorizationStatus = S['ValorizationStatus']
 export type IndexType = S['IndexType']
 
-// ── Alerts & Dashboard KPI ──────────────────────────────────────────────────
-
-export type AlertRead = S['AlertRead']
-export type DashboardKpi = S['DashboardKpi']
-
 // ── Pagination helper (generic) ───────────────────────────────────────────────
 
 export interface PaginatedResponse<T> {
