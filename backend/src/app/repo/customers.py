@@ -3,7 +3,7 @@
 import uuid
 from datetime import date
 
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.orm import joinedload
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -28,6 +28,7 @@ class CustomerRepository:
     async def list(
         self,
         *,
+        q: str | None = None,
         company_id: uuid.UUID | None,
         statuses: list[str] | None,
         created_from: date | None,
@@ -36,6 +37,16 @@ class CustomerRepository:
         stmt = select(Customer).options(joinedload(Customer.company)).where(Customer.deleted_at.is_(None))
         if company_id:
             stmt = stmt.where(Customer.company_id == company_id)
+        if q:
+            query = f"%{q.strip()}%"
+            stmt = stmt.where(
+                or_(
+                    Customer.ckk.ilike(query),
+                    Customer.ckd.ilike(query),
+                    Customer.billing_email.ilike(query),
+                    Customer.invoice_nip.ilike(query),
+                )
+            )
         if statuses:
             stmt = stmt.where(Customer.status.in_(statuses))
         if created_from:

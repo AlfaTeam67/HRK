@@ -1,6 +1,5 @@
 import { useMemo, useState } from 'react'
 
-import { useActivities } from '@/hooks/activities'
 import { useContactPersons } from '@/hooks/contactPersons'
 import { useContracts } from '@/hooks/contracts'
 import {
@@ -10,6 +9,7 @@ import {
   useDeleteCustomer,
   useUpdateCustomer,
 } from '@/hooks/customers'
+import { useCustomerTimeline } from '@/hooks/timeline'
 import { useCreateNote, useNotes } from '@/hooks/notes'
 import { useAppSelector } from '@/hooks/store'
 import {
@@ -24,25 +24,11 @@ import {
 
 type TabKey = 'info' | 'contracts' | 'notes' | 'timeline'
 
-type TLType =
-  | 'meeting'
-  | 'call'
-  | 'note'
-  | 'system'
-  | 'contract_signed'
-  | 'contract_expiring'
-  | 'valorization'
-  | 'alert'
-  | 'today'
-  | 'email'
-  | 'document'
-  | 'verification'
-
 interface TLEvent {
   id: string
   date: string
   label: string
-  type: TLType
+  type: string
   title: string
   detail?: string
 }
@@ -54,15 +40,19 @@ const TODAY_LABEL = new Date().toLocaleDateString('pl-PL', {
   year: 'numeric',
 })
 
-const TL_META: Record<TLType, { color: string; bg: string; label: string }> = {
+const TL_META: Record<string, { color: string; bg: string; label: string }> = {
   meeting: { color: '#553c9a', bg: '#faf5ff', label: 'Spotkanie' },
   call: { color: '#3182ce', bg: '#ebf8ff', label: 'Połączenie' },
   note: { color: '#374151', bg: '#f3f4f6', label: 'Notatka' },
+  note_added: { color: '#374151', bg: '#f3f4f6', label: 'Notatka' },
   system: { color: '#718096', bg: '#edf2f7', label: 'System' },
   contract_signed: { color: '#276749', bg: '#f0fff4', label: 'Umowa' },
   contract_expiring: { color: '#c94f02', bg: '#fff5f0', label: 'Termin' },
   valorization: { color: '#2b6cb0', bg: '#ebf8ff', label: 'Waloryzacja' },
+  valorization_started: { color: '#2c5282', bg: '#ebf8ff', label: 'Waloryzacja' },
+  valorization_approved: { color: '#2b6cb0', bg: '#ebf8ff', label: 'Waloryzacja' },
   alert: { color: '#92400e', bg: '#fffbeb', label: 'Alert' },
+  alert_triggered: { color: '#92400e', bg: '#fffbeb', label: 'Alert' },
   today: { color: '#e85c04', bg: '#fff8f4', label: 'Dziś' },
   email: { color: '#319795', bg: '#e6fffa', label: 'Email' },
   document: { color: '#805ad5', bg: '#faf5ff', label: 'Dokument' },
@@ -162,7 +152,8 @@ function SearchIcon() {
   )
 }
 
-function Timeline({ events }: { events: TLEvent[] }) {
+function Timeline({ events, loading = false }: { events: TLEvent[]; loading?: boolean }) {
+  if (loading) return <p style={{ color: '#9e9389', fontSize: 13 }}>Ładowanie…</p>
   if (!events.length) return <p style={{ color: '#9e9389', fontSize: 13 }}>Brak zdarzeń.</p>
 
   return (
@@ -249,7 +240,9 @@ export function ClientsPageApi() {
   const { data: detailCustomer } = useCustomer(selectedId ?? undefined)
   const { data: contracts = [] } = useContracts({ customer_id: selectedId ?? undefined })
   const { data: notes = [] } = useNotes({ customer_id: selectedId ?? undefined })
-  const { data: activities = [] } = useActivities({ customer_id: selectedId ?? undefined })
+  const { data: timeline = [], isLoading: timelineLoading } = useCustomerTimeline({
+    customerId: selectedId ?? undefined,
+  })
   const { data: contacts = [] } = useContactPersons(selectedId ?? undefined)
 
   const createCustomer = useCreateCustomer()
@@ -264,12 +257,13 @@ export function ClientsPageApi() {
   }, [selectedId, clients, detailCustomer])
 
   const timelineEvents = useMemo<TLEvent[]>(() => {
-    const evts: TLEvent[] = activities.map((a) => ({
-      id: a.id,
-      date: a.activity_date,
-      label: fmtDate(a.activity_date),
-      type: a.activity_type as TLType,
-      title: a.description,
+    const evts: TLEvent[] = timeline.map((event) => ({
+      id: event.id,
+      date: event.timestamp,
+      label: fmtDate(event.timestamp),
+      type: event.event_type,
+      title: event.title,
+      detail: event.detail ?? undefined,
     }))
 
     evts.push({
@@ -281,7 +275,7 @@ export function ClientsPageApi() {
     })
 
     return evts.sort((a, b) => b.date.localeCompare(a.date))
-  }, [activities])
+  }, [timeline])
 
   function openAdd() {
     setModalMode('add')
@@ -747,7 +741,9 @@ export function ClientsPageApi() {
                   </div>
                 )}
 
-                {tab === 'timeline' && <Timeline events={timelineEvents} />}
+                {tab === 'timeline' && (
+                  <Timeline events={timelineEvents} loading={timelineLoading} />
+                )}
               </div>
             </>
           )}
