@@ -29,21 +29,17 @@ async def test_alert_service_contract_expiry_30_days(db_session_mock):
         customer_id=uuid.uuid4(),
     )
     
-    # Mocking db.execute(...).scalars().all()
-    mock_result = MagicMock()
-    mock_result.scalars.return_value.all.return_value = [contract]
-    db_session_mock.execute.return_value = mock_result
-    
-    # Since get_alerts queries Contracts, then Valorizations, then Customers
-    # we need side_effect to return different mocks or we just let it return the same mock 
-    # but that might break if schemas don't match.
-    # Let's be precise:
-    
     async def mock_execute(query):
         res = MagicMock()
         query_str = str(query).lower()
-        if "contracts" in query_str and "status !=" in query_str:
+        if "valorization" in query_str:
+            res.scalars.return_value.all.return_value = []
+        elif "activity_logs" in query_str:
+            res.all.return_value = []
+        elif "contract" in query_str:
             res.scalars.return_value.all.return_value = [contract]
+        elif "customer" in query_str:
+            res.scalars.return_value.all.return_value = []
         else:
             res.scalars.return_value.all.return_value = []
         return res
@@ -71,8 +67,14 @@ async def test_alert_service_contract_expiry_29_days(db_session_mock):
     async def mock_execute(query):
         res = MagicMock()
         query_str = str(query).lower()
-        if "contracts" in query_str and "status !=" in query_str:
+        if "valorization" in query_str:
+            res.scalars.return_value.all.return_value = []
+        elif "activity_logs" in query_str:
+            res.all.return_value = []
+        elif "contract" in query_str:
             res.scalars.return_value.all.return_value = [contract]
+        elif "customer" in query_str:
+            res.scalars.return_value.all.return_value = []
         else:
             res.scalars.return_value.all.return_value = []
         return res
@@ -99,8 +101,14 @@ async def test_alert_service_contract_expiry_31_days(db_session_mock):
     async def mock_execute(query):
         res = MagicMock()
         query_str = str(query).lower()
-        if "contracts" in query_str and "status !=" in query_str:
+        if "valorization" in query_str:
+            res.scalars.return_value.all.return_value = []
+        elif "activity_logs" in query_str:
+            res.all.return_value = []
+        elif "contract" in query_str:
             res.scalars.return_value.all.return_value = [contract]
+        elif "customer" in query_str:
+            res.scalars.return_value.all.return_value = []
         else:
             res.scalars.return_value.all.return_value = []
         return res
@@ -126,8 +134,14 @@ async def test_alert_service_valorization_pending(db_session_mock):
     async def mock_execute(query):
         res = MagicMock()
         query_str = str(query).lower()
-        if "valorizations" in query_str:
+        if "valorization" in query_str:
             res.scalars.return_value.all.return_value = [val]
+        elif "activity_logs" in query_str:
+            res.all.return_value = []
+        elif "contract" in query_str:
+            res.scalars.return_value.all.return_value = []
+        elif "customer" in query_str:
+            res.scalars.return_value.all.return_value = []
         else:
             res.scalars.return_value.all.return_value = []
         return res
@@ -154,11 +168,13 @@ async def test_alert_service_no_contact(db_session_mock):
     async def mock_execute(query):
         res = MagicMock()
         query_str = str(query).lower()
-        if "select max" in query_str:
-            # no activity log
-            res.scalar.return_value = None
-            return res
-        elif "customers" in query_str:
+        if "valorization" in query_str:
+            res.scalars.return_value.all.return_value = []
+        elif "activity_logs" in query_str:
+            res.all.return_value = []
+        elif "contract" in query_str:
+            res.scalars.return_value.all.return_value = []
+        elif "customer" in query_str:
             res.scalars.return_value.all.return_value = [customer]
         else:
             res.scalars.return_value.all.return_value = []

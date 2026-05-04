@@ -23,11 +23,19 @@ class AlertService:
         now = datetime.now(timezone.utc)
 
         # 1. Contract expiry 30/60/90
-        contract_query = select(Contract).where(Contract.status != ContractStatus.TERMINATED)
-        if account_manager_id:
-            contract_query = contract_query.join(Customer).where(
-                Customer.account_manager_id == account_manager_id
+        contract_query = (
+            select(Contract)
+            .join(Customer)
+            .where(
+                Contract.status != ContractStatus.TERMINATED,
+                Contract.deleted_at.is_(None),
+                Customer.deleted_at.is_(None),
+                Contract.end_date >= today,
+                Contract.end_date <= today + timedelta(days=90),
             )
+        )
+        if account_manager_id:
+            contract_query = contract_query.where(Customer.account_manager_id == account_manager_id)
 
         contracts = (await self.db.execute(contract_query)).scalars().all()
         for contract in contracts:
@@ -77,14 +85,19 @@ class AlertService:
                     )
 
         # 2. Valorization overdue / pending
-        val_query = select(Valorization).where(
-            Valorization.status != ValorizationStatus.APPROVED,
-            Valorization.status != ValorizationStatus.APPLIED,
+        val_query = (
+            select(Valorization)
+            .join(Contract)
+            .join(Customer)
+            .where(
+                Valorization.status != ValorizationStatus.APPROVED,
+                Valorization.status != ValorizationStatus.APPLIED,
+                Contract.deleted_at.is_(None),
+                Customer.deleted_at.is_(None),
+            )
         )
         if account_manager_id:
-            val_query = val_query.join(Contract).join(Customer).where(
-                Customer.account_manager_id == account_manager_id
-            )
+            val_query = val_query.where(Customer.account_manager_id == account_manager_id)
 
         valorizations = (await self.db.execute(val_query)).scalars().all()
         for val in valorizations:
@@ -118,23 +131,40 @@ class AlertService:
                 )
 
         # 3. No contact (> 90 days)
-        cust_query = select(Customer).where(Customer.status == CustomerStatus.ACTIVE)
+        cust_query = select(Customer).where(
+            Customer.status == CustomerStatus.ACTIVE,
+            Customer.deleted_at.is_(None)
+        )
         if account_manager_id:
             cust_query = cust_query.where(Customer.account_manager_id == account_manager_id)
 
         customers = (await self.db.execute(cust_query)).scalars().all()
+        customer_ids = [cust.id for cust in customers]
+        
+        latest_activity_by_customer_id: dict[uuid.UUID, datetime] = {}
+        if customer_ids:
+            latest_activity_query = (
+                select(ActivityLog.customer_id, func.max(ActivityLog.activity_date))
+                .where(ActivityLog.customer_id.in_(customer_ids))
+                .group_by(ActivityLog.customer_id)
+            )
+            latest_activity_rows = (await self.db.execute(latest_activity_query)).all()
+            latest_activity_by_customer_id = {
+                row[0]: row[1]
+                for row in latest_activity_rows
+                if row[1] is not None
+            }
+
         for cust in customers:
-            act_query = select(func.max(ActivityLog.activity_date)).where(ActivityLog.customer_id == cust.id)
-            latest_act_dt = (await self.db.execute(act_query)).scalar()
+            latest_act_dt = latest_activity_by_customer_id.get(cust.id)
             
             days_no_contact = 0
             if latest_act_dt:
-                today_dt = datetime.now(latest_act_dt.tzinfo or timezone.utc)
-                days_no_contact = (today_dt - latest_act_dt).days
+                last_date = latest_act_dt.date() if isinstance(latest_act_dt, datetime) else latest_act_dt
+                days_no_contact = (today - last_date).days
             else:
-                cust_tz = getattr(cust.created_at, "tzinfo", timezone.utc) or timezone.utc
-                today_dt = datetime.now(cust_tz)
-                days_no_contact = (today_dt - cust.created_at).days if cust.created_at else 91
+                created_at_date = cust.created_at.date() if isinstance(cust.created_at, datetime) else cust.created_at
+                days_no_contact = (today - created_at_date).days if created_at_date else 91
 
             if days_no_contact > 90:
                 alerts.append(
@@ -157,41 +187,72 @@ class AlertService:
         today = date.today()
         thirty_days_ahead = today + timedelta(days=30)
 
-        cust_q = select(func.count(Customer.id)).where(Customer.status == CustomerStatus.ACTIVE)
+        cust_q = select(func.count(Customer.id)).where(
+            Customer.status == CustomerStatus.ACTIVE,
+            Customer.deleted_at.is_(None)
+        )
         if account_manager_id:
             cust_q = cust_q.where(Customer.account_manager_id == account_manager_id)
         active_customers = (await self.db.execute(cust_q)).scalar() or 0
 
-        cont_q = select(func.count(Contract.id)).where(Contract.status == ContractStatus.ACTIVE)
+        cont_q = (
+            select(func.count(Contract.id))
+            .join(Customer)
+            .where(
+                Contract.status == ContractStatus.ACTIVE,
+                Contract.deleted_at.is_(None),
+                Customer.deleted_at.is_(None)
+            )
+        )
         if account_manager_id:
-            cont_q = cont_q.join(Customer).where(Customer.account_manager_id == account_manager_id)
+            cont_q = cont_q.where(Customer.account_manager_id == account_manager_id)
         active_contracts = (await self.db.execute(cont_q)).scalar() or 0
 
-        exp_q = select(func.count(Contract.id)).where(
-            Contract.status != ContractStatus.TERMINATED,
-            Contract.end_date >= today,
-            Contract.end_date <= thirty_days_ahead,
+        exp_q = (
+            select(func.count(Contract.id))
+            .join(Customer)
+            .where(
+                Contract.status != ContractStatus.TERMINATED,
+                Contract.deleted_at.is_(None),
+                Customer.deleted_at.is_(None),
+                Contract.end_date >= today,
+                Contract.end_date <= thirty_days_ahead,
+            )
         )
         if account_manager_id:
-            exp_q = exp_q.join(Customer).where(Customer.account_manager_id == account_manager_id)
+            exp_q = exp_q.where(Customer.account_manager_id == account_manager_id)
         contracts_expiring_30d = (await self.db.execute(exp_q)).scalar() or 0
 
-        val_pend_q = select(func.count(Valorization.id)).where(
-            Valorization.status == ValorizationStatus.PENDING,
-            Valorization.planned_date >= today,
-            Valorization.planned_date <= thirty_days_ahead,
+        val_pend_q = (
+            select(func.count(Valorization.id))
+            .join(Contract)
+            .join(Customer)
+            .where(
+                Contract.deleted_at.is_(None),
+                Customer.deleted_at.is_(None),
+                Valorization.status == ValorizationStatus.PENDING,
+                Valorization.planned_date >= today,
+                Valorization.planned_date <= thirty_days_ahead,
+            )
         )
         if account_manager_id:
-            val_pend_q = val_pend_q.join(Contract).join(Customer).where(Customer.account_manager_id == account_manager_id)
+            val_pend_q = val_pend_q.where(Customer.account_manager_id == account_manager_id)
         valorizations_pending = (await self.db.execute(val_pend_q)).scalar() or 0
 
-        val_over_q = select(func.count(Valorization.id)).where(
-            Valorization.status != ValorizationStatus.APPROVED,
-            Valorization.status != ValorizationStatus.APPLIED,
-            Valorization.planned_date < today,
+        val_over_q = (
+            select(func.count(Valorization.id))
+            .join(Contract)
+            .join(Customer)
+            .where(
+                Contract.deleted_at.is_(None),
+                Customer.deleted_at.is_(None),
+                Valorization.status != ValorizationStatus.APPROVED,
+                Valorization.status != ValorizationStatus.APPLIED,
+                Valorization.planned_date < today,
+            )
         )
         if account_manager_id:
-            val_over_q = val_over_q.join(Contract).join(Customer).where(Customer.account_manager_id == account_manager_id)
+            val_over_q = val_over_q.where(Customer.account_manager_id == account_manager_id)
         valorizations_overdue = (await self.db.execute(val_over_q)).scalar() or 0
 
         return DashboardKpi(

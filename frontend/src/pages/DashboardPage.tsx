@@ -53,7 +53,7 @@ export function DashboardPage() {
     { label: 'AKTYWNYCH KLIENTÓW', value: String(kpiData.active_customers), trend: 'aktualne dane', trendUp: true },
     { label: 'AKTYWNYCH UMÓW', value: String(kpiData.active_contracts), trend: `♦ ${kpiData.contracts_expiring_30d} kończy się w 30 dni`, trendUp: kpiData.contracts_expiring_30d === 0 },
     { label: 'WALORYZACJE DO ZROBIENIA', value: String(kpiData.valorizations_pending), trend: `⚡ ${kpiData.valorizations_overdue} po terminie`, trendUp: kpiData.valorizations_overdue === 0 },
-    { label: 'PRACOWNICY (ŁĄCZNIE)', value: '1 847', trend: '▲ 54 od ostatniego miesiąca', trendUp: true },
+    { label: 'PRACOWNICY (ŁĄCZNIE)', value: '—', trend: 'dane wkrótce', trendUp: true },
   ] : []
 
   const severityToType: Record<string, AlertType> = {
@@ -126,11 +126,13 @@ export function DashboardPage() {
               <div style={{ fontSize: 14, fontWeight: 700, color: '#1a1714' }}>Alerty i terminy</div>
               <span style={{ background: '#e85c04', color: 'white', fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 20 }}>{urgentCount} pilne</span>
             </div>
-            {alerts.length === 0 ? (
+            {realAlerts === undefined ? (
+              <div style={{ fontSize: 13, color: '#6b6b6b' }}>Ładowanie alertów...</div>
+            ) : alerts.length === 0 ? (
               <div style={{ fontSize: 13, color: '#6b6b6b' }}>Brak alertów.</div>
             ) : (
-              alerts.map((a) => (
-                <div key={a.title} style={ALERT_STYLE[a.type]}>
+              alerts.map((a, index) => (
+                <div key={`${a.type}-${a.title}-${a.detail}-${index}`} style={ALERT_STYLE[a.type]}>
                   <div style={{ fontSize: 13, fontWeight: 600, color: '#1a1714', marginBottom: 2 }}>{a.title}</div>
                   <div style={{ fontSize: 11.5, color: '#6b6b6b' }}>{a.detail}</div>
                 </div>

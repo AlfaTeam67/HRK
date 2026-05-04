@@ -95,25 +95,8 @@ export type IndexType = S['IndexType']
 
 // ── Alerts & Dashboard KPI ──────────────────────────────────────────────────
 
-export interface AlertRead {
-  id: string
-  type: 'contract_expiry_30' | 'contract_expiry_60' | 'contract_expiry_90' | 'valorization_overdue' | 'valorization_pending' | 'no_contact'
-  severity: 'urgent' | 'high' | 'medium'
-  title: string
-  detail: string
-  contract_id: string | null
-  customer_id: string | null
-  due_date: string | null
-  created_at: string
-}
-
-export interface DashboardKpi {
-  active_customers: number
-  active_contracts: number
-  contracts_expiring_30d: number
-  valorizations_pending: number
-  valorizations_overdue: number
-}
+export type AlertRead = S['AlertRead']
+export type DashboardKpi = S['DashboardKpi']
 
 // ── Pagination helper (generic) ───────────────────────────────────────────────
 

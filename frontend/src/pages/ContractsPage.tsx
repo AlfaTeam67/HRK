@@ -34,18 +34,19 @@ const VAL_S: Record<string, { bg: string; color: string }> = {
 /* ─── Component ──────────────────────────────────────────────── */
 export function ContractsPage() {
   const user = useAppSelector((s) => s.auth.user)
-  const { data: realAlerts } = useAlerts(user?.id)
-  const { data: kpiData } = useDashboardKpi(user?.id)
+  const { data: realAlerts, isLoading: alertsLoading } = useAlerts(user?.id)
+  const { data: kpiData, isLoading: kpiLoading } = useDashboardKpi(user?.id)
 
-  const exp30 = realAlerts?.filter(a => a.type === 'contract_expiry_30').length || 0
-  const exp60 = realAlerts?.filter(a => a.type === 'contract_expiry_60').length || 0
-  const exp90 = realAlerts?.filter(a => a.type === 'contract_expiry_90').length || 0
+  const exp30 = alertsLoading ? null : (realAlerts?.filter(a => a.type === 'contract_expiry_30').length ?? 0)
+  const exp60 = alertsLoading ? null : (realAlerts?.filter(a => a.type === 'contract_expiry_60').length ?? 0)
+  const exp90 = alertsLoading ? null : (realAlerts?.filter(a => a.type === 'contract_expiry_90').length ?? 0)
+  const activeContracts = kpiLoading ? null : (kpiData?.active_contracts ?? 0)
 
   const kpis = [
-    { label: 'KOŃCZĄ SIĘ W 30 DNI',        value: String(exp30),  sub: 'Wysoki priorytet',   color: '#e85c04' },
-    { label: 'KOŃCZĄ SIĘ W 60 DNI',        value: String(exp60),  sub: 'Przygotuj ofertę',   color: '#d69e2e' },
-    { label: 'KOŃCZĄ SIĘ W 90 DNI',        value: String(exp90),  sub: 'Wczesny kontakt',    color: '#3182ce' },
-    { label: 'AKTYWNYCH UMÓW',             value: String(kpiData?.active_contracts || 0), sub: 'Łącznie w systemie', color: '#38a169' },
+    { label: 'KOŃCZĄ SIĘ W 30 DNI',        value: exp30 === null ? '—' : String(exp30),              sub: 'Wysoki priorytet',   color: '#e85c04' },
+    { label: 'KOŃCZĄ SIĘ W 60 DNI',        value: exp60 === null ? '—' : String(exp60),              sub: 'Przygotuj ofertę',   color: '#d69e2e' },
+    { label: 'KOŃCZĄ SIĘ W 90 DNI',        value: exp90 === null ? '—' : String(exp90),              sub: 'Wczesny kontakt',    color: '#3182ce' },
+    { label: 'AKTYWNYCH UMÓW',             value: activeContracts === null ? '—' : String(activeContracts), sub: 'Łącznie w systemie', color: '#38a169' },
   ]
   return (
     <div style={{ width: '100%' }}>
