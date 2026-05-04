@@ -11,7 +11,7 @@ export const apiClient = axios.create({
 
 export function setupAxiosInterceptors(
   getToken: () => string | null,
-  onUnauthorized: () => void = () => {},
+  onUnauthorized: () => void = () => {}
 ) {
   apiClient.interceptors.request.use((config) => {
     const token = getToken()
@@ -24,10 +24,13 @@ export function setupAxiosInterceptors(
   apiClient.interceptors.response.use(
     (response) => response,
     (error: unknown) => {
-      if (axios.isAxiosError(error) && error.response?.status === 401) {
-        onUnauthorized()
+      if (axios.isAxiosError(error)) {
+        const status = error.response?.status
+        if (status === 401 || status === 403) {
+          onUnauthorized()
+        }
       }
       return Promise.reject(error)
-    },
+    }
   )
 }

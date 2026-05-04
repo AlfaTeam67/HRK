@@ -1,8 +1,14 @@
-import { useState, useMemo } from 'react'
+import { useMemo, useState } from 'react'
 
 import { useContactPersons } from '@/hooks/contactPersons'
 import { useContracts } from '@/hooks/contracts'
-import { useCreateCustomer, useCustomer, useCustomers, useUpdateCustomer } from '@/hooks/customers'
+import {
+  useCreateCustomer,
+  useCustomer,
+  useCustomers,
+  useDeleteCustomer,
+  useUpdateCustomer,
+} from '@/hooks/customers'
 import { useCustomerTimeline } from '@/hooks/timeline'
 import { useCreateNote, useNotes } from '@/hooks/notes'
 import { useAppSelector } from '@/hooks/store'
@@ -10,24 +16,31 @@ import {
   CUSTOMER_STATUS_PL,
   NOTE_TYPE_LABELS,
   validateCustomerForm,
+  type CustomerForm,
+  type CustomerStatus,
+  type NoteType,
   type ValidationErrors,
 } from '@/lib/customerConstants'
 
 type TabKey = 'info' | 'contracts' | 'notes' | 'timeline'
 
 type TLType =
-  | 'contract_signed'
-  | 'valorization_approved'
-  | 'valorization_started'
-  | 'note_added'
   | 'meeting'
   | 'call'
+  | 'note'
+  | 'note_added'
+  | 'system'
+  | 'contract_signed'
+  | 'contract_expiring'
+  | 'valorization'
+  | 'valorization_started'
+  | 'valorization_approved'
+  | 'alert'
+  | 'alert_triggered'
+  | 'today'
   | 'email'
   | 'document'
   | 'verification'
-  | 'system'
-  | 'alert_triggered'
-  | 'today'
 
 interface TLEvent {
   id: string
@@ -46,18 +59,22 @@ const TODAY_LABEL = new Date().toLocaleDateString('pl-PL', {
 })
 
 const TL_META: Record<TLType, { color: string; bg: string; label: string }> = {
-  contract_signed: { color: '#276749', bg: '#f0fff4', label: 'Umowa' },
-  valorization_approved: { color: '#2b6cb0', bg: '#ebf8ff', label: 'Waloryzacja' },
-  valorization_started: { color: '#2c5282', bg: '#ebf8ff', label: 'Waloryzacja' },
-  note_added: { color: '#374151', bg: '#f3f4f6', label: 'Notatka' },
   meeting: { color: '#553c9a', bg: '#faf5ff', label: 'Spotkanie' },
   call: { color: '#3182ce', bg: '#ebf8ff', label: 'Połączenie' },
+  note: { color: '#374151', bg: '#f3f4f6', label: 'Notatka' },
+  note_added: { color: '#374151', bg: '#f3f4f6', label: 'Notatka' },
+  system: { color: '#718096', bg: '#edf2f7', label: 'System' },
+  contract_signed: { color: '#276749', bg: '#f0fff4', label: 'Umowa' },
+  contract_expiring: { color: '#c94f02', bg: '#fff5f0', label: 'Termin' },
+  valorization: { color: '#2b6cb0', bg: '#ebf8ff', label: 'Waloryzacja' },
+  valorization_started: { color: '#2c5282', bg: '#ebf8ff', label: 'Waloryzacja' },
+  valorization_approved: { color: '#2b6cb0', bg: '#ebf8ff', label: 'Waloryzacja' },
+  alert: { color: '#92400e', bg: '#fffbeb', label: 'Alert' },
+  alert_triggered: { color: '#92400e', bg: '#fffbeb', label: 'Alert' },
+  today: { color: '#e85c04', bg: '#fff8f4', label: 'Dziś' },
   email: { color: '#319795', bg: '#e6fffa', label: 'Email' },
   document: { color: '#805ad5', bg: '#faf5ff', label: 'Dokument' },
   verification: { color: '#d69e2e', bg: '#fffaf0', label: 'Weryfikacja' },
-  system: { color: '#718096', bg: '#edf2f7', label: 'System' },
-  alert_triggered: { color: '#92400e', bg: '#fffbeb', label: 'Alert' },
-  today: { color: '#e85c04', bg: '#fff8f4', label: 'Dziś' },
 }
 
 const RISK: Record<string, { dot: string; text: string; bg: string; border: string }> = {
@@ -66,8 +83,28 @@ const RISK: Record<string, { dot: string; text: string; bg: string; border: stri
   default: { dot: '#e53e3e', text: '#9b2c2c', bg: '#fff5f5', border: '#feb2b2' },
 }
 
-// Status labels imported from @/lib/customerConstants (single source of truth)
 const STATUS_PL = CUSTOMER_STATUS_PL
+
+type FormFieldKey =
+  | 'ckk'
+  | 'invoice_nip'
+  | 'billing_email'
+  | 'phone'
+  | 'segment'
+  | 'industry'
+  | 'employee_count'
+  | 'payment_period_days'
+
+const FORM_FIELDS: ReadonlyArray<readonly [FormFieldKey, string, 'text' | 'email' | 'number']> = [
+  ['ckk', 'CKK / Identyfikator', 'text'],
+  ['invoice_nip', 'NIP', 'text'],
+  ['billing_email', 'Email bilingowy', 'email'],
+  ['phone', 'Telefon', 'text'],
+  ['segment', 'Segment', 'text'],
+  ['industry', 'Branża', 'text'],
+  ['employee_count', 'Liczba pracowników', 'number'],
+  ['payment_period_days', 'Termin płatności (dni)', 'number'],
+]
 
 function ini(n: string) {
   const w = n.replace(/[()]/g, '').split(/\s+/).filter(Boolean)
@@ -133,15 +170,15 @@ function SearchIcon() {
   )
 }
 
-/* ─── Timeline ────────────────────────────────────────────────── */
-function Timeline({ events, loading }: { events: TLEvent[]; loading: boolean }) {
+function Timeline({ events, loading = false }: { events: TLEvent[]; loading?: boolean }) {
   if (loading) return <p style={{ color: '#9e9389', fontSize: 13 }}>Ładowanie…</p>
   if (!events.length) return <p style={{ color: '#9e9389', fontSize: 13 }}>Brak zdarzeń.</p>
+
   return (
     <div className="cp-tl-wrap">
       <div className="cp-tl-line" />
       {events.map((ev) => {
-        if (ev.type === 'today')
+        if (ev.type === 'today') {
           return (
             <div key={ev.id} className="cp-tl-today">
               <div
@@ -158,7 +195,10 @@ function Timeline({ events, loading }: { events: TLEvent[]; loading: boolean }) 
               </span>
             </div>
           )
+        }
+
         const m = TL_META[ev.type] ?? TL_META.system
+
         return (
           <div key={ev.id} className="cp-tl-item">
             <div
@@ -190,14 +230,13 @@ function Timeline({ events, loading }: { events: TLEvent[]; loading: boolean }) 
   )
 }
 
-/* ─── Main ────────────────────────────────────────────────────── */
 export function ClientsPageApi() {
   const [search, setSearch] = useState('')
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [tab, setTab] = useState<TabKey>('info')
   const [modalOpen, setModalOpen] = useState(false)
   const [modalMode, setModalMode] = useState<'add' | 'edit'>('add')
-  const [form, setForm] = useState<any>({
+  const [form, setForm] = useState<CustomerForm>({
     ckk: '',
     status: 'active',
     segment: '',
@@ -207,12 +246,11 @@ export function ClientsPageApi() {
     invoice_nip: '',
     billing_email: '',
     phone: '',
+    account_manager_id: '',
   })
   const [formErrors, setFormErrors] = useState<ValidationErrors>({})
   const [noteText, setNoteText] = useState('')
-  const [noteType, setNoteType] = useState<
-    'meeting' | 'call' | 'internal' | 'client_request' | 'other'
-  >('internal')
+  const [noteType, setNoteType] = useState<NoteType>('internal')
 
   const user = useAppSelector((s) => s.auth.user)
 
@@ -227,6 +265,7 @@ export function ClientsPageApi() {
 
   const createCustomer = useCreateCustomer()
   const updateCustomer = useUpdateCustomer()
+  const deleteCustomer = useDeleteCustomer()
   const createNote = useCreateNote()
 
   const selected = useMemo(() => {
@@ -237,14 +276,22 @@ export function ClientsPageApi() {
 
   const timelineEvents = useMemo<TLEvent[]>(() => {
     const evts: TLEvent[] = timeline.map((event) => ({
-        id: event.id,
-        date: event.timestamp,
-        label: fmtDate(event.timestamp),
-        type: event.event_type as TLType,
-        title: event.title,
-        detail: event.detail ?? undefined,
-      }))
-    evts.push({ id: `today-${TODAY}`, date: TODAY, label: TODAY_LABEL, type: 'today', title: '' })
+      id: event.id,
+      date: event.timestamp,
+      label: fmtDate(event.timestamp),
+      type: (event.event_type as TLType) ?? 'system',
+      title: event.title,
+      detail: event.detail ?? undefined,
+    }))
+
+    evts.push({
+      id: `today-${TODAY}`,
+      date: TODAY,
+      label: TODAY_LABEL,
+      type: 'today',
+      title: '',
+    })
+
     return evts.sort((a, b) => b.date.localeCompare(a.date))
   }, [timeline])
 
@@ -268,12 +315,20 @@ export function ClientsPageApi() {
 
   function openEdit() {
     if (!selected) return
+
     setModalMode('edit')
     setFormErrors({})
     setForm({
-      ...selected,
-      employee_count: selected.employee_count ?? '',
-      payment_period_days: selected.payment_period_days ?? 14,
+      ckk: selected.ckk ?? '',
+      status: selected.status as CustomerStatus,
+      segment: selected.segment ?? '',
+      industry: selected.industry ?? '',
+      employee_count: selected.employee_count?.toString() ?? '',
+      payment_period_days: selected.payment_period_days?.toString() ?? '14',
+      invoice_nip: selected.invoice_nip ?? '',
+      billing_email: selected.billing_email ?? '',
+      phone: selected.phone ?? '',
+      account_manager_id: selected.account_manager_id ?? '',
     })
     setModalOpen(true)
   }
@@ -284,7 +339,9 @@ export function ClientsPageApi() {
       setFormErrors(errors)
       return
     }
+
     setFormErrors({})
+
     try {
       const payload = {
         ...form,
@@ -292,8 +349,10 @@ export function ClientsPageApi() {
         payment_period_days:
           form.payment_period_days !== '' ? Number(form.payment_period_days) : undefined,
       }
+
       if (modalMode === 'add') await createCustomer.mutateAsync(payload)
       else await updateCustomer.mutateAsync({ id: selected!.id, payload })
+
       setModalOpen(false)
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Nieznany błąd'
@@ -302,8 +361,28 @@ export function ClientsPageApi() {
     }
   }
 
+  async function removeCustomer() {
+    if (!selected) return
+
+    const ok = window.confirm(
+      `Czy na pewno chcesz usunąć klienta "${selected.company_name || selected.ckk}"?`
+    )
+    if (!ok) return
+
+    try {
+      await deleteCustomer.mutateAsync(selected.id)
+      setSelectedId(null)
+      setTab('info')
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Nieznany błąd'
+      console.error('[ClientsPage] removeCustomer failed:', err)
+      alert(`Nie udało się usunąć klienta.\n\nSzczegóły: ${msg}`)
+    }
+  }
+
   async function addNote() {
     if (!noteText.trim() || !selectedId) return
+
     try {
       await createNote.mutateAsync({
         content: noteText.trim(),
@@ -319,18 +398,11 @@ export function ClientsPageApi() {
   }
 
   const r = selected ? risk(selected.status) : risk('active')
-  const NOTE_TYPES: Array<typeof noteType> = [
-    'meeting',
-    'call',
-    'internal',
-    'client_request',
-    'other',
-  ]
-  const NOTE_LABELS = NOTE_TYPE_LABELS as Record<typeof noteType, string>
+  const NOTE_TYPES: NoteType[] = ['meeting', 'call', 'internal', 'client_request', 'other']
+  const NOTE_LABELS = NOTE_TYPE_LABELS
 
   return (
     <div className="cp-layout">
-      {/* Header */}
       <div className="cp-header">
         <div>
           <h1 className="cp-title">Klienci</h1>
@@ -343,9 +415,7 @@ export function ClientsPageApi() {
         </button>
       </div>
 
-      {/* Two-column grid */}
       <div className="cp-grid">
-        {/* LIST */}
         <div className="cp-list-panel">
           <div className="cp-search-wrap">
             <span className="cp-search-icon">
@@ -358,6 +428,7 @@ export function ClientsPageApi() {
               onChange={(e) => setSearch(e.target.value)}
             />
           </div>
+
           <div className="cp-list-meta">
             <span style={{ fontWeight: 700, color: '#1a1714' }}>{clients.length}</span> klientów
             &nbsp;·&nbsp;
@@ -365,13 +436,16 @@ export function ClientsPageApi() {
               ● {clients.filter((c) => c.status === 'active').length} aktywnych
             </span>
           </div>
+
           <div className="cp-list-scroll">
             {isLoading && (
               <div style={{ padding: 16, fontSize: 13, color: '#9e9389' }}>Ładowanie…</div>
             )}
+
             {clients.map((c) => {
               const active = selectedId === c.id || (!selectedId && selected?.id === c.id)
               const rs = risk(c.status)
+
               return (
                 <button
                   key={c.id}
@@ -384,6 +458,7 @@ export function ClientsPageApi() {
                   <div className={`cp-avatar ${active ? 'active-av' : 'inactive'}`}>
                     {ini(c.company_name || c.ckk)}
                   </div>
+
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div
                       style={{
@@ -417,6 +492,7 @@ export function ClientsPageApi() {
                         {STATUS_PL[c.status] ?? c.status}
                       </span>
                     </div>
+
                     <div className="cp-client-meta">
                       {c.segment ?? 'Brak segmentu'} · {c.billing_email ?? c.invoice_nip ?? '—'}
                     </div>
@@ -427,7 +503,6 @@ export function ClientsPageApi() {
           </div>
         </div>
 
-        {/* DETAIL */}
         <div className="cp-detail-panel">
           {!selected ? (
             <div className="cp-empty">
@@ -451,13 +526,13 @@ export function ClientsPageApi() {
           ) : (
             <>
               <div className="cp-detail-header">
-                {/* Top row */}
                 <div
                   style={{ display: 'flex', gap: 16, marginBottom: 16, alignItems: 'flex-start' }}
                 >
                   <div className="cp-detail-avatar">
                     {ini(selected.company_name || selected.ckk)}
                   </div>
+
                   <div style={{ flex: 1 }}>
                     <div
                       style={{
@@ -474,9 +549,17 @@ export function ClientsPageApi() {
                           {fmtDate(selected.created_at)}
                         </p>
                       </div>
+
                       <div style={{ display: 'flex', gap: 8, flexShrink: 0, alignItems: 'center' }}>
                         <button className="cp-btn-edit" onClick={openEdit}>
                           Edytuj
+                        </button>
+                        <button
+                          className="cp-btn-delete"
+                          onClick={removeCustomer}
+                          disabled={deleteCustomer.isPending}
+                        >
+                          {deleteCustomer.isPending ? 'Usuwanie…' : 'Usuń'}
                         </button>
                         <span
                           className="cp-status-badge"
@@ -506,7 +589,6 @@ export function ClientsPageApi() {
                   </div>
                 </div>
 
-                {/* KPIs */}
                 <div className="cp-kpi-grid">
                   {[
                     {
@@ -537,7 +619,6 @@ export function ClientsPageApi() {
                   ))}
                 </div>
 
-                {/* Tabs */}
                 <div className="cp-tabs">
                   {(
                     [
@@ -559,7 +640,6 @@ export function ClientsPageApi() {
               </div>
 
               <div className="cp-tab-body">
-                {/* INFO */}
                 {tab === 'info' && (
                   <div className="cp-info-grid">
                     {[
@@ -597,7 +677,6 @@ export function ClientsPageApi() {
                   </div>
                 )}
 
-                {/* CONTRACTS */}
                 {tab === 'contracts' && (
                   <div>
                     {contracts.length === 0 && (
@@ -617,7 +696,6 @@ export function ClientsPageApi() {
                   </div>
                 )}
 
-                {/* NOTES */}
                 {tab === 'notes' && (
                   <div>
                     <div className="cp-note-form">
@@ -631,6 +709,7 @@ export function ClientsPageApi() {
                       >
                         Nowa notatka
                       </div>
+
                       <div className="cp-note-types">
                         {NOTE_TYPES.map((t) => (
                           <button
@@ -642,12 +721,14 @@ export function ClientsPageApi() {
                           </button>
                         ))}
                       </div>
+
                       <textarea
                         className="cp-textarea"
                         placeholder="Wpisz treść notatki…"
                         value={noteText}
                         onChange={(e) => setNoteText(e.target.value)}
                       />
+
                       <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
                         <button
                           className="cp-btn-submit"
@@ -658,9 +739,11 @@ export function ClientsPageApi() {
                         </button>
                       </div>
                     </div>
+
                     {notes.length === 0 && (
                       <p style={{ color: '#9e9389', fontSize: 13 }}>Brak notatek.</p>
                     )}
+
                     {notes.map((n) => (
                       <div key={n.id} className="cp-note-item">
                         <div
@@ -676,7 +759,6 @@ export function ClientsPageApi() {
                   </div>
                 )}
 
-                {/* TIMELINE */}
                 {tab === 'timeline' && (
                   <Timeline events={timelineEvents} loading={timelineLoading} />
                 )}
@@ -686,7 +768,6 @@ export function ClientsPageApi() {
         </div>
       </div>
 
-      {/* MODAL */}
       {modalOpen && (
         <div
           className="cp-overlay"
@@ -701,20 +782,10 @@ export function ClientsPageApi() {
                 <CloseIcon />
               </button>
             </div>
+
             <div className="cp-modal-body">
               <div className="cp-form-grid">
-                {(
-                  [
-                    ['ckk', 'CKK / Identyfikator', 'text'],
-                    ['invoice_nip', 'NIP', 'text'],
-                    ['billing_email', 'Email bilingowy', 'email'],
-                    ['phone', 'Telefon', 'text'],
-                    ['segment', 'Segment', 'text'],
-                    ['industry', 'Branża', 'text'],
-                    ['employee_count', 'Liczba pracowników', 'number'],
-                    ['payment_period_days', 'Termin płatności (dni)', 'number'],
-                  ] as [string, string, string][]
-                ).map(([field, label, type]) => (
+                {FORM_FIELDS.map(([field, label, type]) => (
                   <div key={field} className="cp-form-group">
                     <label className="cp-form-label">{label}</label>
                     <input
@@ -734,12 +805,13 @@ export function ClientsPageApi() {
                     )}
                   </div>
                 ))}
+
                 <div className="cp-form-group">
                   <label className="cp-form-label">Status</label>
                   <select
                     className="cp-form-input"
                     value={form.status}
-                    onChange={(e) => setForm({ ...form, status: e.target.value })}
+                    onChange={(e) => setForm({ ...form, status: e.target.value as CustomerStatus })}
                   >
                     <option value="active">Aktywny</option>
                     <option value="needs_attention">Wymaga uwagi</option>
@@ -749,6 +821,7 @@ export function ClientsPageApi() {
                 </div>
               </div>
             </div>
+
             <div className="cp-modal-footer">
               <button className="cp-btn-cancel" onClick={() => setModalOpen(false)}>
                 Anuluj
