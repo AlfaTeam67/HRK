@@ -14,8 +14,8 @@ from app.schemas.customers import CustomerCreate, CustomerRead, CustomerUpdate
 from app.schemas.notes import NoteCreate, NoteRead, NoteUpdate
 from app.schemas.service_groups import ServiceGroupCreate, ServiceGroupRead, ServiceGroupUpdate
 from app.schemas.services import ServiceCreate, ServiceRead, ServiceUpdate
-from app.schemas.valorizations import ValorizationCreate, ValorizationRead, ValorizationUpdate
 from app.schemas.timeline import TimelineEventRead
+from app.schemas.valorizations import ValorizationCreate, ValorizationRead, ValorizationUpdate
 
 __all__ = [
     "ORMBaseSchema",

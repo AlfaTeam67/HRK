@@ -16,7 +16,7 @@ import enum
 # ── Users ────────────────────────────────────────────────────────────────────
 
 
-class UserRole(str, enum.Enum):
+class UserRole(enum.StrEnum):
     """Roles assignable to internal CRM users."""
 
     ADMIN = "admin"
@@ -28,7 +28,7 @@ class UserRole(str, enum.Enum):
 # ── Customers ────────────────────────────────────────────────────────────────
 
 
-class CustomerStatus(str, enum.Enum):
+class CustomerStatus(enum.StrEnum):
     ACTIVE = "active"
     CHURN_RISK = "churn_risk"
     NEEDS_ATTENTION = "needs_attention"
@@ -38,7 +38,7 @@ class CustomerStatus(str, enum.Enum):
 # ── Contracts ────────────────────────────────────────────────────────────────
 
 
-class ContractType(str, enum.Enum):
+class ContractType(enum.StrEnum):
     RAMOWA = "ramowa"
     ANEKS = "aneks"
     SLA = "SLA"
@@ -47,7 +47,7 @@ class ContractType(str, enum.Enum):
     INNE = "inne"
 
 
-class ContractStatus(str, enum.Enum):
+class ContractStatus(enum.StrEnum):
     DRAFT = "draft"
     SIGNED = "signed"
     ACTIVE = "active"
@@ -55,7 +55,7 @@ class ContractStatus(str, enum.Enum):
     TERMINATED = "terminated"
 
 
-class BillingCycle(str, enum.Enum):
+class BillingCycle(enum.StrEnum):
     MONTHLY = "monthly"
     QUARTERLY = "quarterly"
     ANNUAL = "annual"
@@ -65,7 +65,7 @@ class BillingCycle(str, enum.Enum):
 # ── Notes ────────────────────────────────────────────────────────────────────
 
 
-class NoteType(str, enum.Enum):
+class NoteType(enum.StrEnum):
     MEETING = "meeting"
     CALL = "call"
     INTERNAL = "internal"
@@ -76,7 +76,7 @@ class NoteType(str, enum.Enum):
 # ── Attachments / Documents ──────────────────────────────────────────────────
 
 
-class DocumentType(str, enum.Enum):
+class DocumentType(enum.StrEnum):
     CONTRACT = "contract"
     AMENDMENT = "amendment"
     POWER_OF_ATTORNEY = "power_of_attorney"
@@ -86,7 +86,7 @@ class DocumentType(str, enum.Enum):
     OTHER = "other"
 
 
-class OcrStatus(str, enum.Enum):
+class OcrStatus(enum.StrEnum):
     PENDING = "pending"
     PROCESSING = "processing"
     DONE = "done"
@@ -97,7 +97,7 @@ class OcrStatus(str, enum.Enum):
 # ── Activity ─────────────────────────────────────────────────────────────────
 
 
-class ActivityType(str, enum.Enum):
+class ActivityType(enum.StrEnum):
     MEETING = "meeting"
     EMAIL = "email"
     NOTE = "note"
@@ -110,13 +110,13 @@ class ActivityType(str, enum.Enum):
 # ── Customer Relation Scores ────────────────────────────────────────────────
 
 
-class ScoreLabel(str, enum.Enum):
+class ScoreLabel(enum.StrEnum):
     GOOD = "good"
     NEEDS_ATTENTION = "needs_attention"
     CHURN_RISK = "churn_risk"
 
 
-class CalculatedBy(str, enum.Enum):
+class CalculatedBy(enum.StrEnum):
     AI = "ai"
     MANUAL = "manual"
 
@@ -124,7 +124,7 @@ class CalculatedBy(str, enum.Enum):
 # ── Alerts ───────────────────────────────────────────────────────────────────
 
 
-class AlertType(str, enum.Enum):
+class AlertType(enum.StrEnum):
     CONTRACT_EXPIRY = "contract_expiry"
     VALORIZATION_OVERDUE = "valorization_overdue"
     NO_CONTACT = "no_contact"
@@ -133,7 +133,7 @@ class AlertType(str, enum.Enum):
     CUSTOM = "custom"
 
 
-class AlertStatus(str, enum.Enum):
+class AlertStatus(enum.StrEnum):
     OPEN = "open"
     ACKNOWLEDGED = "acknowledged"
     RESOLVED = "resolved"
@@ -143,7 +143,7 @@ class AlertStatus(str, enum.Enum):
 # ── Services ─────────────────────────────────────────────────────────────────
 
 
-class BillingUnit(str, enum.Enum):
+class BillingUnit(enum.StrEnum):
     PER_PERSON = "per_person"
     RYCZALT = "ryczalt"
     PER_HOUR = "per_hour"
@@ -151,7 +151,7 @@ class BillingUnit(str, enum.Enum):
     PER_ITEM = "per_item"
 
 
-class BillingFrequency(str, enum.Enum):
+class BillingFrequency(enum.StrEnum):
     MONTHLY = "monthly"
     QUARTERLY = "quarterly"
     ONE_TIME = "one_time"
@@ -161,13 +161,13 @@ class BillingFrequency(str, enum.Enum):
 # ── Valorizations ───────────────────────────────────────────────────────────
 
 
-class IndexType(str, enum.Enum):
+class IndexType(enum.StrEnum):
     GUS_CPI = "GUS_CPI"
     FIXED_PCT = "fixed_pct"
     CUSTOM = "custom"
 
 
-class ValorizationStatus(str, enum.Enum):
+class ValorizationStatus(enum.StrEnum):
     PENDING = "pending"
     APPROVED = "approved"
     APPLIED = "applied"
@@ -177,7 +177,7 @@ class ValorizationStatus(str, enum.Enum):
 # ── Audit ────────────────────────────────────────────────────────────────────
 
 
-class AuditAction(str, enum.Enum):
+class AuditAction(enum.StrEnum):
     CREATE = "CREATE"
     UPDATE = "UPDATE"
     DELETE = "DELETE"

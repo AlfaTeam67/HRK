@@ -6,7 +6,6 @@ from typing import Literal
 
 from pydantic import BaseModel
 
-
 TimelineEventType = Literal[
     "contract_signed",
     "valorization_approved",

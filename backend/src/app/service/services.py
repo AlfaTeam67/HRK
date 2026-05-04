@@ -2,6 +2,7 @@
 
 import uuid
 from datetime import UTC, datetime
+from typing import Any
 
 from fastapi import HTTPException, status
 from sqlalchemy.exc import IntegrityError
@@ -19,7 +20,7 @@ class ServiceCrudService:
         self.services = service_repo
         self.lookup = lookup_repo
 
-    async def list_services(self, **kwargs) -> list[Service]:
+    async def list_services(self, **kwargs: Any) -> list[Service]:
         return await self.services.list(**kwargs)
 
     async def get_service(self, service_id: uuid.UUID) -> Service:

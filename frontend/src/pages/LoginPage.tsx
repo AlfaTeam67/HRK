@@ -5,6 +5,7 @@ import { AD_PROFILES, useLogin } from '@/hooks/auth'
 
 const SIM_USERS = [
   { login: 'asia',    ...AD_PROFILES.asia },
+  { login: 'kasia',   ...AD_PROFILES.kasia },
   { login: 'mateusz', ...AD_PROFILES.mateusz },
   { login: 'tomek',   ...AD_PROFILES.tomek },
 ]

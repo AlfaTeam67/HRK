@@ -1,20 +1,23 @@
 """Customer repository."""
 
+from __future__ import annotations
+
 import uuid
 from datetime import date
 
 from sqlalchemy import func, or_, select
-from sqlalchemy.orm import joinedload
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import joinedload
 
 from app.models.customer import Customer
+from app.repo.base import BaseRepository
 
 
-class CustomerRepository:
+class CustomerRepository(BaseRepository[Customer]):
     """Data access for Customer model."""
 
     def __init__(self, db: AsyncSession) -> None:
-        self.db = db
+        super().__init__(Customer, db)
 
     async def get(self, customer_id: uuid.UUID) -> Customer | None:
         stmt = (
@@ -22,10 +25,10 @@ class CustomerRepository:
             .options(joinedload(Customer.company))
             .where(Customer.id == customer_id, Customer.deleted_at.is_(None))
         )
-        result = await self.db.execute(stmt)
+        result = await self.session.execute(stmt)
         return result.scalar_one_or_none()
 
-    async def list(
+    async def list_all(
         self,
         *,
         q: str | None = None,
@@ -34,7 +37,11 @@ class CustomerRepository:
         created_from: date | None,
         created_to: date | None,
     ) -> list[Customer]:
-        stmt = select(Customer).options(joinedload(Customer.company)).where(Customer.deleted_at.is_(None))
+        stmt = (
+            select(Customer)
+            .options(joinedload(Customer.company))
+            .where(Customer.deleted_at.is_(None))
+        )
         if company_id:
             stmt = stmt.where(Customer.company_id == company_id)
         if q:
@@ -54,19 +61,25 @@ class CustomerRepository:
         if created_to:
             stmt = stmt.where(func.date(Customer.created_at) <= created_to)
         stmt = stmt.order_by(Customer.created_at.desc())
-        result = await self.db.execute(stmt)
+        result = await self.session.execute(stmt)
         return list(result.scalars().all())
 
     async def create(self, data: dict) -> Customer:
         customer = Customer(**data)
-        self.db.add(customer)
-        await self.db.flush()
-        await self.db.refresh(customer)
+        self.session.add(customer)
+        await self.session.flush()
+        await self.session.refresh(customer)
         return customer
 
-    async def update(self, customer: Customer, data: dict) -> Customer:
-        for key, value in data.items():
-            setattr(customer, key, value)
-        await self.db.flush()
-        await self.db.refresh(customer)
-        return customer
+    async def list_by_account_manager(self, manager_id: uuid.UUID) -> list[Customer]:
+        stmt = (
+            select(Customer)
+            .options(joinedload(Customer.company))
+            .where(
+                Customer.account_manager_id == manager_id,
+                Customer.deleted_at.is_(None),
+            )
+            .order_by(Customer.created_at.desc())
+        )
+        result = await self.session.execute(stmt)
+        return list(result.scalars().all())

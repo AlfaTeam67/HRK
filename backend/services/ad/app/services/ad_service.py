@@ -38,6 +38,16 @@ class ADService:
                 ],
                 department="Handlowy",
             ),
+            ADUser(
+                identity=r"HRK\kasia",
+                displayName="Katarzyna Nowakowska",
+                groups=[
+                    r"HRK\users",
+                    r"HRK\account_managers",
+                    r"HRK\Sales",
+                ],
+                department="Obsługa Klienta",
+            ),
         ]
         self._users_by_identity: dict[str, ADUser] = {
             self._normalize_identity(user.identity): user for user in self._users

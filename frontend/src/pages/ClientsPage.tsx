@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { Modal } from '@/components/ui/modal'
 
 import { useContactPersons } from '@/hooks/contactPersons'
 import { useContracts } from '@/hooks/contracts'
@@ -114,23 +115,6 @@ function PlusIcon() {
     >
       <line x1="12" y1="5" x2="12" y2="19" />
       <line x1="5" y1="12" x2="19" y2="12" />
-    </svg>
-  )
-}
-
-function CloseIcon() {
-  return (
-    <svg
-      width="16"
-      height="16"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-    >
-      <line x1="18" y1="6" x2="6" y2="18" />
-      <line x1="6" y1="6" x2="18" y2="18" />
     </svg>
   )
 }
@@ -750,77 +734,106 @@ export function ClientsPageApi() {
         </div>
       </div>
 
-      {modalOpen && (
-        <div
-          className="cp-overlay"
-          onClick={(e) => e.target === e.currentTarget && setModalOpen(false)}
-        >
-          <div className="cp-modal">
-            <div className="cp-modal-header">
-              <h3 className="cp-modal-title">
-                {modalMode === 'add' ? '✦ Nowy klient' : '✦ Edytuj klienta'}
-              </h3>
-              <button className="cp-modal-close" onClick={() => setModalOpen(false)}>
-                <CloseIcon />
-              </button>
-            </div>
-
-            <div className="cp-modal-body">
-              <div className="cp-form-grid">
-                {FORM_FIELDS.map(([field, label, type]) => (
-                  <div key={field} className="cp-form-group">
-                    <label className="cp-form-label">{label}</label>
-                    <input
-                      className="cp-form-input"
-                      type={type}
-                      value={form[field] ?? ''}
-                      onChange={(e) => {
-                        setForm({ ...form, [field]: e.target.value })
-                        setFormErrors((prev) => ({ ...prev, [field]: undefined }))
-                      }}
-                      style={formErrors[field] ? { borderColor: '#e53e3e' } : undefined}
-                    />
-                    {formErrors[field] && (
-                      <span style={{ fontSize: 11, color: '#c94f02', marginTop: 2 }}>
-                        {formErrors[field]}
-                      </span>
-                    )}
-                  </div>
-                ))}
-
-                <div className="cp-form-group">
-                  <label className="cp-form-label">Status</label>
-                  <select
-                    className="cp-form-input"
-                    value={form.status}
-                    onChange={(e) => setForm({ ...form, status: e.target.value as CustomerStatus })}
-                  >
-                    <option value="active">Aktywny</option>
-                    <option value="needs_attention">Wymaga uwagi</option>
-                    <option value="churn_risk">Ryzyko utraty</option>
-                    <option value="inactive">Nieaktywny</option>
-                  </select>
-                </div>
+      <Modal 
+        isOpen={modalOpen} 
+        onClose={() => setModalOpen(false)} 
+        title={modalMode === 'add' ? '✦ Nowy klient' : '✦ Edytuj klienta'}
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <div style={{ 
+            display: 'grid', 
+            gridTemplateColumns: '1fr 1fr', 
+            gap: '12px 16px'
+          }}>
+            {FORM_FIELDS.map(([field, label, type]) => (
+              <div key={field} className="cp-form-group">
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#4a4340', marginBottom: 4 }}>{label}</label>
+                <input
+                  className="cp-form-input"
+                  type={type}
+                  value={form[field] ?? ''}
+                  onChange={(e) => {
+                    setForm({ ...form, [field]: e.target.value })
+                    setFormErrors((prev) => ({ ...prev, [field]: undefined }))
+                  }}
+                  style={{
+                    width: '100%',
+                    padding: '8px 12px',
+                    borderRadius: 6,
+                    border: '1px solid #e3e0db',
+                    fontSize: 13,
+                    outline: 'none',
+                    ...(formErrors[field] ? { borderColor: '#e53e3e' } : {})
+                  }}
+                />
+                {formErrors[field] && (
+                  <span style={{ fontSize: 11, color: '#c94f02', marginTop: 2, display: 'block' }}>
+                    {formErrors[field]}
+                  </span>
+                )}
               </div>
-            </div>
+            ))}
 
-            <div className="cp-modal-footer">
-              <button className="cp-btn-cancel" onClick={() => setModalOpen(false)}>
-                Anuluj
-              </button>
-              <button
-                className="cp-btn-save"
-                onClick={saveCustomer}
-                disabled={createCustomer.isPending || updateCustomer.isPending}
+            <div className="cp-form-group">
+              <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#4a4340', marginBottom: 4 }}>Status</label>
+              <select
+                className="cp-form-input"
+                value={form.status}
+                onChange={(e) => setForm({ ...form, status: e.target.value as CustomerStatus })}
+                style={{
+                  width: '100%',
+                  padding: '8px 12px',
+                  borderRadius: 6,
+                  border: '1px solid #e3e0db',
+                  fontSize: 13,
+                  outline: 'none',
+                  background: 'white'
+                }}
               >
-                {createCustomer.isPending || updateCustomer.isPending
-                  ? 'Zapisywanie…'
-                  : 'Zapisz klienta'}
-              </button>
+                <option value="active">Aktywny</option>
+                <option value="needs_attention">Wymaga uwagi</option>
+                <option value="churn_risk">Ryzyko utraty</option>
+                <option value="inactive">Nieaktywny</option>
+              </select>
             </div>
           </div>
+
+          <div style={{ display: 'flex', gap: 10, marginTop: 10 }}>
+            <button
+              style={{
+                flex: 1,
+                padding: '10px',
+                borderRadius: 6,
+                border: '1px solid #e3e0db',
+                background: 'white',
+                fontSize: 13,
+                fontWeight: 600,
+                cursor: 'pointer'
+              }}
+              onClick={() => setModalOpen(false)}
+            >
+              Anuluj
+            </button>
+            <button
+              style={{
+                flex: 1,
+                padding: '10px',
+                borderRadius: 6,
+                border: 'none',
+                background: '#e85c04',
+                color: 'white',
+                fontSize: 13,
+                fontWeight: 600,
+                cursor: 'pointer'
+              }}
+              onClick={saveCustomer}
+              disabled={createCustomer.isPending || updateCustomer.isPending}
+            >
+              {createCustomer.isPending || updateCustomer.isPending ? 'Zapisywanie…' : 'Zapisz klienta'}
+            </button>
+          </div>
         </div>
-      )}
+      </Modal>
     </div>
   )
 }

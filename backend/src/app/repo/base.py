@@ -1,6 +1,6 @@
 from collections.abc import Sequence
 from datetime import UTC, datetime
-from typing import Any, Generic, TypeVar, cast
+from typing import Any, TypeVar, cast
 from uuid import UUID
 
 from sqlalchemy import func, select
@@ -11,7 +11,7 @@ from app.models.base import Base
 ModelType = TypeVar("ModelType", bound=Base)
 
 
-class BaseRepository(Generic[ModelType]):
+class BaseRepository[ModelType: Base]:
     def __init__(self, model: type[ModelType], session: AsyncSession):
         self.model = model
         self.session = session

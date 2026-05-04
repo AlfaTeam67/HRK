@@ -1,7 +1,7 @@
 """Valorization API endpoints."""
 
 import uuid
-from typing import Annotated
+from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, Query, status
 
@@ -19,7 +19,7 @@ async def list_valorizations(
     contract_id: uuid.UUID | None = Query(default=None),
     year: int | None = Query(default=None),
     status_: ValorizationStatus | None = Query(default=None, alias="status"),
-) -> list[ValorizationRead]:
+) -> Any:
     return await service.list_valorizations(
         contract_id=contract_id,
         year=year,
@@ -36,7 +36,7 @@ async def list_valorizations(
 async def create_valorization(
     payload: ValorizationCreate,
     service: Annotated[CRMService, Depends(get_crm_service)],
-) -> ValorizationRead:
+) -> Any:
     return await service.create_valorization(payload)
 
 
@@ -46,7 +46,7 @@ async def create_valorization(
 async def get_valorization(
     valorization_id: uuid.UUID,
     service: Annotated[CRMService, Depends(get_crm_service)],
-) -> ValorizationRead:
+) -> Any:
     return await service.get_valorization(valorization_id)
 
 
@@ -59,7 +59,7 @@ async def update_valorization(
     valorization_id: uuid.UUID,
     payload: ValorizationUpdate,
     service: Annotated[CRMService, Depends(get_crm_service)],
-) -> ValorizationRead:
+) -> Any:
     return await service.update_valorization(valorization_id, payload)
 
 

@@ -74,7 +74,9 @@ class TimelineService:
             )
         return events
 
-    def _valorization_events(self, valorizations: Iterable[Valorization]) -> list[TimelineEventRead]:
+    def _valorization_events(
+        self, valorizations: Iterable[Valorization]
+    ) -> list[TimelineEventRead]:
         events: list[TimelineEventRead] = []
         for val in valorizations:
             planned_timestamp = self._as_datetime(val.planned_date)
@@ -116,7 +118,7 @@ class TimelineService:
                 TimelineEventRead(
                     id=note.id,
                     timestamp=note.created_at,
-                event_type="note_added",
+                    event_type="note_added",
                     title="Dodano notatke",
                     detail=note.content,
                     author=str(note.created_by) if note.created_by else None,
