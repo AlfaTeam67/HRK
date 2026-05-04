@@ -52,6 +52,7 @@ from app.models.enums import (
 # Tier 4 — Documents & Notes
 from app.models.note import Note
 from app.models.rate import CustomerRate, CustomerRateMonth, Valorization
+from app.models.gus import GusCpiSnapshot
 from app.models.score import CustomerRelationScore
 from app.models.service import Service
 
@@ -100,6 +101,7 @@ __all__ = [
     "CustomerRate",
     "CustomerRateMonth",
     "Valorization",
+    "GusCpiSnapshot",
     # Tier 4
     "Note",
     "Attachment",

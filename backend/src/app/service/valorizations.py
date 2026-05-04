@@ -1,14 +1,16 @@
 """Valorization business service."""
 
 import uuid
+from decimal import Decimal
 
 from fastapi import HTTPException, status
 from sqlalchemy.exc import IntegrityError
 
-from app.models.enums import ValorizationStatus
+from app.models.enums import IndexType, ValorizationStatus
 from app.models.rate import Valorization
 from app.repo.valorizations import ValorizationRepository
 from app.schemas.valorizations import ValorizationCreate, ValorizationUpdate
+from app.service.gus import GUSService
 
 
 class ValorizationCrudService:
@@ -66,3 +68,25 @@ class ValorizationCrudService:
                 status_code=status.HTTP_409_CONFLICT,
                 detail="Valorization delete failed due to constraint violation",
             ) from exc
+
+    async def calculate_valorization_amount(
+        self,
+        *,
+        base_amount: Decimal,
+        index_type: IndexType,
+        index_value: Decimal | None,
+    ) -> Decimal:
+        """Calculate valorized amount based on CPI or a provided percentage."""
+
+        if index_type == IndexType.GUS_CPI:
+            gus_service = GUSService(self.valorizations.db)
+            cpi_value, _year, _quarter = await gus_service.get_latest_cpi()
+            index_value = Decimal(str(cpi_value))
+        elif index_value is None:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="index_value is required for non-GUS index types",
+            )
+
+        multiplier = index_value / Decimal("100")
+        return (base_amount * (Decimal("1.0") + multiplier)).quantize(Decimal("0.01"))
