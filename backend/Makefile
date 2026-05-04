@@ -1,4 +1,4 @@
-.PHONY: help install run test test-docker lint format typecheck security migrate makemigration check \
+.PHONY: help install run test test-docker lint format typecheck security migrate makemigration migration seed check \
 	up docker-up docker-down docker-build docker-logs docker-logs-ad docker-logs-schema-manager docker-migrate minio-init
 
 help:
@@ -15,6 +15,7 @@ help:
 	@echo "  make security       - Run bandit security check"
 	@echo "  make migrate        - Apply database migrations"
 	@echo "  make makemigration  - Create new migration (usage: make makemigration MSG='add users table')"
+	@echo "  make migration      - Alias for makemigration"
 	@echo "  make check          - Run all checks (lint + typecheck + test + security)"
 	@echo ""
 	@echo "  Docker:"
@@ -26,6 +27,7 @@ help:
 	@echo "  make docker-logs-ad - Tail AD microservice logs"
 	@echo "  make docker-logs-schema-manager - Tail Schema Manager logs"
 	@echo "  make docker-migrate - Run alembic migrations inside the api container"
+	@echo "  make docker-seed    - Seed demo data inside api container"
 	@echo "  make minio-init     - Create default S3 bucket in MinIO (auto-run on docker-up)"
 
 install:
@@ -59,6 +61,9 @@ migrate:
 makemigration:
 	PYTHONPATH=src poetry run alembic revision --autogenerate -m "$(MSG)"
 
+migration: makemigration
+
+
 check: lint typecheck test security
 	@echo "All checks passed"
 
@@ -87,6 +92,9 @@ docker-logs-schema-manager:
 
 docker-migrate:
 	docker compose exec api alembic upgrade head
+
+docker-seed:
+	docker compose exec api python -m app.scripts.seed_demo
 
 minio-init:
 	docker compose run --rm minio-init

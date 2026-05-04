@@ -20,6 +20,13 @@ export type Contract = S['ContractRead']
 export type ContractCreate = S['ContractCreate']
 export type ContractUpdate = S['ContractUpdate']
 
+export type Note = S['NoteRead']
+export type NoteCreate = S['NoteCreate']
+export type NoteUpdate = S['NoteUpdate']
+
+export type ActivityLog = S['ActivityLogRead']
+export type ActivityLogCreate = S['ActivityLogCreate']
+
 export type Valorization = S['ValorizationRead']
 export type ValorizationCreate = S['ValorizationCreate']
 export type ValorizationUpdate = S['ValorizationUpdate']

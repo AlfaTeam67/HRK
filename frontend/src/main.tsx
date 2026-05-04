@@ -19,7 +19,7 @@ if (!rootElement) {
 
 setupAxiosInterceptors(
   () => store.getState().auth.token,
-  () => store.dispatch(logout()),
+  () => store.dispatch(logout())
 )
 
 createRoot(rootElement).render(

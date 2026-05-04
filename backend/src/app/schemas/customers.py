@@ -64,6 +64,7 @@ class CustomerRead(ORMBaseSchema):
     ckk: str
     ckd: str | None
     company_id: uuid.UUID | None
+    company_name: str | None = None
     account_manager_id: uuid.UUID
     status: CustomerStatus
     segment: str | None

@@ -15,6 +15,7 @@ from app.schemas.notes import NoteCreate, NoteRead, NoteUpdate
 from app.schemas.service_groups import ServiceGroupCreate, ServiceGroupRead, ServiceGroupUpdate
 from app.schemas.services import ServiceCreate, ServiceRead, ServiceUpdate
 from app.schemas.valorizations import ValorizationCreate, ValorizationRead, ValorizationUpdate
+from app.schemas.timeline import TimelineEventRead
 
 __all__ = [
     "ORMBaseSchema",
@@ -44,6 +45,7 @@ __all__ = [
     "ValorizationCreate",
     "ValorizationRead",
     "ValorizationUpdate",
+    "TimelineEventRead",
     "ContactPersonCreate",
     "ContactPersonUpdate",
     "ContactPersonRead",
