@@ -14,7 +14,9 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
+from app.core.auth import AuthorizationService
 from app.core.exceptions import (
+    DocumentAccessDeniedError,
     DocumentError,
     DocumentNotFoundError,
     DocumentStorageError,
@@ -28,7 +30,6 @@ from app.models.user import User
 from app.repo.attachment import AttachmentRepository
 from app.repo.contract import ContractRepository
 from app.repo.customer import CustomerRepository
-from app.repo.user import UserRepository
 from app.service.document_processing import DocumentProcessingService
 from app.service.storage import StorageService, StorageServiceError
 
@@ -57,8 +58,8 @@ class DocumentService:
         self._attachments = AttachmentRepository(session)
         self._customers = CustomerRepository(session)
         self._contracts = ContractRepository(session)
-        self._users = UserRepository(session)
         self._storage = storage_service or StorageService()
+        self._authorization = AuthorizationService(session)
 
     async def upload_document(
         self,
@@ -68,7 +69,7 @@ class DocumentService:
         company_id: UUID | None,
         customer_id: UUID | None,
         contract_id: UUID | None,
-        uploaded_by: UUID,
+        current_user: User,
         background_tasks: BackgroundTasks,
     ) -> Attachment:
         if customer_id is None and contract_id is None:
@@ -79,12 +80,18 @@ class DocumentService:
         customer, contract = await self._resolve_relations(
             customer_id=customer_id, contract_id=contract_id
         )
-        await self._get_requesting_user(uploaded_by)
 
         resolved_company_id = self._resolve_company_id(
             explicit_company_id=company_id,
             customer_company_id=customer.company_id if customer else None,
         )
+        await self._authorize_document_action(
+            user=current_user,
+            action="write",
+            company_id=resolved_company_id,
+            contract_id=contract.id if contract else None,
+        )
+
         object_key = self._build_object_key(
             company_id=resolved_company_id, document_id=uuid.uuid4(), filename=original_filename
         )
@@ -109,7 +116,7 @@ class DocumentService:
                     "s3_key": object_key,
                     "mime_type": content_type,
                     "file_size_bytes": len(content),
-                    "uploaded_by": uploaded_by,
+                    "uploaded_by": current_user.id,
                 }
             )
             await self._session.commit()
@@ -138,12 +145,17 @@ class DocumentService:
             raise DocumentError("Could not persist document metadata.") from exc
 
     async def get_download_url(
-        self, *, document_id: UUID, requester_user_id: UUID
+        self, *, document_id: UUID, current_user: User
     ) -> tuple[str, int]:
         attachment = await self._attachments.get(document_id)
         if not attachment:
             raise DocumentNotFoundError("Document not found.")
-        await self._get_requesting_user(requester_user_id)
+        await self._authorize_document_action(
+            user=current_user,
+            action="read",
+            company_id=attachment.company_id,
+            contract_id=attachment.contract_id,
+        )
 
         try:
             url = await self._storage.generate_download_url(key=attachment.s3_key)
@@ -152,11 +164,16 @@ class DocumentService:
 
         return url, settings.document_presigned_url_ttl_seconds
 
-    async def delete_document(self, *, document_id: UUID, requester_user_id: UUID) -> None:
+    async def delete_document(self, *, document_id: UUID, current_user: User) -> None:
         attachment = await self._attachments.get(document_id)
         if not attachment:
             raise DocumentNotFoundError("Document not found.")
-        await self._get_requesting_user(requester_user_id)
+        await self._authorize_document_action(
+            user=current_user,
+            action="delete",
+            company_id=attachment.company_id,
+            contract_id=attachment.contract_id,
+        )
 
         try:
             await self._storage.delete_object(key=attachment.s3_key)
@@ -166,18 +183,35 @@ class DocumentService:
         await self._attachments.delete(document_id, soft=False)
         await self._session.commit()
 
-    async def get_document(self, *, document_id: UUID, requester_user_id: UUID) -> Attachment:
+    async def get_document(self, *, document_id: UUID, current_user: User) -> Attachment:
         attachment = await self._attachments.get(document_id)
         if not attachment:
             raise DocumentNotFoundError("Document not found.")
-        await self._get_requesting_user(requester_user_id)
+        await self._authorize_document_action(
+            user=current_user,
+            action="read",
+            company_id=attachment.company_id,
+            contract_id=attachment.contract_id,
+        )
         return attachment
 
-    async def _get_requesting_user(self, user_id: UUID) -> User:
-        user = await self._users.get(user_id)
-        if user is None:
-            raise DocumentValidationError("Requesting user not found.")
-        return user
+    async def _authorize_document_action(
+        self,
+        *,
+        user: User,
+        action: str,
+        company_id: UUID | None,
+        contract_id: UUID | None,
+    ) -> None:
+        try:
+            await self._authorization.authorize(
+                user=user,
+                action=action,
+                resource_company_id=company_id,
+                resource_contract_id=contract_id,
+            )
+        except PermissionError as exc:
+            raise DocumentAccessDeniedError(str(exc)) from exc
 
     async def _resolve_relations(
         self, *, customer_id: UUID | None, contract_id: UUID | None

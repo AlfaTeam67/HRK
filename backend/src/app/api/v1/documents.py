@@ -13,6 +13,7 @@ from fastapi import (
 )
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.auth import get_current_user
 from app.core.database import get_db
 from app.core.exceptions import (
     DocumentAccessDeniedError,
@@ -23,6 +24,7 @@ from app.core.exceptions import (
 )
 from app.core.storage import get_storage_service
 from app.models.enums import DocumentType
+from app.models.user import User
 from app.schemas.document import DocumentDownloadURLRead, DocumentRead
 from app.service.document import DocumentService
 
@@ -41,16 +43,13 @@ async def upload_document(
     company_id: str | None = Form(None),
     customer_id: str | None = Form(None),
     contract_id: str | None = Form(None),
-    uploaded_by: str = Form(...),
+    current_user: User = Depends(get_current_user),
     service: DocumentService = Depends(get_document_service),
 ) -> Any:
     try:
         parsed_company_id = UUID(company_id) if company_id else None
         parsed_customer_id = UUID(customer_id) if customer_id else None
         parsed_contract_id = UUID(contract_id) if contract_id else None
-        if not uploaded_by:
-            raise ValueError("uploaded_by is required")
-        parsed_uploaded_by = UUID(uploaded_by)
     except ValueError as exc:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
@@ -64,7 +63,7 @@ async def upload_document(
             company_id=parsed_company_id,
             customer_id=parsed_customer_id,
             contract_id=parsed_contract_id,
-            uploaded_by=parsed_uploaded_by,
+            current_user=current_user,
             background_tasks=background_tasks,
         )
     except DocumentValidationError as exc:
@@ -81,10 +80,12 @@ async def upload_document(
 
 @router.get("/{id}", response_model=DocumentRead)
 async def get_document(
-    id: UUID, requester_user_id: UUID, service: DocumentService = Depends(get_document_service)
+    id: UUID,
+    current_user: User = Depends(get_current_user),
+    service: DocumentService = Depends(get_document_service),
 ) -> Any:
     try:
-        return await service.get_document(document_id=id, requester_user_id=requester_user_id)
+        return await service.get_document(document_id=id, current_user=current_user)
     except DocumentValidationError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     except DocumentAccessDeniedError as exc:
@@ -95,12 +96,12 @@ async def get_document(
 
 @router.get("/{id}/download-url", response_model=DocumentDownloadURLRead)
 async def get_download_url(
-    id: UUID, requester_user_id: UUID, service: DocumentService = Depends(get_document_service)
+    id: UUID,
+    current_user: User = Depends(get_current_user),
+    service: DocumentService = Depends(get_document_service),
 ) -> Any:
     try:
-        url, expires_in = await service.get_download_url(
-            document_id=id, requester_user_id=requester_user_id
-        )
+        url, expires_in = await service.get_download_url(document_id=id, current_user=current_user)
         return {"url": url, "expires_in": expires_in}
     except DocumentValidationError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
@@ -114,10 +115,12 @@ async def get_download_url(
 
 @router.delete("/{id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_document(
-    id: UUID, requester_user_id: UUID, service: DocumentService = Depends(get_document_service)
+    id: UUID,
+    current_user: User = Depends(get_current_user),
+    service: DocumentService = Depends(get_document_service),
 ) -> None:
     try:
-        await service.delete_document(document_id=id, requester_user_id=requester_user_id)
+        await service.delete_document(document_id=id, current_user=current_user)
     except DocumentValidationError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     except DocumentAccessDeniedError as exc:

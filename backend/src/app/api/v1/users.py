@@ -6,16 +6,22 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.auth import require_admin
 from app.core.database import get_db
+from app.models.user import User
 from app.repo.user import UserRepository
 from app.schemas.common import PaginatedResponse, PaginationParams
 from app.schemas.user import UserCreate, UserRead, UserUpdate
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(require_admin)])
 
 
 @router.post("/", response_model=UserRead, status_code=status.HTTP_201_CREATED)
-async def create_user(obj_in: UserCreate, db: AsyncSession = Depends(get_db)) -> Any:
+async def create_user(
+    obj_in: UserCreate,
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(require_admin),
+) -> Any:
     repo = UserRepository(db)
     try:
         new_user = await repo.create(obj_in.model_dump())
@@ -32,7 +38,9 @@ async def create_user(obj_in: UserCreate, db: AsyncSession = Depends(get_db)) ->
 
 @router.get("/", response_model=PaginatedResponse[UserRead])
 async def list_users(
-    params: PaginationParams = Depends(), db: AsyncSession = Depends(get_db)
+    params: PaginationParams = Depends(),
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(require_admin),
 ) -> Any:
     repo = UserRepository(db)
     skip = (params.page - 1) * params.page_size
@@ -49,7 +57,11 @@ async def list_users(
 
 
 @router.get("/{id}", response_model=UserRead)
-async def get_user(id: UUID, db: AsyncSession = Depends(get_db)) -> Any:
+async def get_user(
+    id: UUID,
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(require_admin),
+) -> Any:
     repo = UserRepository(db)
     user = await repo.get(id)
     if not user:
@@ -58,7 +70,12 @@ async def get_user(id: UUID, db: AsyncSession = Depends(get_db)) -> Any:
 
 
 @router.patch("/{id}", response_model=UserRead)
-async def update_user(id: UUID, obj_in: UserUpdate, db: AsyncSession = Depends(get_db)) -> Any:
+async def update_user(
+    id: UUID,
+    obj_in: UserUpdate,
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(require_admin),
+) -> Any:
     repo = UserRepository(db)
     user = await repo.get(id)
     if not user:
@@ -78,7 +95,11 @@ async def update_user(id: UUID, obj_in: UserUpdate, db: AsyncSession = Depends(g
 
 
 @router.delete("/{id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_user(id: UUID, db: AsyncSession = Depends(get_db)) -> None:
+async def delete_user(
+    id: UUID,
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(require_admin),
+) -> None:
     repo = UserRepository(db)
     success = await repo.delete(id, soft=True)
     if not success:

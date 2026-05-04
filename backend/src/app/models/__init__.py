@@ -58,6 +58,9 @@ from app.models.service import Service
 # Tier 3 — Services & Rates
 from app.models.service_group import ServiceGroup
 from app.models.user import User
+from app.models.user_company_access import UserCompanyAccess
+from app.models.user_contract_access import UserContractAccess
+from app.models.user_role import UserRoleAssignment
 
 __all__ = [
     # Base & Mixins
@@ -88,6 +91,9 @@ __all__ = [
     # Tier 1
     "Company",
     "User",
+    "UserRoleAssignment",
+    "UserCompanyAccess",
+    "UserContractAccess",
     "Customer",
     "ContactPerson",
     # Tier 2

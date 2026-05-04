@@ -12,6 +12,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.models.base import Base
 
 if TYPE_CHECKING:
+    from app.models.company import Company
     from app.models.customer import Customer
 
 
@@ -28,4 +29,11 @@ class User(Base):
         "Customer",
         back_populates="account_manager",
         foreign_keys="Customer.account_manager_id",
+    )
+
+    # Access control
+    accessible_companies: Mapped[list[Company]] = relationship(
+        "Company",
+        secondary="user_company_access",
+        backref="authorized_users",
     )

@@ -48,6 +48,18 @@ def event_loop() -> Generator[asyncio.AbstractEventLoop, None, None]:
 
 @pytest.fixture
 async def client() -> AsyncGenerator[AsyncClient, None]:
+    admin_login = "test_admin"
+    async with AsyncClient(
+        transport=ASGITransport(app=app),
+        base_url="http://test",
+    ) as ac:
+        await ac.post(f"/api/v1/auth/login/{admin_login}")
+        ac.headers["Authorization"] = f"Bearer {admin_login}"
+        yield ac
+
+
+@pytest.fixture
+async def anon_client() -> AsyncGenerator[AsyncClient, None]:
     async with AsyncClient(
         transport=ASGITransport(app=app),
         base_url="http://test",
