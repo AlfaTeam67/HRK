@@ -1,11 +1,8 @@
-/* ─── Mock data (inline) ─────────────────────────────────────── */
-const kpis = [
-  { label: 'KOŃCZĄ SIĘ W 30 DNI',        value: '3',  sub: 'Wysoki priorytet',   color: '#e85c04' },
-  { label: 'KOŃCZĄ SIĘ W 60 DNI',        value: '7',  sub: 'Przygotuj ofertę',   color: '#d69e2e' },
-  { label: 'KOŃCZĄ SIĘ W 90 DNI',        value: '12', sub: 'Wczesny kontakt',    color: '#3182ce' },
-  { label: 'AKTYWNYCH UMÓW',             value: '18', sub: 'Łącznie w systemie', color: '#38a169' },
-]
+import { cardStyle as card } from '@/lib/styles'
+import { useAppSelector } from '@/hooks/store'
+import { useAlerts, useDashboardKpi } from '@/hooks/alerts'
 
+/* ─── Mock data (inline) ─────────────────────────────────────── */
 const escalations = [
   { priority: 'Pilne'  , title: 'Empik: brak decyzji o waloryzacji',       detail: 'Termin aneksu mija za 4 dni. Wymagany akcept dyrektora sprzedaży.', color: '#e85c04' },
   { priority: 'Wysoki' , title: 'MediaMarkt: ryzyko wypowiedzenia',          detail: 'Klient zgłosił zastrzeżenia do stawek. Zaplanować call zarządczy.', color: '#d69e2e' },
@@ -20,8 +17,6 @@ const contracts = [
   { id: 'HRK/LID/2024/08', client: 'Lidl Polska',       type: 'Administracja',     status: 'Aktywna',       statusType: 'good',    end: '2026-08-15', notice: '90 dni', owner: 'K. Lis',      val: 'Gotowa',          valType: 'good'    },
   { id: 'HRK/TN/2025/03',  client: 'TechNova S.A.',     type: 'Outsourcing IT HR', status: 'Aktywna',       statusType: 'good',    end: '2026-06-18', notice: '60 dni', owner: 'M. Nowak',    val: 'W trakcie',       valType: 'warning' },
 ]
-
-import { cardStyle as card } from '@/lib/styles'
 
 /* ─── Style helpers ──────────────────────────────────────────── */
 const STATUS_S: Record<string, { bg: string; color: string }> = {
@@ -38,6 +33,21 @@ const VAL_S: Record<string, { bg: string; color: string }> = {
 
 /* ─── Component ──────────────────────────────────────────────── */
 export function ContractsPage() {
+  const user = useAppSelector((s) => s.auth.user)
+  const { data: realAlerts, isLoading: alertsLoading } = useAlerts(user?.id)
+  const { data: kpiData, isLoading: kpiLoading } = useDashboardKpi(user?.id)
+
+  const exp30 = alertsLoading ? null : (realAlerts?.filter(a => a.type === 'contract_expiry_30').length ?? 0)
+  const exp60 = alertsLoading ? null : (realAlerts?.filter(a => a.type === 'contract_expiry_60').length ?? 0)
+  const exp90 = alertsLoading ? null : (realAlerts?.filter(a => a.type === 'contract_expiry_90').length ?? 0)
+  const activeContracts = kpiLoading ? null : (kpiData?.active_contracts ?? 0)
+
+  const kpis = [
+    { label: 'KOŃCZĄ SIĘ W 30 DNI',        value: exp30 === null ? '—' : String(exp30),              sub: 'Wysoki priorytet',   color: '#e85c04' },
+    { label: 'KOŃCZĄ SIĘ W 60 DNI',        value: exp60 === null ? '—' : String(exp60),              sub: 'Przygotuj ofertę',   color: '#d69e2e' },
+    { label: 'KOŃCZĄ SIĘ W 90 DNI',        value: exp90 === null ? '—' : String(exp90),              sub: 'Wczesny kontakt',    color: '#3182ce' },
+    { label: 'AKTYWNYCH UMÓW',             value: activeContracts === null ? '—' : String(activeContracts), sub: 'Łącznie w systemie', color: '#38a169' },
+  ]
   return (
     <div style={{ width: '100%' }}>
       {/* Header */}
