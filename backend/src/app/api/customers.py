@@ -87,10 +87,13 @@ async def get_customer_timeline(
     from_date: datetime | None = Query(default=None),
     to_date: datetime | None = Query(default=None),
     event_types: list[TimelineEventType] | None = Query(default=None),
+    limit: int = Query(default=100, ge=1, le=500),
 ) -> list[TimelineEventRead]:
+    await service.get_customer(customer_id)
     return await service.get_customer_timeline(
         customer_id,
         from_date=from_date,
         to_date=to_date,
         event_types=set(event_types) if event_types else None,
+        limit=limit,
     )

@@ -18,19 +18,19 @@ class FakeTimelineRepo:
         self._activities = activities
         self._alerts = alerts
 
-    async def list_contracts(self, customer_id):
+    async def list_contracts(self, _customer_id):
         return self._contracts
 
-    async def list_valorizations(self, contract_ids):
+    async def list_valorizations(self, _contract_ids):
         return self._valorizations
 
-    async def list_notes(self, customer_id, contract_ids):
+    async def list_notes(self, _customer_id, _contract_ids):
         return self._notes
 
-    async def list_activity_logs(self, customer_id):
+    async def list_activity_logs(self, _customer_id):
         return self._activities
 
-    async def list_alerts(self, customer_id, contract_ids):
+    async def list_alerts(self, _customer_id, _contract_ids):
         return self._alerts
 
 
@@ -174,3 +174,99 @@ async def test_timeline_maps_activity_types() -> None:
     event_types = {event.event_type for event in events}
     assert "call" in event_types
     assert "email" in event_types
+
+
+@pytest.mark.asyncio
+async def test_timeline_contract_events() -> None:
+    contract = SimpleNamespace(
+        id=uuid.uuid4(),
+        contract_number="HRK/EMP/2024/01",
+        start_date=date.today(),
+        status="active",
+    )
+    repo = FakeTimelineRepo(
+        contracts=[contract],
+        valorizations=[],
+        notes=[],
+        activities=[],
+        alerts=[],
+    )
+    service = TimelineService(repo)
+
+    events = await service.get_timeline(
+        customer_id=uuid.uuid4(),
+        from_date=None,
+        to_date=None,
+        event_types=None,
+    )
+
+    assert len(events) == 1
+    assert events[0].event_type == "contract_signed"
+    assert "HRK/EMP/2024/01" in events[0].title
+
+
+@pytest.mark.asyncio
+async def test_timeline_valorization_approved_branch() -> None:
+    val = SimpleNamespace(
+        id=uuid.uuid4(),
+        contract_id=uuid.uuid4(),
+        year=2025,
+        planned_date=date.today() - timedelta(days=5),
+        applied_date=date.today() - timedelta(days=2),
+        status=ValorizationStatus.APPROVED,
+        notes="Notes",
+        index_type="GUS_CPI",
+        index_value=5.8,
+    )
+    repo = FakeTimelineRepo(
+        contracts=[],
+        valorizations=[val],
+        notes=[],
+        activities=[],
+        alerts=[],
+    )
+    service = TimelineService(repo)
+
+    events = await service.get_timeline(
+        customer_id=uuid.uuid4(),
+        from_date=None,
+        to_date=None,
+        event_types=None,
+    )
+
+    assert len(events) == 2
+    event_types = {e.event_type for e in events}
+    assert "valorization_started" in event_types
+    assert "valorization_approved" in event_types
+
+
+@pytest.mark.asyncio
+async def test_timeline_alert_events() -> None:
+    alert = SimpleNamespace(
+        id=uuid.uuid4(),
+        customer_id=uuid.uuid4(),
+        contract_id=None,
+        trigger_date=date.today(),
+        message="Test alert",
+        status="active",
+        alert_type="payment",
+    )
+    repo = FakeTimelineRepo(
+        contracts=[],
+        valorizations=[],
+        notes=[],
+        activities=[],
+        alerts=[alert],
+    )
+    service = TimelineService(repo)
+
+    events = await service.get_timeline(
+        customer_id=uuid.uuid4(),
+        from_date=None,
+        to_date=None,
+        event_types=None,
+    )
+
+    assert len(events) == 1
+    assert events[0].event_type == "alert_triggered"
+    assert events[0].title == "Test alert"

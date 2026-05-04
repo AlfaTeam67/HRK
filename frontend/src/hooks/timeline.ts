@@ -20,17 +20,17 @@ export interface TimelineFilters {
 }
 
 export function useCustomerTimeline(filters: TimelineFilters) {
+  const { customerId, from_date, to_date, event_types } = filters
   return useQuery({
-    queryKey: ['customer-timeline', filters],
+    queryKey: ['customer-timeline', customerId, from_date, to_date, event_types?.join(',')],
     queryFn: async () => {
-      if (!filters.customerId) return [] as TimelineEvent[]
-      const { customerId, ...params } = filters
+      if (!customerId) return [] as TimelineEvent[]
       const { data } = await apiClient.get<TimelineEvent[]>(
         `/api/v1/customers/${customerId}/timeline`,
-        { params },
+        { params: { from_date, to_date, event_types } }
       )
       return data
     },
-    enabled: !!filters.customerId,
+    enabled: !!customerId,
   })
 }

@@ -1,8 +1,8 @@
 """Customer timeline aggregation service."""
 
 import uuid
-from datetime import UTC, datetime
-from typing import Iterable
+from collections.abc import Iterable
+from datetime import UTC, date, datetime
 
 from app.models.activity import ActivityLog
 from app.models.alert import Alert
@@ -27,6 +27,7 @@ class TimelineService:
         from_date: datetime | None,
         to_date: datetime | None,
         event_types: set[TimelineEventType] | None,
+        limit: int = 100,
     ) -> list[TimelineEventRead]:
         contracts = await self.repo.list_contracts(customer_id)
         contract_ids = [contract.id for contract in contracts]
@@ -51,7 +52,8 @@ class TimelineService:
         if to_date:
             events = [event for event in events if event.timestamp <= to_date]
 
-        return sorted(events, key=lambda event: event.timestamp, reverse=True)
+        events = sorted(events, key=lambda event: event.timestamp, reverse=True)
+        return events[:limit]
 
     def _contract_events(self, contracts: Iterable[Contract]) -> list[TimelineEventRead]:
         events: list[TimelineEventRead] = []
@@ -174,7 +176,9 @@ class TimelineService:
         return events
 
     @staticmethod
-    def _as_datetime(value) -> datetime:
+    def _as_datetime(value: date | datetime | None) -> datetime:
+        if value is None:
+            raise ValueError("Timeline event date cannot be None")
         if isinstance(value, datetime):
             return value
         return datetime.combine(value, datetime.min.time(), tzinfo=UTC)

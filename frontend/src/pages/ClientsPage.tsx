@@ -24,29 +24,11 @@ import {
 
 type TabKey = 'info' | 'contracts' | 'notes' | 'timeline'
 
-type TLType =
-  | 'meeting'
-  | 'call'
-  | 'note'
-  | 'note_added'
-  | 'system'
-  | 'contract_signed'
-  | 'contract_expiring'
-  | 'valorization'
-  | 'valorization_started'
-  | 'valorization_approved'
-  | 'alert'
-  | 'alert_triggered'
-  | 'today'
-  | 'email'
-  | 'document'
-  | 'verification'
-
 interface TLEvent {
   id: string
   date: string
   label: string
-  type: TLType
+  type: string
   title: string
   detail?: string
 }
@@ -58,7 +40,7 @@ const TODAY_LABEL = new Date().toLocaleDateString('pl-PL', {
   year: 'numeric',
 })
 
-const TL_META: Record<TLType, { color: string; bg: string; label: string }> = {
+const TL_META: Record<string, { color: string; bg: string; label: string }> = {
   meeting: { color: '#553c9a', bg: '#faf5ff', label: 'Spotkanie' },
   call: { color: '#3182ce', bg: '#ebf8ff', label: 'Połączenie' },
   note: { color: '#374151', bg: '#f3f4f6', label: 'Notatka' },
@@ -279,7 +261,7 @@ export function ClientsPageApi() {
       id: event.id,
       date: event.timestamp,
       label: fmtDate(event.timestamp),
-      type: (event.event_type as TLType) ?? 'system',
+      type: event.event_type,
       title: event.title,
       detail: event.detail ?? undefined,
     }))

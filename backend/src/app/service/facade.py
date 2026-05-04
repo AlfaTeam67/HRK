@@ -26,8 +26,8 @@ from app.repo.lookups import LookupRepository
 from app.repo.notes import NoteRepository
 from app.repo.service_groups import ServiceGroupRepository
 from app.repo.services import ServiceRepository
-from app.repo.valorizations import ValorizationRepository
 from app.repo.timeline import TimelineRepository
+from app.repo.valorizations import ValorizationRepository
 from app.schemas.activity import ActivityLogCreate
 from app.schemas.contact_person import ContactPersonCreate, ContactPersonUpdate
 from app.schemas.contract_services import ContractServiceCreate
@@ -188,6 +188,7 @@ class CRMService:
         from_date: datetime | None,
         to_date: datetime | None,
         event_types: set[TimelineEventType] | None,
+        limit: int = 100,
     ) -> list[TimelineEventRead]:
         await self.customer_service.get_customer(customer_id)
         return await self.timeline_service.get_timeline(
@@ -195,6 +196,7 @@ class CRMService:
             from_date=from_date,
             to_date=to_date,
             event_types=event_types,
+            limit=limit,
         )
 
     async def create_activity_log(

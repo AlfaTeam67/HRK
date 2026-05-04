@@ -30,7 +30,8 @@ async def seed() -> None:
         seed_ckks = {"C001", "C002", "C003"}
         existing = await session.execute(select(Customer.id).where(Customer.ckk.in_(seed_ckks)))
         if existing.first():
-            raise SystemExit("docker-seed: seed customers already exist in database.")
+            print("docker-seed: seed customers already exist in database. Skipping.")
+            return
 
         user = User(login="demo.am", email="demo.am@hrk.eu")
         companies = [
