@@ -19,5 +19,6 @@ class UserUpdate(BaseModel):
 
 class UserRead(UserBase):
     id: UUID
+    roles: list[str] = []
 
     model_config = ConfigDict(from_attributes=True)

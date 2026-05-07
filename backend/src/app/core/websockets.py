@@ -1,3 +1,4 @@
+import contextlib
 import json
 from typing import Any
 
@@ -22,11 +23,8 @@ class ConnectionManager:
     async def broadcast(self, message: Any) -> None:
         data = json.dumps(message)
         for connection in self.active_connections:
-            try:
+            with contextlib.suppress(Exception):
                 await connection.send_text(data)
-            except Exception:
-                # Connection might be closed, should be handled by disconnect but just in case
-                pass
 
 
 manager = ConnectionManager()

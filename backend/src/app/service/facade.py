@@ -106,7 +106,7 @@ class CRMService:
         self.contact_person_service = ContactPersonService(contact_person_repo, lookup_repo)
         self.timeline_service = TimelineService(TimelineRepository(db))
 
-    async def list_customers(self, **kwargs) -> list[Customer]:
+    async def list_customers(self, **kwargs: object) -> list[Customer]:
         await self._authorize_company_filter(resource="customer", action="list", **kwargs)
         scope = await self._get_user_scope()
         company_id = kwargs.get("company_id")
@@ -198,7 +198,7 @@ class CRMService:
             await self.db.rollback()
             raise
 
-    async def list_contracts(self, **kwargs) -> list[Contract]:
+    async def list_contracts(self, **kwargs: object) -> list[Contract]:
         await self._authorize_company_filter(resource="contract", action="list", **kwargs)
         scope = await self._get_user_scope()
         company_id = kwargs.get("company_id")
@@ -288,7 +288,7 @@ class CRMService:
             await self.db.rollback()
             raise
 
-    async def list_services(self, **kwargs) -> list[Service]:
+    async def list_services(self, **kwargs: object) -> list[Service]:
         await self._authorize_company_filter(resource="service", action="list", **kwargs)
         scope = await self._get_user_scope()
         company_id = kwargs.get("company_id")
@@ -346,6 +346,7 @@ class CRMService:
             )
             return await self.activity_repo.get_by_customer(customer_id, limit, offset)
 
+        assert contract_id is not None  # nosec B101
         contract = await self.contract_service.get_contract(contract_id)
         company_id = await self._resolve_company_id_from_contract(contract)
         await self._authorize_company_resource(
@@ -924,10 +925,11 @@ class CRMService:
                 detail={"code": "AUTHORIZATION_DENIED", "message": str(exc)},
             ) from exc
 
-    async def _authorize_company_filter(self, *, resource: str, action: str, **kwargs) -> None:
+    async def _authorize_company_filter(self, *, resource: str, action: str, **kwargs: object) -> None:
         try:
             company_id = kwargs.get("company_id")
             if company_id:
+                assert isinstance(company_id, uuid.UUID)  # nosec B101
                 await self._authorize_company_resource(
                     resource=resource,
                     action=action,
@@ -1041,7 +1043,7 @@ class CRMService:
             .where(Contract.id.in_(contract_ids))
         )
         result = await self.db.execute(stmt)
-        return set(result.scalars().all())
+        return {cid for cid in result.scalars().all() if cid is not None}
 
     async def _get_company_ids_for_customers(
         self, customer_ids: set[uuid.UUID]

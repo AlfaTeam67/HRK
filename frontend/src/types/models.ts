@@ -76,7 +76,7 @@ export interface ContactPersonUpdate {
   is_contract_signer?: boolean
 }
 
-export type User = S['UserRead']
+export type User = S['UserRead'] & { roles: string[] }
 export type UserCreate = S['UserCreate']
 export type UserUpdate = S['UserUpdate']
 

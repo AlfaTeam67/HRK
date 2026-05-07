@@ -1,7 +1,7 @@
 """CustomerRate API endpoints."""
 
 import uuid
-from typing import Annotated
+from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, status
 
@@ -18,7 +18,7 @@ router = APIRouter(tags=["customer-rates"])
 async def list_customer_rates(
     service: Annotated[CRMService, Depends(get_crm_service)],
     _: Annotated[User, Depends(get_current_user)],
-) -> list[CustomerRateRead]:
+) -> Any:
     return await service.list_customer_rates()
 
 
@@ -32,7 +32,7 @@ async def create_customer_rate(
     payload: CustomerRateCreate,
     service: Annotated[CRMService, Depends(get_crm_service)],
     _: Annotated[User, Depends(get_current_user)],
-) -> CustomerRateRead:
+) -> Any:
     return await service.create_customer_rate(payload)
 
 
@@ -43,7 +43,7 @@ async def get_customer_rate(
     rate_id: uuid.UUID,
     service: Annotated[CRMService, Depends(get_crm_service)],
     _: Annotated[User, Depends(get_current_user)],
-) -> CustomerRateRead:
+) -> Any:
     return await service.get_customer_rate(rate_id)
 
 
@@ -55,7 +55,7 @@ async def update_customer_rate(
     payload: CustomerRateUpdate,
     service: Annotated[CRMService, Depends(get_crm_service)],
     _: Annotated[User, Depends(get_current_user)],
-) -> CustomerRateRead:
+) -> Any:
     return await service.update_customer_rate(rate_id, payload)
 
 

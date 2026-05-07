@@ -1,7 +1,7 @@
 """Service CRUD API endpoints."""
 
 import uuid
-from typing import Annotated
+from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, Query, Response, status
 
@@ -20,7 +20,7 @@ async def list_services(
     _: Annotated[User, Depends(get_current_user)],
     company_id: uuid.UUID | None = Query(default=None),
     is_active: bool | None = Query(default=None),
-) -> list[ServiceRead]:
+) -> Any:
     return await service.list_services(company_id=company_id, is_active=is_active)
 
 
@@ -34,7 +34,7 @@ async def create_service(
     payload: ServiceCreate,
     service: Annotated[CRMService, Depends(get_crm_service)],
     _: Annotated[User, Depends(get_current_user)],
-) -> ServiceRead:
+) -> Any:
     return await service.create_service(payload)
 
 
@@ -43,7 +43,7 @@ async def get_service(
     service_id: uuid.UUID,
     service: Annotated[CRMService, Depends(get_crm_service)],
     _: Annotated[User, Depends(get_current_user)],
-) -> ServiceRead:
+) -> Any:
     return await service.get_service(service_id)
 
 
@@ -53,7 +53,7 @@ async def update_service(
     payload: ServiceUpdate,
     service: Annotated[CRMService, Depends(get_crm_service)],
     _: Annotated[User, Depends(get_current_user)],
-) -> ServiceRead:
+) -> Any:
     return await service.update_service(service_id, payload)
 
 

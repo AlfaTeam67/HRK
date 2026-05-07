@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import uuid
+from collections.abc import Callable
 from typing import TYPE_CHECKING, Annotated
 
 from fastapi import Depends, HTTPException, status
@@ -294,7 +295,7 @@ class AuthorizationService:
             raise PermissionError("Insufficient role for requested action.")
 
     @staticmethod
-    def get_current_user_dep() -> callable:
+    def get_current_user_dep() -> Callable[..., object]:
         return get_current_user
 
 

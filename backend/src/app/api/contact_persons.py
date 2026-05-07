@@ -1,7 +1,7 @@
 """ContactPerson CRUD API endpoints."""
 
 import uuid
-from typing import Annotated
+from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 
@@ -27,7 +27,7 @@ async def list_contact_persons(
     customer_id: uuid.UUID,
     service: Annotated[CRMService, Depends(get_crm_service)],
     _: Annotated[User, Depends(get_current_user)],
-) -> list[ContactPersonRead]:
+) -> Any:
     """Get all contact persons for a specific customer."""
     return await service.list_contact_persons(customer_id)
 
@@ -43,7 +43,7 @@ async def create_contact_person(
     payload: ContactPersonCreate,
     service: Annotated[CRMService, Depends(get_crm_service)],
     _: Annotated[User, Depends(get_current_user)],
-) -> ContactPersonRead:
+) -> Any:
     """Add a new contact person to a customer."""
     # Ensure customer_id in path matches payload
     if payload.customer_id != customer_id:
@@ -65,7 +65,7 @@ async def update_contact_person(
     payload: ContactPersonUpdate,
     service: Annotated[CRMService, Depends(get_crm_service)],
     _: Annotated[User, Depends(get_current_user)],
-) -> ContactPersonRead:
+) -> Any:
     """Update an existing contact person."""
     return await service.update_contact_person(customer_id, contact_id, payload)
 

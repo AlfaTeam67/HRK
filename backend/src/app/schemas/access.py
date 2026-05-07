@@ -12,9 +12,5 @@ class AccessAssignmentsRead(BaseModel):
     contract_ids: list[UUID]
 
 
-class RolesUpdateRequest(BaseModel):
-    roles: list[UserRole]
-
-
 class ScopeUpdateRequest(BaseModel):
     ids: list[UUID]

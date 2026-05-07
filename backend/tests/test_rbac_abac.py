@@ -160,71 +160,38 @@ async def test_rag_search_denies_without_scope(client: AsyncClient) -> None:
 
 
 @pytest.mark.asyncio
-async def test_bootstrap_first_admin_idempotent(client: AsyncClient) -> None:
-    # Use a unique login per run so the test does not depend on prior state.
-    candidate = await _create_user(
-        login=f"first_admin_{uuid4().hex[:8]}",
-        email=f"{uuid4().hex[:8]}@hrk.eu",
-    )
+async def test_access_me_returns_roles_and_companies(client: AsyncClient) -> None:
+    user = await _create_user(login=f"me_user_{uuid4().hex[:8]}", email=f"{uuid4().hex[:8]}@hrk.eu")
+    await _assign_role(user_id=user.id, role=UserRole.VIEWER)
+    company = await _create_company(name=f"MeCo {uuid4().hex[:6]}", nip=f"{uuid4().int % 10**10:010d}")
+    await _grant_company_scope(user_id=user.id, company_id=company.id)
 
-    first = await client.post(
-        "/api/v1/access/bootstrap-first-admin",
-        headers=_auth_headers(candidate.login),
-    )
-    # 200 if they became the first admin, 403 if another admin already exists
-    # (e.g., due to test ordering on a shared DB). Either result is a valid invariant.
-    assert first.status_code in (200, 403)
+    response = await client.get("/api/v1/access/me", headers=_auth_headers(user.login))
 
-    if first.status_code == 200:
-        assert "admin" in first.json().get("roles", [])
-
-        # Re-running with the same user must be a no-op (idempotent).
-        second = await client.post(
-            "/api/v1/access/bootstrap-first-admin",
-            headers=_auth_headers(candidate.login),
-        )
-        assert second.status_code == 200
-        assert "admin" in second.json().get("roles", [])
-
-        # A different user without admin role must hit the lock.
-        outsider = await _create_user(
-            login=f"outsider_{uuid4().hex[:8]}",
-            email=f"{uuid4().hex[:8]}@hrk.eu",
-        )
-        denied = await client.post(
-            "/api/v1/access/bootstrap-first-admin",
-            headers=_auth_headers(outsider.login),
-        )
-        assert denied.status_code == 403
-        detail = denied.json().get("detail")
-        assert isinstance(detail, dict)
-        assert detail.get("code") == "AUTHORIZATION_DENIED"
+    assert response.status_code == 200
+    body = response.json()
+    assert "viewer" in body.get("roles", [])
+    assert str(company.id) in body.get("company_ids", [])
 
 
 @pytest.mark.asyncio
-async def test_access_roles_update_allows_admin_only(client: AsyncClient) -> None:
-    admin = await _create_user(
-        login=f"access_admin_{uuid4().hex[:8]}",
-        email=f"{uuid4().hex[:8]}@hrk.eu",
-    )
-    target = await _create_user(
-        login=f"access_target_{uuid4().hex[:8]}",
-        email=f"{uuid4().hex[:8]}@hrk.eu",
-    )
+async def test_access_user_scope_update_allows_admin_only(client: AsyncClient) -> None:
+    admin = await _create_user(login=f"scope_admin_{uuid4().hex[:8]}", email=f"{uuid4().hex[:8]}@hrk.eu")
+    target = await _create_user(login=f"scope_target_{uuid4().hex[:8]}", email=f"{uuid4().hex[:8]}@hrk.eu")
     await _assign_role(user_id=admin.id, role=UserRole.ADMIN)
+    company = await _create_company(name=f"ScopeCo {uuid4().hex[:6]}", nip=f"{uuid4().int % 10**10:010d}")
 
-    denied_response = await client.put(
-        f"/api/v1/access/users/{target.id}/roles",
-        json={"roles": ["viewer"]},
+    denied = await client.put(
+        f"/api/v1/access/users/{target.id}/companies",
+        json={"ids": [str(company.id)]},
         headers=_auth_headers(target.login),
     )
-    assert denied_response.status_code == 403
+    assert denied.status_code == 403
 
-    allowed_response = await client.put(
-        f"/api/v1/access/users/{target.id}/roles",
-        json={"roles": ["viewer", "consultant"]},
+    allowed = await client.put(
+        f"/api/v1/access/users/{target.id}/companies",
+        json={"ids": [str(company.id)]},
         headers=_auth_headers(admin.login),
     )
-    assert allowed_response.status_code == 200
-    roles = set(allowed_response.json().get("roles", []))
-    assert roles == {"viewer", "consultant"}
+    assert allowed.status_code == 200
+    assert str(company.id) in allowed.json().get("company_ids", [])

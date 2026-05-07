@@ -14,6 +14,7 @@ from app.core.auth import get_current_user
 from app.config import settings
 from app.core.database import AsyncSessionLocal, get_db
 from app.main import app
+from app.models.company import Company
 from app.models.customer import Customer
 from app.models.enums import CustomerStatus
 from app.models.user import User
@@ -27,7 +28,11 @@ from app.utils.s3_client import S3ClientAdapter
 
 async def _create_user_and_customer() -> tuple[UUID, UUID, UUID]:
     async with AsyncSessionLocal() as session:
-        company_id = uuid4()
+        company = Company(name=f"TestCo {uuid4().hex[:8]}")
+        session.add(company)
+        await session.flush()
+        company_id = company.id
+
         user = User(
             login=f"user_{uuid4().hex[:12]}",
             email=f"user_{uuid4().hex[:12]}@example.com",

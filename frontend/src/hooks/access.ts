@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { apiClient } from '@/lib/axios'
-import type { AccessAssignments, User, UserCreate, UserRole, UserUpdate } from '@/types/models'
+import type { AccessAssignments, User, UserCreate, UserUpdate } from '@/types/models'
 
 const BASE = '/api/v1'
 
@@ -15,19 +15,6 @@ export function useMyAccess() {
   })
 }
 
-export function useBootstrapAdmin() {
-  const qc = useQueryClient()
-  return useMutation({
-    mutationFn: async () => {
-      const { data } = await apiClient.post<AccessAssignments>(`${BASE}/access/bootstrap-first-admin`)
-      return data
-    },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['access'] })
-    },
-  })
-}
-
 export function useUserAccess(userId: string | undefined) {
   return useQuery({
     queryKey: ['access', 'users', userId],
@@ -36,23 +23,6 @@ export function useUserAccess(userId: string | undefined) {
       return data
     },
     enabled: !!userId,
-  })
-}
-
-export function useUpdateUserRoles() {
-  const qc = useQueryClient()
-  return useMutation({
-    mutationFn: async ({ userId, roles }: { userId: string; roles: UserRole[] }) => {
-      const { data } = await apiClient.put<AccessAssignments>(
-        `${BASE}/access/users/${userId}/roles`,
-        { roles },
-      )
-      return data
-    },
-    onSuccess: (_, { userId }) => {
-      qc.invalidateQueries({ queryKey: ['access', 'users', userId] })
-      qc.invalidateQueries({ queryKey: ['users'] })
-    },
   })
 }
 

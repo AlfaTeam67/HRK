@@ -41,5 +41,5 @@ async def create_activity_log(
     payload: ActivityLogCreate,
     service: Annotated[CRMService, Depends(get_crm_service)],
     _: Annotated[User, Depends(get_current_user)],
-) -> ActivityLogRead:
+) -> Any:
     return await service.create_activity_log(payload, performed_by=None)

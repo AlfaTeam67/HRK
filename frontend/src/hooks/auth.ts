@@ -3,7 +3,7 @@ import { useDispatch } from 'react-redux'
 
 import { apiClient } from '@/lib/axios'
 import { type AuthUser, setRoles, setToken, setUser } from '@/store/slices/authSlice'
-import type { AccessAssignments, User } from '@/types/models'
+import type { User } from '@/types/models'
 
 const AD_PROFILES: Record<string, Pick<AuthUser, 'displayName' | 'initials' | 'department'>> = {
   asia: {
@@ -34,7 +34,7 @@ function buildAuthUser(apiUser: User, login: string): AuthUser {
     initials: login.slice(0, 2).toUpperCase(),
     department: 'HRK',
   }
-  return { id: String(apiUser.id), login, email: apiUser.email, roles: [], ...profile }
+  return { id: String(apiUser.id), login, email: apiUser.email, roles: apiUser.roles ?? [], ...profile }
 }
 
 export function useLogin() {
@@ -45,15 +45,11 @@ export function useLogin() {
       const { data } = await apiClient.post<User>(`/api/v1/auth/login/${username}`)
       return { apiUser: data, username }
     },
-    onSuccess: async ({ apiUser, username }) => {
-      dispatch(setUser(buildAuthUser(apiUser, username)))
+    onSuccess: ({ apiUser, username }) => {
+      const user = buildAuthUser(apiUser, username)
+      dispatch(setUser(user))
       dispatch(setToken(apiUser.login))
-      try {
-        const { data: access } = await apiClient.get<AccessAssignments>('/api/v1/access/me')
-        dispatch(setRoles(access.roles))
-      } catch {
-        // backend may not have roles yet — user defaults to viewer
-      }
+      dispatch(setRoles(user.roles))
     },
   })
 }

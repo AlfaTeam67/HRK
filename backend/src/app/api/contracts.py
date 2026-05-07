@@ -52,7 +52,7 @@ async def create_contract(
     payload: ContractCreate,
     service: Annotated[CRMService, Depends(get_crm_service)],
     _: Annotated[User, Depends(get_current_user)],
-) -> ContractRead:
+) -> Any:
     return await service.create_contract(payload)
 
 
@@ -61,7 +61,7 @@ async def get_contract(
     contract_id: uuid.UUID,
     service: Annotated[CRMService, Depends(get_crm_service)],
     _: Annotated[User, Depends(get_current_user)],
-) -> ContractRead:
+) -> Any:
     return await service.get_contract(contract_id)
 
 
@@ -71,7 +71,7 @@ async def update_contract(
     payload: ContractUpdate,
     service: Annotated[CRMService, Depends(get_crm_service)],
     _: Annotated[User, Depends(get_current_user)],
-) -> ContractRead:
+) -> Any:
     return await service.update_contract(contract_id, payload)
 
 
@@ -98,7 +98,7 @@ async def list_contract_services(
     contract_id: uuid.UUID,
     service: Annotated[CRMService, Depends(get_crm_service)],
     _: Annotated[User, Depends(get_current_user)],
-) -> list[ContractServiceRead]:
+) -> Any:
     return await service.list_contract_services(contract_id)
 
 
@@ -113,7 +113,7 @@ async def attach_service_to_contract(
     payload: ContractServiceCreate,
     service: Annotated[CRMService, Depends(get_crm_service)],
     _: Annotated[User, Depends(get_current_user)],
-) -> ContractServiceRead:
+) -> Any:
     return await service.attach_service_to_contract(contract_id, payload)
 
 

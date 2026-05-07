@@ -1,7 +1,7 @@
 """Note CRUD API endpoints."""
 
 import uuid
-from typing import Annotated
+from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 
@@ -24,7 +24,7 @@ async def list_notes(
     limit: int = Query(
         default=100, ge=1, le=1000, description="Maximum number of records to return"
     ),
-) -> list[NoteRead]:
+) -> Any:
     """List notes, filtered by customer_id or contract_id."""
     if customer_id and contract_id:
         raise HTTPException(
@@ -54,7 +54,7 @@ async def create_note(
     payload: NoteCreate,
     service: Annotated[CRMService, Depends(get_crm_service)],
     _: Annotated[User, Depends(get_current_user)],
-) -> NoteRead:
+) -> Any:
     """Create a new note."""
     return await service.create_note(payload)
 
@@ -64,7 +64,7 @@ async def get_note(
     note_id: uuid.UUID,
     service: Annotated[CRMService, Depends(get_crm_service)],
     _: Annotated[User, Depends(get_current_user)],
-) -> NoteRead:
+) -> Any:
     """Get a single note by ID."""
     return await service.get_note(note_id)
 
@@ -75,7 +75,7 @@ async def update_note(
     payload: NoteUpdate,
     service: Annotated[CRMService, Depends(get_crm_service)],
     _: Annotated[User, Depends(get_current_user)],
-) -> NoteRead:
+) -> Any:
     """Update an existing note."""
     return await service.update_note(note_id, payload)
 
