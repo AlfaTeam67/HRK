@@ -3,7 +3,7 @@ import { Navigate, Outlet, Route, Routes } from 'react-router-dom'
 
 import { AppLayout } from '@/components/layout/AppLayout'
 import { useAppDispatch, useAppSelector } from '@/hooks/store'
-import { useIsAdmin } from '@/hooks/usePermission'
+import { useIsAdmin, ROLE_LABELS_PL } from '@/hooks/usePermission'
 import { apiClient } from '@/lib/axios'
 import { AdvisorPage } from '@/pages/AdvisorPage'
 import { ClientsPageApi } from '@/pages/ClientsPage'
@@ -21,9 +21,32 @@ function RequireAuth() {
   return <Outlet />
 }
 
+function AccessDenied() {
+  return (
+    <div style={{
+      display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+      flex: 1, gap: 12, textAlign: 'center', padding: 40,
+    }}>
+      <div style={{
+        width: 56, height: 56, borderRadius: '50%',
+        background: '#fff5f0', border: '1.5px solid #fdd5b8',
+        display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24,
+      }}>
+        🔒
+      </div>
+      <div style={{ fontSize: 18, fontWeight: 700, color: '#1a1714' }}>Brak dostępu</div>
+      <div style={{ fontSize: 13, color: '#6b6b6b', maxWidth: 320, lineHeight: 1.6 }}>
+        Ta sekcja jest dostępna wyłącznie dla{' '}
+        <strong>{ROLE_LABELS_PL['admin']}</strong>.
+        Skontaktuj się z administratorem systemu, jeśli potrzebujesz dostępu.
+      </div>
+    </div>
+  )
+}
+
 function RequireAdmin() {
   const isAdmin = useIsAdmin()
-  if (!isAdmin) return <Navigate to="/" replace />
+  if (!isAdmin) return <AccessDenied />
   return <Outlet />
 }
 

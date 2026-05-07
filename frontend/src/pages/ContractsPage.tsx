@@ -1,4 +1,4 @@
-import { useCan } from '@/hooks/usePermission'
+import { usePermissionInfo } from '@/hooks/usePermission'
 
 /* ─── Mock data (inline) ─────────────────────────────────────── */
 const kpis = [
@@ -40,7 +40,7 @@ const VAL_S: Record<string, { bg: string; color: string }> = {
 
 /* ─── Component ──────────────────────────────────────────────── */
 export function ContractsPage() {
-  const canCreate = useCan('contract', 'create')
+  const createPerm = usePermissionInfo('contract', 'create')
   return (
     <div style={{ width: '100%' }}>
       {/* Header */}
@@ -53,12 +53,22 @@ export function ContractsPage() {
           <button style={{ background: 'white', border: '1px solid #e3e0db', borderRadius: 6, padding: '7px 14px', fontSize: 13, fontWeight: 500, color: '#6b6b6b', cursor: 'pointer' }}>
             Eksportuj
           </button>
-          {canCreate && (
-            <button style={{ background: '#e85c04', border: 'none', borderRadius: 6, padding: '7px 16px', color: 'white', fontSize: 13, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-              Nowa umowa
-            </button>
-          )}
+          <button
+            style={{
+              background: createPerm.allowed ? '#e85c04' : '#f2f0ed',
+              border: 'none', borderRadius: 6, padding: '7px 16px',
+              color: createPerm.allowed ? 'white' : '#9e9389',
+              fontSize: 13, fontWeight: 600,
+              cursor: createPerm.allowed ? 'pointer' : 'not-allowed',
+              display: 'flex', alignItems: 'center', gap: 6,
+              opacity: createPerm.allowed ? 1 : 0.65,
+            }}
+            disabled={!createPerm.allowed}
+            title={!createPerm.allowed ? `Brak uprawnień · Wymaga roli: ${createPerm.requiredRoleLabel}` : undefined}
+          >
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={createPerm.allowed ? 'white' : '#9e9389'} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Nowa umowa
+          </button>
         </div>
       </div>
 

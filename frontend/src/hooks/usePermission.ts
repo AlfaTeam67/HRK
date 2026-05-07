@@ -9,6 +9,14 @@ const ROLE_RANK: Record<string, number> = {
   admin: 4,
 }
 
+export const ROLE_LABELS_PL: Record<string, string> = {
+  viewer:          'Przeglądający',
+  consultant:      'Konsultant',
+  manager:         'Menedżer',
+  account_manager: 'Opiekun klienta',
+  admin:           'Administrator',
+}
+
 // POLICY_MATRIX mirrors backend AuthorizationService.POLICY_MATRIX
 const POLICY_MATRIX: Record<string, Record<string, UserRole>> = {
   company:         { read: 'viewer', list: 'viewer', create: 'admin',      update: 'manager',    delete: 'manager'    },
@@ -49,4 +57,19 @@ export function useCan(resource: string, action: string): boolean {
   const minRole = POLICY_MATRIX[resource]?.[action]
   if (!minRole) return false
   return maxRank(roles) >= (ROLE_RANK[minRole] ?? 99)
+}
+
+export function usePermissionInfo(resource: string, action: string): {
+  allowed: boolean
+  requiredRole: UserRole | undefined
+  requiredRoleLabel: string
+} {
+  const roles = useUserRoles()
+  const minRole = POLICY_MATRIX[resource]?.[action] as UserRole | undefined
+  const allowed = minRole ? maxRank(roles) >= (ROLE_RANK[minRole] ?? 99) : false
+  return {
+    allowed,
+    requiredRole: minRole,
+    requiredRoleLabel: minRole ? (ROLE_LABELS_PL[minRole] ?? minRole) : '—',
+  }
 }

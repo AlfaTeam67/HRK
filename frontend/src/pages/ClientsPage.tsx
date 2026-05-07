@@ -12,7 +12,7 @@ import {
 import { useCustomerTimeline } from '@/hooks/timeline'
 import { useCreateNote, useNotes } from '@/hooks/notes'
 import { useAppSelector } from '@/hooks/store'
-import { useCan } from '@/hooks/usePermission'
+import { usePermissionInfo } from '@/hooks/usePermission'
 import {
   CUSTOMER_STATUS_PL,
   NOTE_TYPE_LABELS,
@@ -236,10 +236,10 @@ export function ClientsPageApi() {
   const [noteType, setNoteType] = useState<NoteType>('internal')
 
   const user = useAppSelector((s) => s.auth.user)
-  const canCreateCustomer = useCan('customer', 'create')
-  const canUpdateCustomer = useCan('customer', 'update')
-  const canDeleteCustomer = useCan('customer', 'delete')
-  const canCreateNote = useCan('note', 'create')
+  const createCustomerPerm = usePermissionInfo('customer', 'create')
+  const updateCustomerPerm = usePermissionInfo('customer', 'update')
+  const deleteCustomerPerm = usePermissionInfo('customer', 'delete')
+  const createNotePerm    = usePermissionInfo('note', 'create')
 
   const { data: clients = [], isLoading } = useCustomers({ q: search })
   const { data: detailCustomer } = useCustomer(selectedId ?? undefined)
@@ -397,11 +397,14 @@ export function ClientsPageApi() {
             Profil 360° — dane firmy, umowy, notatki i historia kontaktu.
           </p>
         </div>
-        {canCreateCustomer && (
-          <button className="cp-btn-add" onClick={openAdd}>
-            <PlusIcon /> Dodaj klienta
-          </button>
-        )}
+        <button
+          className="cp-btn-add"
+          onClick={createCustomerPerm.allowed ? openAdd : undefined}
+          disabled={!createCustomerPerm.allowed}
+          title={!createCustomerPerm.allowed ? `Brak uprawnień · Wymaga roli: ${createCustomerPerm.requiredRoleLabel}` : undefined}
+        >
+          <PlusIcon /> Dodaj klienta
+        </button>
       </div>
 
       <div className="cp-grid">
@@ -540,20 +543,22 @@ export function ClientsPageApi() {
                       </div>
 
                       <div style={{ display: 'flex', gap: 8, flexShrink: 0, alignItems: 'center' }}>
-                        {canUpdateCustomer && (
-                          <button className="cp-btn-edit" onClick={openEdit}>
-                            Edytuj
-                          </button>
-                        )}
-                        {canDeleteCustomer && (
-                          <button
-                            className="cp-btn-delete"
-                            onClick={removeCustomer}
-                            disabled={deleteCustomer.isPending}
-                          >
-                            {deleteCustomer.isPending ? 'Usuwanie…' : 'Usuń'}
-                          </button>
-                        )}
+                        <button
+                          className="cp-btn-edit"
+                          onClick={updateCustomerPerm.allowed ? openEdit : undefined}
+                          disabled={!updateCustomerPerm.allowed}
+                          title={!updateCustomerPerm.allowed ? `Brak uprawnień · Wymaga roli: ${updateCustomerPerm.requiredRoleLabel}` : undefined}
+                        >
+                          Edytuj
+                        </button>
+                        <button
+                          className="cp-btn-delete"
+                          onClick={deleteCustomerPerm.allowed ? removeCustomer : undefined}
+                          disabled={!deleteCustomerPerm.allowed || deleteCustomer.isPending}
+                          title={!deleteCustomerPerm.allowed ? `Brak uprawnień · Wymaga roli: ${deleteCustomerPerm.requiredRoleLabel}` : undefined}
+                        >
+                          {deleteCustomer.isPending ? 'Usuwanie…' : 'Usuń'}
+                        </button>
                         <span
                           className="cp-status-badge"
                           style={{
@@ -691,7 +696,6 @@ export function ClientsPageApi() {
 
                 {tab === 'notes' && (
                   <div>
-                    {canCreateNote && (
                     <div className="cp-note-form">
                       <div
                         style={{
@@ -726,14 +730,14 @@ export function ClientsPageApi() {
                       <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
                         <button
                           className="cp-btn-submit"
-                          onClick={addNote}
-                          disabled={!noteText || createNote.isPending}
+                          onClick={createNotePerm.allowed ? addNote : undefined}
+                          disabled={!createNotePerm.allowed || !noteText || createNote.isPending}
+                          title={!createNotePerm.allowed ? `Brak uprawnień · Wymaga roli: ${createNotePerm.requiredRoleLabel}` : undefined}
                         >
                           {createNote.isPending ? 'Dodawanie…' : 'Dodaj notatkę'}
                         </button>
                       </div>
                     </div>
-                    )}
 
                     {notes.length === 0 && (
                       <p style={{ color: '#9e9389', fontSize: 13 }}>Brak notatek.</p>

@@ -22,7 +22,7 @@ const pipeline = [
 ]
 
 import { cardStyle as card } from '@/lib/styles'
-import { useCan } from '@/hooks/usePermission'
+import { usePermissionInfo } from '@/hooks/usePermission'
 
 /* ─── Helpers ────────────────────────────────────────────────── */
 const VAL_S: Record<string, { bg: string; color: string }> = {
@@ -33,7 +33,7 @@ const VAL_S: Record<string, { bg: string; color: string }> = {
 
 /* ─── Component ──────────────────────────────────────────────── */
 export function ValorizationPage() {
-  const canCreate = useCan('valorization', 'create')
+  const createPerm = usePermissionInfo('valorization', 'create')
   return (
     <div style={{ width: '100%' }}>
       {/* Header */}
@@ -46,11 +46,20 @@ export function ValorizationPage() {
           <button style={{ background: 'white', border: '1px solid #e3e0db', borderRadius: 6, padding: '7px 14px', fontSize: 13, color: '#6b6b6b', cursor: 'pointer' }}>
             Eksportuj raport
           </button>
-          {canCreate && (
-            <button style={{ background: '#e85c04', border: 'none', borderRadius: 6, padding: '7px 16px', color: 'white', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
-              Generuj aneks
-            </button>
-          )}
+          <button
+            style={{
+              background: createPerm.allowed ? '#e85c04' : '#f2f0ed',
+              border: 'none', borderRadius: 6, padding: '7px 16px',
+              color: createPerm.allowed ? 'white' : '#9e9389',
+              fontSize: 13, fontWeight: 600,
+              cursor: createPerm.allowed ? 'pointer' : 'not-allowed',
+              opacity: createPerm.allowed ? 1 : 0.65,
+            }}
+            disabled={!createPerm.allowed}
+            title={!createPerm.allowed ? `Brak uprawnień · Wymaga roli: ${createPerm.requiredRoleLabel}` : undefined}
+          >
+            Generuj aneks
+          </button>
         </div>
       </div>
 

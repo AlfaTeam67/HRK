@@ -223,10 +223,17 @@
   transition: all 0.15s;
   font-family: inherit;
 }
-.cp-btn-add:hover {
+.cp-btn-add:hover:not(:disabled) {
   background: #c94f02;
   transform: translateY(-1px);
   box-shadow: 0 4px 16px rgba(232, 92, 4, 0.4);
+}
+.cp-btn-add:disabled {
+  background: #f2f0ed;
+  color: #9e9389;
+  box-shadow: none;
+  cursor: not-allowed;
+  opacity: 0.65;
 }
 .cp-grid {
   display: grid;
@@ -398,9 +405,15 @@
   font-family: inherit;
   color: #1a1714;
 }
-.cp-btn-edit:hover {
+.cp-btn-edit:hover:not(:disabled) {
   border-color: #e85c04;
   color: #e85c04;
+}
+.cp-btn-edit:disabled {
+  color: #9e9389;
+  border-color: #e3e0db;
+  cursor: not-allowed;
+  opacity: 0.65;
 }
 .cp-btn-delete {
   background: #fff5f5;
