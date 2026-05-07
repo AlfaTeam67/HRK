@@ -2,9 +2,40 @@
   "info": {
     "_postman_id": "hrk-e2e-deterministic-full-v1",
     "name": "HRK E2E Deterministic Full",
-    "description": "Deterministyczny scenariusz E2E (Setup -> Verify -> Cleanup) obejmujący pełny łańcuch CRM: customer, contacts, services, contracts, contract-services, valorizations, customer-rates, notes, activity-log.",
+    "description": "Deterministyczny scenariusz E2E (Setup -> Verify -> Cleanup) obejmujący pełny łańcuch CRM: customer, contacts, services, contracts, contract-services, valorizations, customer-rates, notes, activity-log.\n\n## RBAC/ABAC (ALF-60)\nKolekcja używa collection-level `Authorization: Bearer {{bearerToken}}`. Token jest ustawiany w requeście `01 - Login` (token = login, MVP). Endpoint logowania jest jedynym wyjątkiem (auth: noauth).\n\nDeterministyczny user (`testUserLogin`) musi mieć rolę `admin` aby request `03 - Create Company` (admin-only) zadziałał — w razie 403 wykonaj `99a - [Bootstrap] Grant Admin Role`.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      { "key": "token", "value": "{{bearerToken}}", "type": "string" }
+    ]
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// Collection-level prerequest: deterministic per-run defaults.",
+          "// Each Run Collection regenerates testRunId so unique constraints (nip, ckk) never collide.",
+          "function ensure(key, fallback) {",
+          "    var v = pm.collectionVariables.get(key);",
+          "    if (!v || v === '' || v === null) { pm.collectionVariables.set(key, fallback); }",
+          "}",
+          "ensure('testUserLogin', 'mateusz');",
+          "ensure('bearerToken', pm.collectionVariables.get('testUserLogin'));",
+          "// Always refresh testRunId so each collection run is unique.",
+          "var rid = String(Date.now());",
+          "pm.collectionVariables.set('testRunId', rid);",
+          "// 6-char numeric suffix that fits ckk (max_length=10) when prefixed with 'E2E-'.",
+          "pm.collectionVariables.set('shortRunId', rid.slice(-6));",
+          "// 10-digit suffix for nip / billing_nip (max_length=15).",
+          "pm.collectionVariables.set('nipSuffix', (rid + '0000000000').slice(0, 10));"
+        ]
+      }
+    }
+  ],
   "item": [
     {
       "name": "01 - Login",
@@ -16,19 +47,58 @@
             "exec": [
               "pm.test('Login OK', function () { pm.response.to.have.status(200); });",
               "const jsonData = pm.response.json();",
-              "pm.collectionVariables.set('userId', jsonData.id);"
+              "pm.collectionVariables.set('userId', jsonData.id);",
+              "pm.collectionVariables.set('bearerToken', jsonData.login);",
+              "console.log('Bearer token =', jsonData.login);"
             ]
           }
         }
       ],
       "request": {
+        "auth": { "type": "noauth" },
         "method": "POST",
         "header": [],
         "url": {
           "raw": "{{baseUrl}}/auth/login/{{testUserLogin}}",
           "host": ["{{baseUrl}}"],
           "path": ["auth", "login", "{{testUserLogin}}"]
+        },
+        "description": "Loguje użytkownika E2E. Po requeście `bearerToken = login` i wszystkie kolejne requesty używają nagłówka `Authorization: Bearer {{bearerToken}}` (collection-level)."
+      }
+    },
+    {
+      "name": "01b - [Bootstrap] First Admin",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "if (pm.response.code === 404) {",
+              "    console.error('404 → backend nie ma jeszcze /access/* routes. RESTART backendu (make run / docker-compose restart api) i puść kolekcję ponownie.');",
+              "}",
+              "pm.test('Bootstrap accepted (200) or locked (403)', function () {",
+              "    pm.expect([200, 403]).to.include(pm.response.code);",
+              "});",
+              "if (pm.response.code === 200) {",
+              "    var roles = pm.response.json().roles || [];",
+              "    pm.test('User now has admin role', function () { pm.expect(roles).to.include('admin'); });",
+              "} else if (pm.response.code === 403) {",
+              "    console.warn('Bootstrap locked — another user is already admin. Either log in as that admin or assign role through PUT /access/users/{id}/roles.');",
+              "}"
+            ]
+          }
         }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "url": {
+          "raw": "{{baseUrl}}/access/bootstrap-first-admin",
+          "host": ["{{baseUrl}}"],
+          "path": ["access", "bootstrap-first-admin"]
+        },
+        "description": "Idempotentny self-bootstrap pierwszego admina. \n\n- 200: `testUserLogin` jest jedynym/pierwszym adminem – mamy go.\n- 200 (już admin): no-op, zwraca aktualne assignments.\n- 403: w bazie jest już *inny* admin – musisz zalogować się jako on i nadać rolę przez PUT /access/users/{id}/roles."
       }
     },
     {
@@ -87,7 +157,7 @@
         "header": [{ "key": "Content-Type", "value": "application/json" }],
         "body": {
           "mode": "raw",
-          "raw": "{\n  \"name\": \"E2E-Company-{{testRunId}}\",\n  \"nip\": \"521000{{testRunId}}\",\n  \"regon\": \"12345{{testRunId}}\",\n  \"address_city\": \"Warszawa\",\n  \"address_street\": \"Deterministyczna 1\",\n  \"address_postal\": \"00-001\",\n  \"address_country\": \"PL\",\n  \"phone\": \"+48220000000\",\n  \"email\": \"e2e-company-{{testRunId}}@hrk.pl\",\n  \"is_active\": true\n}"
+          "raw": "{\n  \"name\": \"E2E-Company-{{testRunId}}\",\n  \"nip\": \"{{nipSuffix}}\",\n  \"regon\": \"{{shortRunId}}1234\",\n  \"address_city\": \"Warszawa\",\n  \"address_street\": \"Deterministyczna 1\",\n  \"address_postal\": \"00-001\",\n  \"address_country\": \"PL\",\n  \"phone\": \"+48220000000\",\n  \"email\": \"e2e-company-{{testRunId}}@hrk.pl\",\n  \"is_active\": true\n}"
         },
         "url": {
           "raw": "{{baseUrl}}/companies/",
@@ -118,7 +188,7 @@
         "header": [{ "key": "Content-Type", "value": "application/json" }],
         "body": {
           "mode": "raw",
-          "raw": "{\n  \"ckk\": \"E2E-{{testRunId}}\",\n  \"ckd\": \"E01\",\n  \"company_id\": \"{{companyId}}\",\n  \"account_manager_id\": \"{{userId}}\",\n  \"status\": \"active\",\n  \"segment\": \"enterprise\",\n  \"industry\": \"Technology\",\n  \"employee_count\": 100,\n  \"payment_period_days\": 30,\n  \"billing_nip\": \"521000{{testRunId}}\",\n  \"billing_email\": \"billing-{{testRunId}}@hrk.pl\",\n  \"phone\": \"+48223334444\",\n  \"address_street\": \"Deterministyczna 2\",\n  \"address_city\": \"Warszawa\",\n  \"address_postal\": \"00-002\",\n  \"address_country\": \"PL\"\n}"
+          "raw": "{\n  \"ckk\": \"E2E-{{shortRunId}}\",\n  \"ckd\": \"E01\",\n  \"company_id\": \"{{companyId}}\",\n  \"account_manager_id\": \"{{userId}}\",\n  \"status\": \"active\",\n  \"segment\": \"enterprise\",\n  \"industry\": \"Technology\",\n  \"employee_count\": 100,\n  \"payment_period_days\": 30,\n  \"billing_nip\": \"{{nipSuffix}}\",\n  \"billing_email\": \"billing-{{testRunId}}@hrk.pl\",\n  \"phone\": \"+48223334444\",\n  \"address_street\": \"Deterministyczna 2\",\n  \"address_city\": \"Warszawa\",\n  \"address_postal\": \"00-002\",\n  \"address_country\": \"PL\"\n}"
         },
         "url": {
           "raw": "{{baseUrl}}/customers",
@@ -137,7 +207,7 @@
             "exec": [
               "pm.test('List customers OK', function () { pm.response.to.have.status(200); });",
               "const jsonData = pm.response.json();",
-              "const targetCkk = `E2E-${pm.collectionVariables.get('testRunId')}`;",
+              "const targetCkk = `E2E-${pm.collectionVariables.get('shortRunId')}`;",
               "const found = jsonData.find(c => c.ckk === targetCkk);",
               "pm.test('Deterministic customer found', function () { pm.expect(found).to.exist; });",
               "pm.collectionVariables.set('customerId', found.id);"
@@ -593,6 +663,7 @@
       "type": "string"
     },
     { "key": "testUserLogin", "value": "mateusz", "type": "string" },
+    { "key": "bearerToken", "value": "mateusz", "type": "string" },
     { "key": "testRunId", "value": "1001", "type": "string" },
     { "key": "userId", "value": "", "type": "string" },
     { "key": "companyId", "value": "", "type": "string" },

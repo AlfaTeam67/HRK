@@ -2,15 +2,21 @@
   "info": {
     "_postman_id": "8d745582-7e4a-4b9a-9e1e-c2f35d67890a",
     "name": "HRK CRM API - CRUD",
-    "description": "Kompletna kolekcja CRUD dla HRK CRM. Kolejność folderów = kolejność wywołań potrzebna do pełnego flow: Auth → Users → Companies → Customers → Contact Persons → Service Groups → Services → Contracts → Contract Services → Valorizations → Customer Rates → Notes → Activity Log → Documents → RAG.",
+    "description": "Kompletna kolekcja CRUD dla HRK CRM (z RBAC/ABAC – ALF-60).\n\nKolejność folderów = kolejność wywołań potrzebna do pełnego flow: Auth → Users → Access (RBAC/ABAC) → Companies → Customers → Contact Persons → Service Groups → Services → Contracts → Contract Services → Valorizations → Customer Rates → Notes → Activity Log → Documents → RAG.\n\n## Autoryzacja (ALF-60)\n\nKolekcja używa dziedziczonego nagłówka `Authorization: Bearer {{bearerToken}}` (collection-level auth).\n- `bearerToken` ustawiany jest automatycznie po wywołaniu `Auth → Login` na podstawie `login` zwróconego usera (MVP: token = login).\n- Aby przełączyć się na konto admina/viewera w czasie wykonania, zmień `bearerToken` ręcznie albo użyj odpowiedniego requestu z folderu `Access`.\n\nWszystkie endpointy poza `/auth/login/*` wymagają autoryzacji. Endpointy admin-only zwracają 403 z payloadem `{detail: {code: \"AUTHORIZATION_DENIED\", message: \"...\"}}`.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      { "key": "token", "value": "{{bearerToken}}", "type": "string" }
+    ]
   },
   "item": [
     {
       "name": "Auth",
       "item": [
         {
-          "name": "Login",
+          "name": "Login (admin)",
           "event": [
             {
               "listen": "test",
@@ -19,7 +25,77 @@
                   "if (pm.response.code === 200) {",
                   "    var jsonData = pm.response.json();",
                   "    pm.collectionVariables.set('userId', jsonData.id);",
-                  "    console.log('Logged in as user:', jsonData.id);",
+                  "    pm.collectionVariables.set('bearerToken', jsonData.login);",
+                  "    pm.collectionVariables.set('adminLogin', jsonData.login);",
+                  "    console.log('Logged in as user:', jsonData.id, 'login:', jsonData.login);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/auth/login/{{adminLogin}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "login", "{{adminLogin}}"]
+            },
+            "description": "Loguje użytkownika przez AD. Zwraca obiekt User i ustawia `bearerToken = login` (MVP). Po tym requeście wszystkie kolejne calls automatycznie używają nagłówka `Authorization: Bearer {{bearerToken}}`."
+          },
+          "response": []
+        },
+        {
+          "name": "Login (viewer)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.collectionVariables.set('viewerUserId', jsonData.id);",
+                  "    pm.collectionVariables.set('bearerToken', jsonData.login);",
+                  "    pm.collectionVariables.set('viewerLogin', jsonData.login);",
+                  "    console.log('Switched to viewer user:', jsonData.id, 'login:', jsonData.login);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/auth/login/{{viewerLogin}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "login", "{{viewerLogin}}"]
+            },
+            "description": "Loguje (lub tworzy) konto bez specjalnych uprawnień. Po wykonaniu `bearerToken` wskazuje na viewer-a, więc kolejne requesty będą egzekwowane jako VIEWER (z policy matrix). Użyj do testów scenariuszy 403."
+          },
+          "response": []
+        },
+        {
+          "name": "Bootstrap First Admin",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Bootstrap OK or locked', function () {",
+                  "    pm.expect([200, 403]).to.include(pm.response.code);",
+                  "});",
+                  "if (pm.response.code === 200) {",
+                  "    var data = pm.response.json();",
+                  "    pm.collectionVariables.set('userId', data.user_id);",
+                  "    pm.test('admin role present', function () { pm.expect(data.roles).to.include('admin'); });",
+                  "    console.log('Admin bootstrap successful for user', data.user_id);",
+                  "} else {",
+                  "    console.warn('Bootstrap locked — another admin already exists. Login as that admin or assign role manually.');",
                   "}"
                 ],
                 "type": "text/javascript"
@@ -28,13 +104,45 @@
           ],
           "request": {
             "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": {
+              "raw": "{{baseUrl}}/access/bootstrap-first-admin",
+              "host": ["{{baseUrl}}"],
+              "path": ["access", "bootstrap-first-admin"]
+            },
+            "description": "Idempotentny self-bootstrap pierwszego admina. Wywołaj zaraz po `Login (admin)` na świeżej bazie. Po pierwszym sukcesie zwraca 200 (no-op) na kolejnych uruchomieniach. Jeśli inny user jest już adminem — 403."
+          },
+          "response": []
+        },
+        {
+          "name": "Switch to Admin (token)",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "var admin = pm.collectionVariables.get('adminLogin');",
+                  "if (!admin) { admin = 'admin_test'; pm.collectionVariables.set('adminLogin', admin); }",
+                  "pm.collectionVariables.set('bearerToken', admin);",
+                  "console.log('Bearer token switched to admin:', admin);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/auth/login/jkowalski",
+              "raw": "{{baseUrl}}/users/?page=1&page_size=1",
               "host": ["{{baseUrl}}"],
-              "path": ["auth", "login", "jkowalski"]
+              "path": ["users", ""],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "page_size", "value": "1" }
+              ]
             },
-            "description": "Loguje użytkownika przez AD. Zwraca obiekt User i zapisuje userId."
+            "description": "Ustawia `bearerToken = adminLogin` i wykonuje sanity-check zapytanie admin-only `GET /users/`. 200 = jesteś adminem, 403 = brakuje roli ADMIN (ustaw przez `Access → Set Roles` z innego konta admina)."
           },
           "response": []
         }
@@ -141,6 +249,197 @@
       ]
     },
     {
+      "name": "Access (RBAC/ABAC)",
+      "description": "Zarządzanie uprawnieniami z ALF-60. Wszystkie endpointy wymagają roli `admin` (egzekwowane przez `require_admin`). Odmowa zwraca 403 z `{detail: {code: 'AUTHORIZATION_DENIED', message: '...'}}`.",
+      "item": [
+        {
+          "name": "Get Access Assignments",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('200 OK', function () { pm.response.to.have.status(200); });",
+                  "if (pm.response.code === 200) {",
+                  "    var jsonData = pm.response.json();",
+                  "    console.log('Roles:', jsonData.roles);",
+                  "    console.log('Companies:', jsonData.company_ids);",
+                  "    console.log('Contracts:', jsonData.contract_ids);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/access/users/{{userId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["access", "users", "{{userId}}"]
+            },
+            "description": "Zwraca pełny komplet przypisań RBAC/ABAC dla użytkownika: role, dozwolone firmy, dozwolone umowy. Tylko admin."
+          },
+          "response": []
+        },
+        {
+          "name": "Set Roles (admin + viewer)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('200 OK', function () { pm.response.to.have.status(200); });",
+                  "if (pm.response.code === 200) {",
+                  "    var roles = pm.response.json().roles;",
+                  "    console.log('Updated roles:', roles);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"roles\": [\"admin\"]\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/access/users/{{userId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["access", "users", "{{userId}}", "roles"]
+            },
+            "description": "Replace-all. Akceptowane wartości: `admin`, `account_manager`, `manager`, `consultant`, `viewer`.\n\nUżytkownik dostaje role z listy. Jeśli lista jest pusta — efektywna rola spadnie do `viewer` (fallback)."
+          },
+          "response": []
+        },
+        {
+          "name": "Set Roles (consultant)",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"roles\": [\"consultant\"]\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/access/users/{{userId}}/roles",
+              "host": ["{{baseUrl}}"],
+              "path": ["access", "users", "{{userId}}", "roles"]
+            },
+            "description": "Konsultant może tworzyć customers/contracts/notes/contact_persons w zakresie swoich firm, ale nie może updatowac/usuwac (na to potrzeba MANAGER+)."
+          },
+          "response": []
+        },
+        {
+          "name": "Set Company Scope",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('200 OK', function () { pm.response.to.have.status(200); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"ids\": [\"{{companyId}}\"]\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/access/users/{{userId}}/companies",
+              "host": ["{{baseUrl}}"],
+              "path": ["access", "users", "{{userId}}", "companies"]
+            },
+            "description": "ABAC scope: nadaje użytkownikowi dostęp do danej firmy. Replace-all (lista zastępuje istniejące). Bez scope → wszystkie endpointy CRM (poza admin) zwrócą 403 lub puste listy."
+          },
+          "response": []
+        },
+        {
+          "name": "Set Contract Scope",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"ids\": [\"{{contractId}}\"]\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/access/users/{{userId}}/contracts",
+              "host": ["{{baseUrl}}"],
+              "path": ["access", "users", "{{userId}}", "contracts"]
+            },
+            "description": "ABAC narrow scope: nadaje dostęp do konkretnej umowy. Działa łącznie z company scope (logika OR — wystarczy jeden z dwóch)."
+          },
+          "response": []
+        },
+        {
+          "name": "[Deny] Set Roles as Non-Admin (403)",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "var viewer = pm.collectionVariables.get('viewerLogin');",
+                  "if (!viewer) { viewer = 'viewer_test'; pm.collectionVariables.set('viewerLogin', viewer); }",
+                  "pm.collectionVariables.set('bearerToken', viewer);",
+                  "console.log('Switched to viewer for deny scenario:', viewer);"
+                ],
+                "type": "text/javascript"
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('403 FORBIDDEN', function () { pm.response.to.have.status(403); });",
+                  "pm.test('AUTHORIZATION_DENIED code', function () {",
+                  "    var detail = pm.response.json().detail;",
+                  "    pm.expect(detail).to.be.an('object');",
+                  "    pm.expect(detail.code).to.eql('AUTHORIZATION_DENIED');",
+                  "});",
+                  "var admin = pm.collectionVariables.get('adminLogin');",
+                  "if (admin) {",
+                  "    pm.collectionVariables.set('bearerToken', admin);",
+                  "    console.log('Restored admin token after deny test:', admin);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"roles\": [\"admin\"]\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/access/users/{{userId}}/roles",
+              "host": ["{{baseUrl}}"],
+              "path": ["access", "users", "{{userId}}", "roles"]
+            },
+            "description": "Demonstracja deny: viewer próbuje przyznać sobie rolę admin → 403 + standardowy payload. Po requeście token wraca do `adminLogin`."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
       "name": "Companies",
       "item": [
         {
@@ -165,14 +464,55 @@
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n    \"name\": \"HRK Payroll Consulting\",\n    \"nip\": \"5213456789\",\n    \"regon\": \"123456789\",\n    \"address_city\": \"Warszawa\",\n    \"address_street\": \"Aleje Jerozolimskie 100\",\n    \"address_postal\": \"00-001\",\n    \"address_country\": \"PL\",\n    \"phone\": \"+48221234567\",\n    \"email\": \"biuro@hrk.pl\",\n    \"website\": \"https://hrk.pl\",\n    \"is_active\": true\n}",
+              "raw": "{\n    \"name\": \"HRK Test Co {{testRunId}}\",\n    \"nip\": \"{{nipSuffix}}\",\n    \"address_city\": \"Warszawa\",\n    \"address_street\": \"Deterministyczna 1\",\n    \"address_postal\": \"00-001\",\n    \"address_country\": \"PL\",\n    \"phone\": \"+48221234567\",\n    \"email\": \"biuro-{{testRunId}}@hrk.pl\",\n    \"website\": \"https://hrk.pl\",\n    \"is_active\": true\n}",
               "options": { "raw": { "language": "json" } }
             },
             "url": {
               "raw": "{{baseUrl}}/companies/",
               "host": ["{{baseUrl}}"],
               "path": ["companies", ""]
+            },
+            "description": "Tworzy firmę z deterministyczną nazwą `HRK Test Co {{testRunId}}` i NIP-em `{{nipSuffix}}` (10 cyfr z testRunId). Dzięki temu kolejne uruchomienia nie kolidują (każde ma świeży testRunId)."
+          },
+          "response": []
+        },
+        {
+          "name": "Find or Create Company",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('200 OK', function () { pm.response.to.have.status(200); });",
+                  "var data = pm.response.json();",
+                  "var name = 'HRK Test Co ' + pm.collectionVariables.get('testRunId');",
+                  "var found = (data.items || []).find(c => c.name === name);",
+                  "if (found) {",
+                  "    pm.collectionVariables.set('companyId', found.id);",
+                  "    console.log('Reused company', found.id);",
+                  "    pm.execution.setNextRequest('List Companies');",
+                  "} else {",
+                  "    console.log('No matching company; will fall through to Create Company');",
+                  "    pm.execution.setNextRequest('Create Company');",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
             }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/companies/?page=1&page_size=100",
+              "host": ["{{baseUrl}}"],
+              "path": ["companies", ""],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "page_size", "value": "100" }
+              ]
+            },
+            "description": "Find-or-create. Jeśli firma o nazwie `HRK Test Co {{testRunId}}` istnieje — zapisuje jej id i przeskakuje do `List Companies`. Jeśli nie — przekierowuje na `Create Company`."
           },
           "response": []
         },
@@ -394,7 +734,7 @@
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n    \"ckk\": \"E{{$randomInt}}{{$randomInt}}\",\n    \"ckd\": \"E01\",\n    \"company_id\": \"{{companyId}}\",\n    \"account_manager_id\": \"{{userId}}\",\n    \"status\": \"active\",\n    \"segment\": \"enterprise\",\n    \"industry\": \"Technology\",\n    \"employee_count\": 500,\n    \"payment_period_days\": 30,\n    \"billing_nip\": \"5213456789\",\n    \"billing_email\": \"faktury@hrk.pl\",\n    \"phone\": \"+48221234567\",\n    \"address_street\": \"Aleje Jerozolimskie 100\",\n    \"address_city\": \"Warszawa\",\n    \"address_postal\": \"00-001\",\n    \"address_country\": \"PL\"\n}",
+              "raw": "{\n    \"ckk\": \"{{ckkSuffix}}\",\n    \"ckd\": \"E01\",\n    \"company_id\": \"{{companyId}}\",\n    \"account_manager_id\": \"{{userId}}\",\n    \"status\": \"active\",\n    \"segment\": \"enterprise\",\n    \"industry\": \"Technology\",\n    \"employee_count\": 500,\n    \"payment_period_days\": 30,\n    \"billing_nip\": \"{{nipSuffix}}\",\n    \"billing_email\": \"faktury-{{testRunId}}@hrk.pl\",\n    \"phone\": \"+48221234567\",\n    \"address_street\": \"Deterministyczna 1\",\n    \"address_city\": \"Warszawa\",\n    \"address_postal\": \"00-001\",\n    \"address_country\": \"PL\"\n}",
               "options": { "raw": { "language": "json" } }
             },
             "url": {
@@ -402,7 +742,44 @@
               "host": ["{{baseUrl}}"],
               "path": ["customers"]
             },
-            "description": "status: active | churn_risk | needs_attention | inactive\nWymaga: companyId i userId z poprzednich kroków."
+            "description": "status: active | churn_risk | needs_attention | inactive\nDeterministyczne `ckk = {{ckkSuffix}}` (10 cyfr z testRunId). Każde uruchomienie z nowym testRunId daje świeżego customera, więc nie ma kolizji unique constraint."
+          },
+          "response": []
+        },
+        {
+          "name": "Find or Create Customer",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('200 OK', function () { pm.response.to.have.status(200); });",
+                  "var arr = pm.response.json();",
+                  "var ckk = pm.collectionVariables.get('ckkSuffix');",
+                  "var found = (arr || []).find(c => c.ckk === ckk);",
+                  "if (found) {",
+                  "    pm.collectionVariables.set('customerId', found.id);",
+                  "    console.log('Reused customer', found.id);",
+                  "    pm.execution.setNextRequest('List Customers');",
+                  "} else {",
+                  "    console.log('No matching customer; will fall through to Create Customer');",
+                  "    pm.execution.setNextRequest('Create Customer');",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/customers?company_id={{companyId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["customers"],
+              "query": [{ "key": "company_id", "value": "{{companyId}}" }]
+            },
+            "description": "Find-or-create. Filtruje customerów po `companyId` i szuka wpisu z `ckk = {{ckkSuffix}}`. Jeśli istnieje — zapisuje `customerId` i przeskakuje na List Customers. Inaczej leci do Create Customer."
           },
           "response": []
         },
@@ -1284,12 +1661,11 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/documents/{{documentId}}?requester_user_id={{userId}}",
+              "raw": "{{baseUrl}}/documents/{{documentId}}",
               "host": ["{{baseUrl}}"],
-              "path": ["documents", "{{documentId}}"],
-              "query": [{ "key": "requester_user_id", "value": "{{userId}}" }]
+              "path": ["documents", "{{documentId}}"]
             },
-            "description": "Zwraca metadane dokumentu z aktualnym ocr_status."
+            "description": "Zwraca metadane dokumentu z aktualnym ocr_status. Wymaga roli ≥ VIEWER + scope na firmę dokumentu (lub kontrakt). Brak scope → 403 z `code: AUTHORIZATION_DENIED`."
           },
           "response": []
         },
@@ -1299,12 +1675,11 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/documents/{{documentId}}/download-url?requester_user_id={{userId}}",
+              "raw": "{{baseUrl}}/documents/{{documentId}}/download-url",
               "host": ["{{baseUrl}}"],
-              "path": ["documents", "{{documentId}}", "download-url"],
-              "query": [{ "key": "requester_user_id", "value": "{{userId}}" }]
+              "path": ["documents", "{{documentId}}", "download-url"]
             },
-            "description": "Zwraca presigned URL do pobrania pliku z MinIO/S3. TTL: 300s."
+            "description": "Zwraca presigned URL do pobrania pliku z MinIO/S3. TTL: 300s. Egzekwuje policy `document.read` (≥ VIEWER w scope)."
           },
           "response": []
         },
@@ -1314,12 +1689,11 @@
             "method": "DELETE",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/documents/{{documentId}}?requester_user_id={{userId}}",
+              "raw": "{{baseUrl}}/documents/{{documentId}}",
               "host": ["{{baseUrl}}"],
-              "path": ["documents", "{{documentId}}"],
-              "query": [{ "key": "requester_user_id", "value": "{{userId}}" }]
+              "path": ["documents", "{{documentId}}"]
             },
-            "description": "Usuwa dokument z DB i S3 oraz wszystkie powiązane chunki."
+            "description": "Usuwa dokument z DB i S3 oraz wszystkie powiązane chunki. Egzekwuje policy `document.delete` (≥ MANAGER w scope)."
           },
           "response": []
         }
@@ -1374,7 +1748,23 @@
       "listen": "prerequest",
       "script": {
         "type": "text/javascript",
-        "exec": [""]
+        "exec": [
+          "// Collection-level prerequest: ensures deterministic defaults so the",
+          "// collection is runnable on a fresh DB without manual setup.",
+          "function ensure(key, fallback) {",
+          "    var v = pm.collectionVariables.get(key);",
+          "    if (!v || v === '') { pm.collectionVariables.set(key, fallback); }",
+          "}",
+          "ensure('adminLogin', 'admin_test');",
+          "ensure('viewerLogin', 'viewer_test');",
+          "ensure('bearerToken', pm.collectionVariables.get('adminLogin'));",
+          "ensure('testRunId', String(Date.now()));",
+          "// Derive a deterministic 10-digit NIP/CKK suffix from testRunId.",
+          "var trid = String(pm.collectionVariables.get('testRunId'));",
+          "var pad = (trid + '0000000000').slice(0, 10);",
+          "pm.collectionVariables.set('nipSuffix', pad);",
+          "pm.collectionVariables.set('ckkSuffix', pad);"
+        ]
       }
     },
     {
@@ -1391,7 +1781,12 @@
       "value": "http://localhost:8000/api/v1",
       "type": "string"
     },
+    { "key": "bearerToken", "value": "admin_test", "type": "string" },
+    { "key": "adminLogin", "value": "admin_test", "type": "string" },
+    { "key": "viewerLogin", "value": "viewer_test", "type": "string" },
+    { "key": "testRunId", "value": "", "type": "string" },
     { "key": "userId", "value": "", "type": "string" },
+    { "key": "viewerUserId", "value": "", "type": "string" },
     { "key": "companyId", "value": "", "type": "string" },
     { "key": "customerId", "value": "", "type": "string" },
     { "key": "serviceGroupId", "value": "", "type": "string" },
