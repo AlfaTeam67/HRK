@@ -204,8 +204,9 @@ class DocumentService:
         contract_id: UUID | None,
     ) -> None:
         try:
-            await self._authorization.authorize(
+            await self._authorization.authorize_by_policy(
                 user=user,
+                resource="document",
                 action=action,
                 resource_company_id=company_id,
                 resource_contract_id=contract_id,

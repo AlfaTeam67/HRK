@@ -7,8 +7,8 @@ from fastapi import APIRouter, Depends, Query, status
 
 from app.api.deps import get_crm_service
 from app.core.auth import get_current_user
-from app.schemas.activity import ActivityLogCreate, ActivityLogRead
 from app.models.user import User
+from app.schemas.activity import ActivityLogCreate, ActivityLogRead
 from app.service import CRMService
 
 router = APIRouter(tags=["crm-activity-log"])

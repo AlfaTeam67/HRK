@@ -53,11 +53,9 @@ async def list_notes(
 async def create_note(
     payload: NoteCreate,
     service: Annotated[CRMService, Depends(get_crm_service)],
-    _: Annotated[User, Depends(get_current_user)],
 ) -> NoteRead:
     """Create a new note."""
-    # TODO: Get created_by from current user when auth is implemented
-    return await service.create_note(payload, created_by=None)
+    return await service.create_note(payload)
 
 
 @router.get("/{note_id}", response_model=NoteRead, summary="Get note")

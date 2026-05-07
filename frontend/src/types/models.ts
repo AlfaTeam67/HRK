@@ -80,6 +80,15 @@ export type User = S['UserRead']
 export type UserCreate = S['UserCreate']
 export type UserUpdate = S['UserUpdate']
 
+export type UserRole = 'admin' | 'account_manager' | 'manager' | 'consultant' | 'viewer'
+
+export interface AccessAssignments {
+  user_id: string
+  roles: UserRole[]
+  company_ids: string[]
+  contract_ids: string[]
+}
+
 export type PaginatedCompanies = S['PaginatedResponse_CompanyRead_']
 
 // ── Enums (string literal types from backend) ────────────────────────────────

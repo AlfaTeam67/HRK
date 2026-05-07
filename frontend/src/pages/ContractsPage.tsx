@@ -1,3 +1,5 @@
+import { useCan } from '@/hooks/usePermission'
+
 /* ─── Mock data (inline) ─────────────────────────────────────── */
 const kpis = [
   { label: 'KOŃCZĄ SIĘ W 30 DNI',        value: '3',  sub: 'Wysoki priorytet',   color: '#e85c04' },
@@ -38,6 +40,7 @@ const VAL_S: Record<string, { bg: string; color: string }> = {
 
 /* ─── Component ──────────────────────────────────────────────── */
 export function ContractsPage() {
+  const canCreate = useCan('contract', 'create')
   return (
     <div style={{ width: '100%' }}>
       {/* Header */}
@@ -50,10 +53,12 @@ export function ContractsPage() {
           <button style={{ background: 'white', border: '1px solid #e3e0db', borderRadius: 6, padding: '7px 14px', fontSize: 13, fontWeight: 500, color: '#6b6b6b', cursor: 'pointer' }}>
             Eksportuj
           </button>
-          <button style={{ background: '#e85c04', border: 'none', borderRadius: 6, padding: '7px 16px', color: 'white', fontSize: 13, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-            Nowa umowa
-          </button>
+          {canCreate && (
+            <button style={{ background: '#e85c04', border: 'none', borderRadius: 6, padding: '7px 16px', color: 'white', fontSize: 13, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              Nowa umowa
+            </button>
+          )}
         </div>
       </div>
 

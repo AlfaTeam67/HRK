@@ -3,6 +3,7 @@ import { Navigate, Outlet, Route, Routes } from 'react-router-dom'
 
 import { AppLayout } from '@/components/layout/AppLayout'
 import { useAppDispatch, useAppSelector } from '@/hooks/store'
+import { useIsAdmin } from '@/hooks/usePermission'
 import { apiClient } from '@/lib/axios'
 import { AdvisorPage } from '@/pages/AdvisorPage'
 import { ClientsPageApi } from '@/pages/ClientsPage'
@@ -17,6 +18,12 @@ function RequireAuth() {
   const user = useAppSelector((s) => s.auth.user)
   const token = useAppSelector((s) => s.auth.token)
   if (!user || !token) return <Navigate to="/login" replace />
+  return <Outlet />
+}
+
+function RequireAdmin() {
+  const isAdmin = useIsAdmin()
+  if (!isAdmin) return <Navigate to="/" replace />
   return <Outlet />
 }
 
@@ -42,7 +49,9 @@ function App() {
           <Route path="contracts" element={<ContractsPage />} />
           <Route path="valorization" element={<ValorizationPage />} />
           <Route path="assistant" element={<AdvisorPage />} />
-          <Route path="access" element={<SettingsPage />} />
+          <Route element={<RequireAdmin />}>
+            <Route path="access" element={<SettingsPage />} />
+          </Route>
           <Route path="reports" element={<ReportsPage />} />
         </Route>
       </Route>

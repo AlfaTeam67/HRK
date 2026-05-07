@@ -179,8 +179,9 @@ async def delete_company(
     authorization = AuthorizationService(db)
 
     try:
-        await authorization.authorize(
+        await authorization.authorize_by_policy(
             user=current_user,
+            resource="company",
             action="delete",
             resource_company_id=id,
         )

@@ -7,11 +7,12 @@ export interface AuthUser {
   displayName: string
   initials: string
   department: string
+  roles: string[]
 }
 
 interface AuthState {
   user: AuthUser | null
-  token: string | null  // reserved for future JWT
+  token: string | null
 }
 
 const initialState: AuthState = {
@@ -29,6 +30,11 @@ const authSlice = createSlice({
     setToken(state, action: PayloadAction<string | null>) {
       state.token = action.payload
     },
+    setRoles(state, action: PayloadAction<string[]>) {
+      if (state.user) {
+        state.user.roles = action.payload
+      }
+    },
     logout(state) {
       state.user = null
       state.token = null
@@ -36,5 +42,5 @@ const authSlice = createSlice({
   },
 })
 
-export const { setUser, setToken, logout } = authSlice.actions
+export const { setUser, setToken, setRoles, logout } = authSlice.actions
 export const authReducer = authSlice.reducer

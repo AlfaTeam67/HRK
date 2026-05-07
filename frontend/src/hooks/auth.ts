@@ -2,11 +2,9 @@ import { useMutation } from '@tanstack/react-query'
 import { useDispatch } from 'react-redux'
 
 import { apiClient } from '@/lib/axios'
-import { type AuthUser, setToken, setUser } from '@/store/slices/authSlice'
-import type { User } from '@/types/models'
+import { type AuthUser, setRoles, setToken, setUser } from '@/store/slices/authSlice'
+import type { AccessAssignments, User } from '@/types/models'
 
-// Symulowane dane AD — mapowanie login → dane wyświetlane
-// W produkcji backend zwracałby pełne dane z AD
 const AD_PROFILES: Record<string, Pick<AuthUser, 'displayName' | 'initials' | 'department'>> = {
   asia: {
     displayName: 'Joanna Kniema',
@@ -31,7 +29,7 @@ function buildAuthUser(apiUser: User, login: string): AuthUser {
     initials: login.slice(0, 2).toUpperCase(),
     department: 'HRK',
   }
-  return { id: String(apiUser.id), login, email: apiUser.email, ...profile }
+  return { id: String(apiUser.id), login, email: apiUser.email, roles: [], ...profile }
 }
 
 export function useLogin() {
@@ -42,9 +40,15 @@ export function useLogin() {
       const { data } = await apiClient.post<User>(`/api/v1/auth/login/${username}`)
       return { apiUser: data, username }
     },
-    onSuccess: ({ apiUser, username }) => {
+    onSuccess: async ({ apiUser, username }) => {
       dispatch(setUser(buildAuthUser(apiUser, username)))
       dispatch(setToken(apiUser.login))
+      try {
+        const { data: access } = await apiClient.get<AccessAssignments>('/api/v1/access/me')
+        dispatch(setRoles(access.roles))
+      } catch {
+        // backend may not have roles yet — user defaults to viewer
+      }
     },
   })
 }

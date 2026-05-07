@@ -22,6 +22,7 @@ const pipeline = [
 ]
 
 import { cardStyle as card } from '@/lib/styles'
+import { useCan } from '@/hooks/usePermission'
 
 /* ─── Helpers ────────────────────────────────────────────────── */
 const VAL_S: Record<string, { bg: string; color: string }> = {
@@ -32,6 +33,7 @@ const VAL_S: Record<string, { bg: string; color: string }> = {
 
 /* ─── Component ──────────────────────────────────────────────── */
 export function ValorizationPage() {
+  const canCreate = useCan('valorization', 'create')
   return (
     <div style={{ width: '100%' }}>
       {/* Header */}
@@ -44,9 +46,11 @@ export function ValorizationPage() {
           <button style={{ background: 'white', border: '1px solid #e3e0db', borderRadius: 6, padding: '7px 14px', fontSize: 13, color: '#6b6b6b', cursor: 'pointer' }}>
             Eksportuj raport
           </button>
-          <button style={{ background: '#e85c04', border: 'none', borderRadius: 6, padding: '7px 16px', color: 'white', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
-            Generuj aneks
-          </button>
+          {canCreate && (
+            <button style={{ background: '#e85c04', border: 'none', borderRadius: 6, padding: '7px 16px', color: 'white', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+              Generuj aneks
+            </button>
+          )}
         </div>
       </div>
 

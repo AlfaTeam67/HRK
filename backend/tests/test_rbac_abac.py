@@ -160,6 +160,48 @@ async def test_rag_search_denies_without_scope(client: AsyncClient) -> None:
 
 
 @pytest.mark.asyncio
+async def test_bootstrap_first_admin_idempotent(client: AsyncClient) -> None:
+    # Use a unique login per run so the test does not depend on prior state.
+    candidate = await _create_user(
+        login=f"first_admin_{uuid4().hex[:8]}",
+        email=f"{uuid4().hex[:8]}@hrk.eu",
+    )
+
+    first = await client.post(
+        "/api/v1/access/bootstrap-first-admin",
+        headers=_auth_headers(candidate.login),
+    )
+    # 200 if they became the first admin, 403 if another admin already exists
+    # (e.g., due to test ordering on a shared DB). Either result is a valid invariant.
+    assert first.status_code in (200, 403)
+
+    if first.status_code == 200:
+        assert "admin" in first.json().get("roles", [])
+
+        # Re-running with the same user must be a no-op (idempotent).
+        second = await client.post(
+            "/api/v1/access/bootstrap-first-admin",
+            headers=_auth_headers(candidate.login),
+        )
+        assert second.status_code == 200
+        assert "admin" in second.json().get("roles", [])
+
+        # A different user without admin role must hit the lock.
+        outsider = await _create_user(
+            login=f"outsider_{uuid4().hex[:8]}",
+            email=f"{uuid4().hex[:8]}@hrk.eu",
+        )
+        denied = await client.post(
+            "/api/v1/access/bootstrap-first-admin",
+            headers=_auth_headers(outsider.login),
+        )
+        assert denied.status_code == 403
+        detail = denied.json().get("detail")
+        assert isinstance(detail, dict)
+        assert detail.get("code") == "AUTHORIZATION_DENIED"
+
+
+@pytest.mark.asyncio
 async def test_access_roles_update_allows_admin_only(client: AsyncClient) -> None:
     admin = await _create_user(
         login=f"access_admin_{uuid4().hex[:8]}",

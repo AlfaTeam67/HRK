@@ -3,6 +3,7 @@ import { NavLink, useNavigate } from 'react-router-dom'
 
 import { HrkLogo } from '@/components/HrkLogo'
 import { useAppSelector } from '@/hooks/store'
+import { useIsAdmin } from '@/hooks/usePermission'
 import { logout } from '@/store/slices/authSlice'
 
 /* ─── SVG icon helpers ───────────────────────────────────────── */
@@ -103,8 +104,23 @@ function SectionLabel({ children }: { children: string }) {
   )
 }
 
+const ROLE_LABELS: Record<string, string> = {
+  admin: 'Administrator',
+  account_manager: 'Opiekun klienta',
+  manager: 'Menedżer',
+  consultant: 'Konsultant',
+  viewer: 'Przeglądający',
+}
+
+function topRoleLabel(roles: string[]): string {
+  const order = ['admin', 'manager', 'account_manager', 'consultant', 'viewer']
+  const top = order.find((r) => roles.includes(r))
+  return top ? (ROLE_LABELS[top] ?? top) : 'Przeglądający'
+}
+
 export function AppSidebar() {
   const user = useAppSelector((s) => s.auth.user)
+  const isAdmin = useIsAdmin()
   const dispatch = useDispatch()
   const navigate = useNavigate()
 
@@ -138,8 +154,12 @@ export function AppSidebar() {
         <SectionLabel>Asystent AI</SectionLabel>
         {NAV_AI.map((item) => <NavItem key={item.label} {...item} />)}
 
-        <SectionLabel>Administracja</SectionLabel>
-        {NAV_ADMIN.map((item) => <NavItem key={item.label} {...item} />)}
+        {isAdmin && (
+          <>
+            <SectionLabel>Administracja</SectionLabel>
+            {NAV_ADMIN.map((item) => <NavItem key={item.label} {...item} />)}
+          </>
+        )}
       </nav>
 
       {/* ── User footer ──────────────────────────────── */}
@@ -163,7 +183,9 @@ export function AppSidebar() {
               {user?.displayName ?? '—'}
             </div>
             <div style={{ fontSize: 10, color: '#4a4340' }}>
-              {user?.department ?? 'HRK'}
+              {user?.roles?.length
+                ? topRoleLabel(user.roles)
+                : (user?.department ?? 'HRK')}
             </div>
           </div>
           <button
