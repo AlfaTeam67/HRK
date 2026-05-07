@@ -1,7 +1,7 @@
 """Activity log API endpoints."""
 
 import uuid
-from typing import Annotated
+from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, Query, status
 
@@ -22,7 +22,7 @@ async def list_activity_log(
     contract_id: uuid.UUID | None = Query(default=None),
     limit: int = Query(default=50, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
-) -> list[ActivityLogRead]:
+) -> Any:
     return await service.list_activity_logs(
         customer_id=customer_id,
         contract_id=contract_id,

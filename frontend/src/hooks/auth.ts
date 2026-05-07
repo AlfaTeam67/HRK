@@ -21,6 +21,11 @@ const AD_PROFILES: Record<string, Pick<AuthUser, 'displayName' | 'initials' | 'd
     initials: 'TN',
     department: 'Handlowy',
   },
+  kasia: {
+    displayName: 'Katarzyna Nowakowska',
+    initials: 'KN',
+    department: 'Opiekun klienta',
+  },
 }
 
 function buildAuthUser(apiUser: User, login: string): AuthUser {

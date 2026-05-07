@@ -1,8 +1,8 @@
 import os
+from typing import Any
 
 from fastapi import APIRouter, HTTPException, status
 from pydantic import BaseModel
-from typing import Any, Dict
 
 from app.service.crud_service import CRUDService
 
@@ -13,11 +13,11 @@ crud_service = CRUDService(
 
 
 class RecordCreate(BaseModel):
-    data: Dict[str, Any]
+    data: dict[str, Any]
 
 
 class RecordUpdate(BaseModel):
-    data: Dict[str, Any]
+    data: dict[str, Any]
 
 
 @router.post("/{table_name}", status_code=status.HTTP_201_CREATED)

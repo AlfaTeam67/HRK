@@ -31,9 +31,14 @@ const VAL_S: Record<string, { bg: string; color: string }> = {
   good:    { bg: '#f0fff4', color: '#276749' },
 }
 
+import { useState } from 'react'
+import { Modal } from '@/components/ui/modal'
+
 /* ─── Component ──────────────────────────────────────────────── */
 export function ValorizationPage() {
   const createPerm = usePermissionInfo('valorization', 'create')
+  const [isAlertModalOpen, setIsAlertModalOpen] = useState(false)
+
   return (
     <div style={{ width: '100%' }}>
       {/* Header */}
@@ -45,6 +50,13 @@ export function ValorizationPage() {
         <div style={{ display: 'flex', gap: 8 }}>
           <button style={{ background: 'white', border: '1px solid #e3e0db', borderRadius: 6, padding: '7px 14px', fontSize: 13, color: '#6b6b6b', cursor: 'pointer' }}>
             Eksportuj raport
+          </button>
+          <button
+            onClick={() => setIsAlertModalOpen(true)}
+            style={{ background: '#fff5f0', border: '1px solid #fdd5b8', borderRadius: 6, padding: '7px 16px', color: '#c94f02', fontSize: 13, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+            Generuj alert
           </button>
           <button
             style={{
@@ -62,6 +74,64 @@ export function ValorizationPage() {
           </button>
         </div>
       </div>
+
+      <Modal isOpen={isAlertModalOpen} onClose={() => setIsAlertModalOpen(false)} title="Generuj alert waloryzacyjny">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <label style={{ fontSize: 12, fontWeight: 700, color: '#4a4340' }}>Wybierz klienta / grupę</label>
+            <select style={{ padding: '8px 12px', borderRadius: 6, border: '1px solid #e3e0db', fontSize: 13, outline: 'none' }}>
+              <option>Wszystkie wymagające decyzji (3)</option>
+              <option>Empik Sp. z o.o.</option>
+              <option>MediaMarkt</option>
+              <option>TechNova S.A.</option>
+            </select>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <label style={{ fontSize: 12, fontWeight: 700, color: '#4a4340' }}>Priorytet alertu</label>
+            <div style={{ display: 'flex', gap: 10 }}>
+              {['Krytyczny', 'Wysoki', 'Normalny'].map(p => (
+                <button key={p} style={{ 
+                  flex: 1, padding: '8px', borderRadius: 6, border: '1px solid #e3e0db', 
+                  background: p === 'Krytyczny' ? '#fff5f0' : 'white', 
+                  color: p === 'Krytyczny' ? '#e85c04' : '#6b6b6b',
+                  fontSize: 12, fontWeight: 600, cursor: 'pointer'
+                }}>
+                  {p}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <label style={{ fontSize: 12, fontWeight: 700, color: '#4a4340' }}>Treść powiadomienia</label>
+            <textarea 
+              style={{ padding: '10px 12px', borderRadius: 6, border: '1px solid #e3e0db', fontSize: 13, outline: 'none', minHeight: 80, fontFamily: 'inherit' }}
+              defaultValue="Przypomnienie: Termin podjęcia decyzji o waloryzacji dla klienta Empik upływa za 3 dni. Wymagany akcept stawek przed wysłaniem aneksu."
+            />
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: '#fcfcfc', padding: '10px', borderRadius: 8, border: '1px solid #f2f0ed' }}>
+            <input type="checkbox" id="send-email" defaultChecked />
+            <label htmlFor="send-email" style={{ fontSize: 12, color: '#4b5563', cursor: 'pointer' }}>Wyślij powiadomienie Push oraz Email do opiekuna</label>
+          </div>
+
+          <div style={{ display: 'flex', gap: 10, marginTop: 10 }}>
+            <button 
+              onClick={() => setIsAlertModalOpen(false)}
+              style={{ flex: 1, padding: '10px', borderRadius: 6, border: '1px solid #e3e0db', background: 'white', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
+            >
+              Anuluj
+            </button>
+            <button 
+              onClick={() => setIsAlertModalOpen(false)}
+              style={{ flex: 1, padding: '10px', borderRadius: 6, border: 'none', background: '#e85c04', color: 'white', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
+            >
+              Rozeszlij alert
+            </button>
+          </div>
+        </div>
+      </Modal>
 
       {/* KPI cards */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 14, marginBottom: 20 }}>

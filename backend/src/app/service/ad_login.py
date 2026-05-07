@@ -65,7 +65,8 @@ class ADLoginService:
 
     def _read_json_response(self, request: Request) -> str:
         with urlopen(request, timeout=settings.ad_request_timeout) as response:
-            return response.read().decode("utf-8")
+            body: bytes = response.read()
+            return body.decode("utf-8")
 
     def _build_user_payload(self, login: str) -> dict[str, object]:
         email = f"{login}@hrk.eu"

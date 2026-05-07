@@ -1,7 +1,7 @@
 """Common schema utilities."""
 
 from collections.abc import Sequence
-from typing import Generic, TypeVar
+from typing import TypeVar
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -25,7 +25,7 @@ class PaginationParams(BaseModel):
     page_size: int = Field(20, ge=1, le=100)
 
 
-class PaginatedResponse(BaseModel, Generic[T]):
+class PaginatedResponse[T](BaseModel):
     items: Sequence[T]
     total: int
     page: int

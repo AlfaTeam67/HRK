@@ -2,7 +2,7 @@
 
 import uuid
 from datetime import date
-from typing import Annotated
+from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, Query, Response, status
 
@@ -31,7 +31,7 @@ async def list_contracts(
     start_to: date | None = Query(default=None),
     end_from: date | None = Query(default=None),
     end_to: date | None = Query(default=None),
-) -> list[ContractRead]:
+) -> Any:
     return await service.list_contracts(
         company_id=company_id,
         statuses=[status.value for status in statuses] if statuses else None,

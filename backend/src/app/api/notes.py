@@ -53,6 +53,7 @@ async def list_notes(
 async def create_note(
     payload: NoteCreate,
     service: Annotated[CRMService, Depends(get_crm_service)],
+    _: Annotated[User, Depends(get_current_user)],
 ) -> NoteRead:
     """Create a new note."""
     return await service.create_note(payload)

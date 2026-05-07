@@ -1,8 +1,8 @@
 """API tests for CRM CRUD endpoints."""
 
 import uuid
-from decimal import Decimal
 from datetime import UTC, date, datetime
+from decimal import Decimal
 from types import SimpleNamespace
 from typing import Any
 

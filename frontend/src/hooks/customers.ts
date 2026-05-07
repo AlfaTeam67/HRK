@@ -8,6 +8,7 @@ const BASE = '/api/v1'
 export interface CustomersFilters {
   q?: string
   company_id?: string
+  manager_id?: string
   statuses?: CustomerStatus[]
   created_from?: string
   created_to?: string

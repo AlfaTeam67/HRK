@@ -1,17 +1,15 @@
+import { cardStyle as card } from '@/lib/styles'
+import { useAppSelector } from '@/hooks/store'
+import { useAlerts, useDashboardKpi } from '@/hooks/alerts'
 import { usePermissionInfo } from '@/hooks/usePermission'
 
 /* ─── Mock data (inline) ─────────────────────────────────────── */
-const kpis = [
-  { label: 'KOŃCZĄ SIĘ W 30 DNI',        value: '3',  sub: 'Wysoki priorytet',   color: '#e85c04' },
-  { label: 'KOŃCZĄ SIĘ W 60 DNI',        value: '7',  sub: 'Przygotuj ofertę',   color: '#d69e2e' },
-  { label: 'KOŃCZĄ SIĘ W 90 DNI',        value: '12', sub: 'Wczesny kontakt',    color: '#3182ce' },
-  { label: 'AKTYWNYCH UMÓW',             value: '18', sub: 'Łącznie w systemie', color: '#38a169' },
-]
-
 const escalations = [
   { priority: 'Pilne'  , title: 'Empik: brak decyzji o waloryzacji',       detail: 'Termin aneksu mija za 4 dni. Wymagany akcept dyrektora sprzedaży.', color: '#e85c04' },
   { priority: 'Wysoki' , title: 'MediaMarkt: ryzyko wypowiedzenia',          detail: 'Klient zgłosił zastrzeżenia do stawek. Zaplanować call zarządczy.', color: '#d69e2e' },
   { priority: 'Średni' , title: 'TechNova: potwierdzić okno wypowiedzenia',  detail: 'Dwie wersje SLA w dokumentacji, wymagana korekta.',                color: '#3182ce' },
+  { priority: 'Pilne'  , title: 'Carrefour: nowa oferta ramowa',            detail: 'Klient prosi o weryfikację stawek dla regionu Południe.',          color: '#e85c04' },
+  { priority: 'Wysoki' , title: 'Allegro: waloryzacja roczna',              detail: 'Indeksacja o 4.2% zgodnie z GUS. Przygotować aneks.',              color: '#d69e2e' },
 ]
 
 const contracts = [
@@ -21,9 +19,11 @@ const contracts = [
   { id: 'HRK/BIE/2024/03', client: 'Biedronka',         type: 'HR ramowa',         status: 'Aktywna',       statusType: 'good',    end: '2026-09-01', notice: '90 dni', owner: 'A. Kowalski', val: 'Gotowa',          valType: 'good'    },
   { id: 'HRK/LID/2024/08', client: 'Lidl Polska',       type: 'Administracja',     status: 'Aktywna',       statusType: 'good',    end: '2026-08-15', notice: '90 dni', owner: 'K. Lis',      val: 'Gotowa',          valType: 'good'    },
   { id: 'HRK/TN/2025/03',  client: 'TechNova S.A.',     type: 'Outsourcing IT HR', status: 'Aktywna',       statusType: 'good',    end: '2026-06-18', notice: '60 dni', owner: 'M. Nowak',    val: 'W trakcie',       valType: 'warning' },
+  { id: 'HRK/CAR/2026/01', client: 'Carrefour Polska',  type: 'HR ramowa',         status: 'Nowa',          statusType: 'info',    end: '2027-01-20', notice: '90 dni', owner: 'T. Nowak',    val: 'Brak',            valType: 'neutral' },
+  { id: 'HRK/ALL/2025/12', client: 'Allegro.pl',        type: 'Obsługa płacowa',   status: 'Aktywna',       statusType: 'good',    end: '2026-12-31', notice: '60 dni', owner: 'A. Kowalski', val: 'Zaplanowana',     valType: 'good'    },
+  { id: 'HRK/ZAB/2024/05', client: 'Żabka Polska',      type: 'Rekrutacje stałe',  status: 'Aktywna',       statusType: 'good',    end: '2026-10-10', notice: '30 dni', owner: 'M. Janowska', val: 'N/A',             valType: 'neutral' },
+  { id: 'HRK/PEP/2023/09', client: 'Pepco Poland',      type: 'Leasing prac.',     status: 'Do odnowienia', statusType: 'warn',    end: '2026-05-25', notice: '30 dni', owner: 'K. Lis',      val: 'W negocjacji',    valType: 'warning' },
 ]
-
-import { cardStyle as card } from '@/lib/styles'
 
 /* ─── Style helpers ──────────────────────────────────────────── */
 const STATUS_S: Record<string, { bg: string; color: string }> = {
@@ -38,9 +38,30 @@ const VAL_S: Record<string, { bg: string; color: string }> = {
   good:    { bg: '#f0fff4', color: '#276749' },
 }
 
+import { useState } from 'react'
+import { Modal } from '@/components/ui/modal'
+
 /* ─── Component ──────────────────────────────────────────────── */
 export function ContractsPage() {
   const createPerm = usePermissionInfo('contract', 'create')
+  const [isModalOpen, setIsModalOpen] = useState(false)
+
+  const user = useAppSelector((s) => s.auth.user)
+  const { data: realAlerts, isLoading: alertsLoading } = useAlerts(user?.id)
+  const { data: kpiData, isLoading: kpiLoading } = useDashboardKpi(user?.id)
+
+  const exp30 = alertsLoading ? null : (realAlerts?.filter(a => a.type === 'contract_expiry_30').length ?? 0)
+  const exp60 = alertsLoading ? null : (realAlerts?.filter(a => a.type === 'contract_expiry_60').length ?? 0)
+  const exp90 = alertsLoading ? null : (realAlerts?.filter(a => a.type === 'contract_expiry_90').length ?? 0)
+  const activeContracts = kpiLoading ? null : (kpiData?.active_contracts ?? 0)
+
+  const kpis = [
+    { label: 'KOŃCZĄ SIĘ W 30 DNI',        value: exp30 === null ? '—' : String(exp30),              sub: 'Wysoki priorytet',   color: '#e85c04' },
+    { label: 'KOŃCZĄ SIĘ W 60 DNI',        value: exp60 === null ? '—' : String(exp60),              sub: 'Przygotuj ofertę',   color: '#d69e2e' },
+    { label: 'KOŃCZĄ SIĘ W 90 DNI',        value: exp90 === null ? '—' : String(exp90),              sub: 'Wczesny kontakt',    color: '#3182ce' },
+    { label: 'AKTYWNYCH UMÓW',             value: activeContracts === null ? '—' : String(activeContracts), sub: 'Łącznie w systemie', color: '#38a169' },
+  ]
+
   return (
     <div style={{ width: '100%' }}>
       {/* Header */}
@@ -54,6 +75,7 @@ export function ContractsPage() {
             Eksportuj
           </button>
           <button
+            onClick={createPerm.allowed ? () => setIsModalOpen(true) : undefined}
             style={{
               background: createPerm.allowed ? '#e85c04' : '#f2f0ed',
               border: 'none', borderRadius: 6, padding: '7px 16px',
@@ -71,6 +93,59 @@ export function ContractsPage() {
           </button>
         </div>
       </div>
+
+      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Dodaj nową umowę">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <label style={{ fontSize: 12, fontWeight: 700, color: '#4a4340' }}>Klient</label>
+            <select style={{ padding: '8px 12px', borderRadius: 6, border: '1px solid #e3e0db', fontSize: 13, outline: 'none' }}>
+              <option>Wybierz klienta...</option>
+              <option>Empik Sp. z o.o.</option>
+              <option>Rossmann Polska</option>
+              <option>MediaMarkt</option>
+            </select>
+          </div>
+          
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <label style={{ fontSize: 12, fontWeight: 700, color: '#4a4340' }}>Typ umowy</label>
+            <select style={{ padding: '8px 12px', borderRadius: 6, border: '1px solid #e3e0db', fontSize: 13, outline: 'none' }}>
+              <option>HR ramowa</option>
+              <option>Obsługa kadrowa</option>
+              <option>PPK + płace</option>
+              <option>Outsourcing IT</option>
+            </select>
+          </div>
+
+          <div style={{ 
+            border: '2px dashed #e3e0db', 
+            borderRadius: 8, 
+            padding: '32px 20px', 
+            textAlign: 'center', 
+            background: '#fafaf9',
+            cursor: 'pointer',
+            transition: 'all 0.15s',
+          }}>
+            <div style={{ fontSize: 24, marginBottom: 8 }}>📄</div>
+            <div style={{ fontSize: 13, fontWeight: 700, color: '#1a1714', marginBottom: 2 }}>Wgraj dokument umowy</div>
+            <div style={{ fontSize: 11, color: '#9e9389' }}>Kliknij lub przeciągnij plik PDF (max 15MB)</div>
+          </div>
+
+          <div style={{ display: 'flex', gap: 10, marginTop: 10 }}>
+            <button 
+              onClick={() => setIsModalOpen(false)}
+              style={{ flex: 1, padding: '10px', borderRadius: 6, border: '1px solid #e3e0db', background: 'white', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
+            >
+              Anuluj
+            </button>
+            <button 
+              onClick={() => setIsModalOpen(false)}
+              style={{ flex: 1, padding: '10px', borderRadius: 6, border: 'none', background: '#e85c04', color: 'white', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
+            >
+              Utwórz umowę
+            </button>
+          </div>
+        </div>
+      </Modal>
 
       {/* KPI cards */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 14, marginBottom: 20 }}>

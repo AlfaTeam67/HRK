@@ -2,6 +2,7 @@
 
 import logging
 import uuid
+from datetime import datetime
 
 from fastapi import HTTPException, status
 from sqlalchemy import select
@@ -28,6 +29,7 @@ from app.repo.lookups import LookupRepository
 from app.repo.notes import NoteRepository
 from app.repo.service_groups import ServiceGroupRepository
 from app.repo.services import ServiceRepository
+from app.repo.timeline import TimelineRepository
 from app.repo.valorizations import ValorizationRepository
 from app.schemas.activity import ActivityLogCreate
 from app.schemas.contact_person import ContactPersonCreate, ContactPersonUpdate
@@ -38,15 +40,17 @@ from app.schemas.customers import CustomerCreate, CustomerUpdate
 from app.schemas.notes import NoteCreate, NoteUpdate
 from app.schemas.service_groups import ServiceGroupCreate, ServiceGroupUpdate
 from app.schemas.services import ServiceCreate, ServiceUpdate
+from app.schemas.timeline import TimelineEventRead, TimelineEventType
 from app.schemas.valorizations import ValorizationCreate, ValorizationUpdate
 from app.service.contact_persons import ContactPersonService
 from app.service.contract_services import ContractServiceRelationService
-from app.service.contracts import ContractService
+from app.service.contracts import ContractCrudService
 from app.service.customer_rates import CustomerRateCrudService
 from app.service.customers import CustomerService
 from app.service.notes import NoteService
 from app.service.service_groups import ServiceGroupCrudService
 from app.service.services import ServiceCrudService
+from app.service.timeline import TimelineService
 from app.service.valorizations import ValorizationCrudService
 
 logger = logging.getLogger(__name__)
@@ -86,7 +90,7 @@ class CRMService:
         contact_person_repo = ContactPersonRepository(db)
 
         self.customer_service = CustomerService(customer_repo, lookup_repo)
-        self.contract_service = ContractService(contract_repo, lookup_repo, self.customer_service)
+        self.contract_service = ContractCrudService(contract_repo, lookup_repo, self.customer_service)
         self.service_service = ServiceCrudService(service_repo, lookup_repo)
         self.contract_relation_service = ContractServiceRelationService(
             relation_repo,
@@ -100,6 +104,7 @@ class CRMService:
         self.valorization_service = ValorizationCrudService(val_repo)
         self.note_service = NoteService(note_repo, lookup_repo)
         self.contact_person_service = ContactPersonService(contact_person_repo, lookup_repo)
+        self.timeline_service = TimelineService(TimelineRepository(db))
 
     async def list_customers(self, **kwargs) -> list[Customer]:
         await self._authorize_company_filter(resource="customer", action="list", **kwargs)
@@ -120,6 +125,9 @@ class CRMService:
         items = await self.customer_service.list_customers(**kwargs)
         return [item for item in items if item.company_id in allowed_company_ids]
 
+    async def list_managed_customers(self, manager_id: uuid.UUID) -> list[Customer]:
+        return await self.customer_service.list_by_manager(manager_id)
+
     async def get_customer(self, customer_id: uuid.UUID) -> Customer:
         customer = await self.customer_service.get_customer(customer_id)
         await self._authorize_company_resource(
@@ -128,6 +136,24 @@ class CRMService:
             company_id=customer.company_id,
         )
         return customer
+
+    async def get_customer_timeline(
+        self,
+        customer_id: uuid.UUID,
+        *,
+        from_date: datetime | None,
+        to_date: datetime | None,
+        event_types: set[TimelineEventType] | None,
+        limit: int = 100,
+    ) -> list[TimelineEventRead]:
+        await self.get_customer(customer_id)
+        return await self.timeline_service.get_timeline(
+            customer_id,
+            from_date=from_date,
+            to_date=to_date,
+            event_types=event_types,
+            limit=limit,
+        )
 
     async def create_customer(self, payload: CustomerCreate) -> Customer:
         try:

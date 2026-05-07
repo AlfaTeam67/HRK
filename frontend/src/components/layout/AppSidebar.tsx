@@ -53,10 +53,11 @@ const IcoReports = () => (
 )
 
 const NAV_MAIN = [
-  { to: '/',             label: 'Pulpit',      icon: IcoDashboard,    badge: 0,  end: true  },
-  { to: '/clients',      label: 'Klienci',     icon: IcoClients,      badge: 19, end: false },
-  { to: '/contracts',    label: 'Umowy',       icon: IcoContracts,    badge: 0,  end: false },
-  { to: '/valorization', label: 'Waloryzacja', icon: IcoValorization, badge: 0,  end: false },
+  { to: '/',                   label: 'Pulpit główny', icon: IcoDashboard,    badge: 0,  end: true  },
+  { to: '/managed-dashboard',  label: 'Mój pulpit',    icon: IcoDashboard,    badge: 0,  end: false },
+  { to: '/clients',            label: 'Klienci',       icon: IcoClients,      badge: 19, end: false },
+  { to: '/contracts',          label: 'Umowy',         icon: IcoContracts,    badge: 0,  end: false },
+  { to: '/valorization',       label: 'Waloryzacja',   icon: IcoValorization, badge: 0,  end: false },
 ]
 const NAV_AI    = [{ to: '/assistant', label: 'Chat z asystentem', icon: IcoAI,      end: false }]
 const NAV_ADMIN = [
@@ -129,6 +130,16 @@ export function AppSidebar() {
     navigate('/login', { replace: true })
   }
 
+  const filteredNavMain = NAV_MAIN.filter((item) => {
+    if (item.to === '/') {
+      return user?.department === 'Specjalista HR' || user?.department === 'Administrator IT'
+    }
+    if (item.to === '/managed-dashboard') {
+      return user?.department === 'Opiekun klienta'
+    }
+    return true
+  })
+
   return (
     <aside style={{
       width: 220, minWidth: 220,
@@ -149,7 +160,7 @@ export function AppSidebar() {
 
       {/* ── Navigation ───────────────────────────────── */}
       <nav style={{ flex: 1, padding: '10px 8px', overflowY: 'auto' }}>
-        {NAV_MAIN.map((item) => <NavItem key={item.label} {...item} />)}
+        {filteredNavMain.map((item) => <NavItem key={item.label} {...item} />)}
 
         <SectionLabel>Asystent AI</SectionLabel>
         {NAV_AI.map((item) => <NavItem key={item.label} {...item} />)}
