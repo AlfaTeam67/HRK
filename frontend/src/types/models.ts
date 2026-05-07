@@ -91,6 +91,8 @@ export type BillingCycle = S['BillingCycle']
 export type BillingUnit = S['BillingUnit']
 export type BillingFrequency = S['BillingFrequency']
 export type ValorizationStatus = S['ValorizationStatus']
+export type DocumentRead = S['DocumentRead']
+export type DocumentType = S['DocumentType']
 export type IndexType = S['IndexType']
 
 // ── Alerts & Dashboard KPI ──────────────────────────────────────────────────

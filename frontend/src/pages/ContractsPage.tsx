@@ -1,136 +1,186 @@
+import { useRef, useState } from 'react'
 import { cardStyle as card } from '@/lib/styles'
 import { useAppSelector } from '@/hooks/store'
 import { useAlerts, useDashboardKpi } from '@/hooks/alerts'
-
-/* ─── Mock data (inline) ─────────────────────────────────────── */
-const escalations = [
-  { priority: 'Pilne'  , title: 'Empik: brak decyzji o waloryzacji',       detail: 'Termin aneksu mija za 4 dni. Wymagany akcept dyrektora sprzedaży.', color: '#e85c04' },
-  { priority: 'Wysoki' , title: 'MediaMarkt: ryzyko wypowiedzenia',          detail: 'Klient zgłosił zastrzeżenia do stawek. Zaplanować call zarządczy.', color: '#d69e2e' },
-  { priority: 'Średni' , title: 'TechNova: potwierdzić okno wypowiedzenia',  detail: 'Dwie wersje SLA w dokumentacji, wymagana korekta.',                color: '#3182ce' },
-  { priority: 'Pilne'  , title: 'Carrefour: nowa oferta ramowa',            detail: 'Klient prosi o weryfikację stawek dla regionu Południe.',          color: '#e85c04' },
-  { priority: 'Wysoki' , title: 'Allegro: waloryzacja roczna',              detail: 'Indeksacja o 4.2% zgodnie z GUS. Przygotować aneks.',              color: '#d69e2e' },
-]
-
-const contracts = [
-  { id: 'HRK/EMP/2024/07', client: 'Empik Sp. z o.o.',  type: 'HR ramowa',         status: 'Do odnowienia', statusType: 'warn',    end: '2026-05-12', notice: '30 dni', owner: 'M. Janowska', val: 'Wymaga decyzji',  valType: 'urgent'  },
-  { id: 'HRK/ROS/2025/01', client: 'Rossmann Polska',   type: 'Obsługa kadrowa',   status: 'Aktywna',       statusType: 'good',    end: '2026-07-30', notice: '60 dni', owner: 'M. Janowska', val: 'Zaplanowana',     valType: 'good'    },
-  { id: 'HRK/MED/2023/11', client: 'MediaMarkt',        type: 'PPK + płace',       status: 'Wypowiedzenie', statusType: 'danger',  end: '2026-05-02', notice: '30 dni', owner: 'M. Nowak',    val: 'Brak akceptacji', valType: 'urgent'  },
-  { id: 'HRK/BIE/2024/03', client: 'Biedronka',         type: 'HR ramowa',         status: 'Aktywna',       statusType: 'good',    end: '2026-09-01', notice: '90 dni', owner: 'A. Kowalski', val: 'Gotowa',          valType: 'good'    },
-  { id: 'HRK/LID/2024/08', client: 'Lidl Polska',       type: 'Administracja',     status: 'Aktywna',       statusType: 'good',    end: '2026-08-15', notice: '90 dni', owner: 'K. Lis',      val: 'Gotowa',          valType: 'good'    },
-  { id: 'HRK/TN/2025/03',  client: 'TechNova S.A.',     type: 'Outsourcing IT HR', status: 'Aktywna',       statusType: 'good',    end: '2026-06-18', notice: '60 dni', owner: 'M. Nowak',    val: 'W trakcie',       valType: 'warning' },
-  { id: 'HRK/CAR/2026/01', client: 'Carrefour Polska',  type: 'HR ramowa',         status: 'Nowa',          statusType: 'info',    end: '2027-01-20', notice: '90 dni', owner: 'T. Nowak',    val: 'Brak',            valType: 'neutral' },
-  { id: 'HRK/ALL/2025/12', client: 'Allegro.pl',        type: 'Obsługa płacowa',   status: 'Aktywna',       statusType: 'good',    end: '2026-12-31', notice: '60 dni', owner: 'A. Kowalski', val: 'Zaplanowana',     valType: 'good'    },
-  { id: 'HRK/ZAB/2024/05', client: 'Żabka Polska',      type: 'Rekrutacje stałe',  status: 'Aktywna',       statusType: 'good',    end: '2026-10-10', notice: '30 dni', owner: 'M. Janowska', val: 'N/A',             valType: 'neutral' },
-  { id: 'HRK/PEP/2023/09', client: 'Pepco Poland',      type: 'Leasing prac.',     status: 'Do odnowienia', statusType: 'warn',    end: '2026-05-25', notice: '30 dni', owner: 'K. Lis',      val: 'W negocjacji',    valType: 'warning' },
-]
+import { Modal } from '@/components/ui/modal'
+import { useCustomers } from '@/hooks/customers'
+import { useUploadDocument, useDocumentsQuery, useDocumentDownloadUrl } from '@/hooks/documents'
+import { useContracts } from '@/hooks/contracts'
+import type { DocumentType } from '@/types/models'
 
 /* ─── Style helpers ──────────────────────────────────────────── */
 const STATUS_S: Record<string, { bg: string; color: string }> = {
-  'Do odnowienia': { bg: '#fff5f0', color: '#c94f02' },
-  'Aktywna':       { bg: '#f0fff4', color: '#276749' },
-  'Wypowiedzenie': { bg: '#fef3c7', color: '#92400e' },
+  'draft':          { bg: '#f2f0ed', color: '#6b6b6b' },
+  'active':         { bg: '#f0fff4', color: '#276749' },
+  'terminated':     { bg: '#fff5f0', color: '#c94f02' },
+  'to_renew':       { bg: '#fffbeb', color: '#92400e' },
+  'expired':        { bg: '#fafaf9', color: '#9e9389' },
 }
-
-const VAL_S: Record<string, { bg: string; color: string }> = {
-  urgent:  { bg: '#fff5f0', color: '#c94f02' },
-  warning: { bg: '#fffbeb', color: '#92400e' },
-  good:    { bg: '#f0fff4', color: '#276749' },
-}
-
-import { useState } from 'react'
-import { Modal } from '@/components/ui/modal'
 
 /* ─── Component ──────────────────────────────────────────────── */
 export function ContractsPage() {
   const [isModalOpen, setIsModalOpen] = useState(false)
-
   const user = useAppSelector((s) => s.auth.user)
+  
+  // Real data hooks
+  const { data: customers = [] } = useCustomers()
+  const { data: realContracts = [], isLoading: contractsLoading } = useContracts()
+  const { data: realDocuments = [], isLoading: docsLoading } = useDocumentsQuery()
   const { data: realAlerts, isLoading: alertsLoading } = useAlerts(user?.id)
   const { data: kpiData, isLoading: kpiLoading } = useDashboardKpi(user?.id)
+  
+  const uploadDoc = useUploadDocument()
+  const getDownloadUrl = useDocumentDownloadUrl()
 
+  const [selectedCustomerId, setSelectedCustomerId] = useState('')
+  const [selectedDocType, setSelectedDocType] = useState<DocumentType>('contract')
+  const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false)
+
+  // KPIs
   const exp30 = alertsLoading ? null : (realAlerts?.filter(a => a.type === 'contract_expiry_30').length ?? 0)
   const exp60 = alertsLoading ? null : (realAlerts?.filter(a => a.type === 'contract_expiry_60').length ?? 0)
   const exp90 = alertsLoading ? null : (realAlerts?.filter(a => a.type === 'contract_expiry_90').length ?? 0)
-  const activeContracts = kpiLoading ? null : (kpiData?.active_contracts ?? 0)
+  const activeContractsCount = kpiLoading ? null : (kpiData?.active_contracts ?? 0)
 
   const kpis = [
-    { label: 'KOŃCZĄ SIĘ W 30 DNI',        value: exp30 === null ? '—' : String(exp30),              sub: 'Wysoki priorytet',   color: '#e85c04' },
-    { label: 'KOŃCZĄ SIĘ W 60 DNI',        value: exp60 === null ? '—' : String(exp60),              sub: 'Przygotuj ofertę',   color: '#d69e2e' },
-    { label: 'KOŃCZĄ SIĘ W 90 DNI',        value: exp90 === null ? '—' : String(exp90),              sub: 'Wczesny kontakt',    color: '#3182ce' },
-    { label: 'AKTYWNYCH UMÓW',             value: activeContracts === null ? '—' : String(activeContracts), sub: 'Łącznie w systemie', color: '#38a169' },
+    { label: 'KOŃCZĄ SIĘ W 30 DNI', value: exp30 === null ? '—' : String(exp30), sub: 'Wysoki priorytet', color: '#e85c04' },
+    { label: 'KOŃCZĄ SIĘ W 60 DNI', value: exp60 === null ? '—' : String(exp60), sub: 'Przygotuj ofertę', color: '#d69e2e' },
+    { label: 'KOŃCZĄ SIĘ W 90 DNI', value: exp90 === null ? '—' : String(exp90), sub: 'Wczesny kontakt', color: '#3182ce' },
+    { label: 'AKTYWNYCH UMÓW',    value: activeContractsCount === null ? '—' : String(activeContractsCount), sub: 'Łącznie w systemie', color: '#38a169' },
   ]
+
+  const handleUpload = async () => {
+    if (!selectedFile || !user?.id) return
+    try {
+      await uploadDoc.mutateAsync({
+        file: selectedFile,
+        document_type: selectedDocType,
+        customer_id: selectedCustomerId || undefined,
+        uploaded_by: user.id,
+      })
+      setIsModalOpen(false)
+      setSelectedFile(null)
+      setSelectedCustomerId('')
+      alert('Dokument przesłany pomyślnie. Proces OCR i RAG został uruchomiony.')
+    } catch (err) {
+      console.error('Upload failed:', err)
+    }
+  }
+
+  const handlePreview = async (docId: string) => {
+    if (!user?.id) return
+    try {
+      const { url } = await getDownloadUrl.mutateAsync({ id: docId, userId: user.id })
+      setPreviewUrl(url)
+      setIsPreviewOpen(true)
+    } catch (err) {
+      console.error('Failed to get preview URL:', err)
+      alert('Nie udało się wygenerować podglądu dokumentu.')
+    }
+  }
+
   return (
     <div style={{ width: '100%' }}>
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
         <div>
-          <h1 style={{ fontSize: 22, fontWeight: 700, color: '#1a1714', margin: 0, marginBottom: 2 }}>Umowy</h1>
-          <p style={{ fontSize: 12.5, color: '#9e9389', margin: 0 }}>Cykl życia umów, alerty 30/60/90 dni i statusy negocjacji.</p>
+          <h1 style={{ fontSize: 22, fontWeight: 700, color: '#1a1714', margin: 0, marginBottom: 2 }}>Umowy i Dokumenty</h1>
+          <p style={{ fontSize: 12.5, color: '#9e9389', margin: 0 }}>Zarządzanie cyklem życia kontraktów i repozytorium dokumentów RAG.</p>
         </div>
-        <div style={{ display: 'flex', gap: 8 }}>
-          <button style={{ background: 'white', border: '1px solid #e3e0db', borderRadius: 6, padding: '7px 14px', fontSize: 13, fontWeight: 500, color: '#6b6b6b', cursor: 'pointer' }}>
-            Eksportuj
-          </button>
-          <button 
-            onClick={() => setIsModalOpen(true)}
-            style={{ background: '#e85c04', border: 'none', borderRadius: 6, padding: '7px 16px', color: 'white', fontSize: 13, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}
-          >
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-            Nowa umowa
-          </button>
-        </div>
+        <button 
+          onClick={() => setIsModalOpen(true)}
+          style={{ background: 'linear-gradient(135deg, #e85c04, #c94f02)', color: 'white', border: 'none', borderRadius: 8, padding: '10px 18px', fontSize: 13, fontWeight: 700, cursor: 'pointer', boxShadow: '0 4px 12px rgba(232, 92, 4, 0.25)', display: 'flex', alignItems: 'center', gap: 8 }}
+        >
+          <span>+</span> Nowy Dokument
+        </button>
       </div>
 
-      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Dodaj nową umowę">
+      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Prześlij nowy dokument">
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <label style={{ fontSize: 12, fontWeight: 700, color: '#4a4340' }}>Klient</label>
-            <select style={{ padding: '8px 12px', borderRadius: 6, border: '1px solid #e3e0db', fontSize: 13, outline: 'none' }}>
-              <option>Wybierz klienta...</option>
-              <option>Empik Sp. z o.o.</option>
-              <option>Rossmann Polska</option>
-              <option>MediaMarkt</option>
-            </select>
-          </div>
-          
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <label style={{ fontSize: 12, fontWeight: 700, color: '#4a4340' }}>Typ umowy</label>
-            <select style={{ padding: '8px 12px', borderRadius: 6, border: '1px solid #e3e0db', fontSize: 13, outline: 'none' }}>
-              <option>HR ramowa</option>
-              <option>Obsługa kadrowa</option>
-              <option>PPK + płace</option>
-              <option>Outsourcing IT</option>
+            <label style={{ fontSize: 12, fontWeight: 700, color: '#1a1714' }}>Klient</label>
+            <select 
+              value={selectedCustomerId} 
+              onChange={(e) => setSelectedCustomerId(e.target.value)}
+              style={{ padding: '10px', borderRadius: 6, border: '1px solid #e3e0db', fontSize: 13, background: 'white' }}
+            >
+              <option value="">Wybierz klienta (opcjonalnie)...</option>
+              {customers.map(c => <option key={c.id} value={c.id}>{c.company_name || c.ckk}</option>)}
             </select>
           </div>
 
-          <div style={{ 
-            border: '2px dashed #e3e0db', 
-            borderRadius: 8, 
-            padding: '32px 20px', 
-            textAlign: 'center', 
-            background: '#fafaf9',
-            cursor: 'pointer',
-            transition: 'all 0.15s',
-          }}>
-            <div style={{ fontSize: 24, marginBottom: 8 }}>📄</div>
-            <div style={{ fontSize: 13, fontWeight: 700, color: '#1a1714', marginBottom: 2 }}>Wgraj dokument umowy</div>
-            <div style={{ fontSize: 11, color: '#9e9389' }}>Kliknij lub przeciągnij plik PDF (max 15MB)</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <label style={{ fontSize: 12, fontWeight: 700, color: '#1a1714' }}>Typ dokumentu</label>
+            <select 
+              value={selectedDocType} 
+              onChange={(e) => setSelectedDocType(e.target.value as DocumentType)}
+              style={{ padding: '10px', borderRadius: 6, border: '1px solid #e3e0db', fontSize: 13, background: 'white' }}
+            >
+              <option value="contract">Umowa</option>
+              <option value="amendment">Aneks</option>
+              <option value="service_order">Zamówienie</option>
+              <option value="other">Inny</option>
+            </select>
+          </div>
+
+          <input 
+            type="file" 
+            ref={fileInputRef} 
+            style={{ display: 'none' }} 
+            accept=".pdf,.doc,.docx"
+            onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
+          />
+
+          <div 
+            onClick={() => fileInputRef.current?.click()}
+            style={{ 
+              border: selectedFile ? '2px solid #38a169' : '2px dashed #e3e0db', 
+              borderRadius: 8, padding: '32px 20px', textAlign: 'center', background: selectedFile ? '#f0fff4' : '#fafaf9', cursor: 'pointer',
+            }}
+          >
+            <div style={{ fontSize: 24, marginBottom: 8 }}>{selectedFile ? '✅' : '📄'}</div>
+            <div style={{ fontSize: 13, fontWeight: 700, color: '#1a1714' }}>{selectedFile ? selectedFile.name : 'Kliknij, aby wybrać plik'}</div>
+            <div style={{ fontSize: 11, color: '#9e9389' }}>PDF, DOCX, TXT (max 15MB)</div>
           </div>
 
           <div style={{ display: 'flex', gap: 10, marginTop: 10 }}>
+            <button onClick={() => setIsModalOpen(false)} style={{ flex: 1, padding: '10px', borderRadius: 6, border: '1px solid #e3e0db', background: 'white', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Anuluj</button>
             <button 
-              onClick={() => setIsModalOpen(false)}
-              style={{ flex: 1, padding: '10px', borderRadius: 6, border: '1px solid #e3e0db', background: 'white', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
+              onClick={handleUpload}
+              disabled={!selectedFile || uploadDoc.isPending}
+              style={{ flex: 1, padding: '10px', borderRadius: 6, border: 'none', background: (!selectedFile || uploadDoc.isPending) ? '#9e9389' : '#e85c04', color: 'white', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
             >
-              Anuluj
-            </button>
-            <button 
-              onClick={() => setIsModalOpen(false)}
-              style={{ flex: 1, padding: '10px', borderRadius: 6, border: 'none', background: '#e85c04', color: 'white', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
-            >
-              Utwórz umowę
+              {uploadDoc.isPending ? 'Przesyłanie...' : 'Utwórz i prześlij'}
             </button>
           </div>
+        </div>
+      </Modal>
+
+      <Modal 
+        isOpen={isPreviewOpen} 
+        onClose={() => {
+          setIsPreviewOpen(false)
+          setPreviewUrl(null)
+        }} 
+        title="Podgląd dokumentu"
+        maxWidth="1200px"
+      >
+        <div style={{ height: '80vh', background: '#f5f2ef', borderRadius: 8, overflow: 'hidden' }}>
+          {previewUrl ? (
+            <iframe 
+              src={previewUrl} 
+              style={{ width: '100%', height: '100%', border: 'none' }} 
+              title="Document Preview"
+            />
+          ) : (
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#9e9389' }}>
+              Ładowanie podglądu...
+            </div>
+          )}
         </div>
       </Modal>
 
@@ -145,76 +195,81 @@ export function ContractsPage() {
         ))}
       </div>
 
-      {/* Escalation queue */}
-      <div style={{ ...card, padding: '16px 18px', marginBottom: 16 }}>
-        <div style={{ fontSize: 13, fontWeight: 700, color: '#1a1714', marginBottom: 12 }}>Kolejka eskalacji</div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 12 }}>
-          {escalations.map((esc) => (
-            <div key={esc.title} style={{ borderRadius: 6, padding: '12px 14px', background: '#fafaf9', border: '1px solid #f2f0ed', borderLeft: `3px solid ${esc.color}` }}>
-              <span style={{ fontSize: 10, fontWeight: 700, padding: '1px 8px', borderRadius: 20, background: esc.color + '18', color: esc.color, display: 'inline-block', marginBottom: 6 }}>
-                {esc.priority}
-              </span>
-              <div style={{ fontSize: 12.5, fontWeight: 700, color: '#1a1714', marginBottom: 4 }}>{esc.title}</div>
-              <div style={{ fontSize: 11, color: '#9e9389', lineHeight: 1.4 }}>{esc.detail}</div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Contracts table */}
-      <div style={{ ...card, overflow: 'hidden' }}>
-        <div style={{ padding: '14px 18px', borderBottom: '1px solid #f2f0ed', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <div style={{ fontSize: 14, fontWeight: 700, color: '#1a1714' }}>Lista umów</div>
-          <div style={{ position: 'relative' }}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9e9389" strokeWidth="2" style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)' }}>
-              <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
-            </svg>
-            <input
-              name="contract-search"
-              placeholder="Szukaj umowy…"
-              readOnly
-              aria-label="Wyszukiwarka umów (demo)"
-              style={{ border: '1px solid #e3e0db', borderRadius: 6, padding: '6px 10px 6px 32px', fontSize: 13, outline: 'none', color: '#1a1714', background: '#fafaf9', width: 200 }}
-            />
+      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 16 }}>
+        {/* Contracts table */}
+        <div style={{ ...card, overflow: 'hidden' }}>
+          <div style={{ padding: '14px 18px', borderBottom: '1px solid #f2f0ed', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div style={{ fontSize: 14, fontWeight: 700, color: '#1a1714' }}>Rejestr Umów</div>
           </div>
-        </div>
-        <div style={{ padding: '0 18px 18px' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
             <thead>
-              <tr>
-                {['KLIENT / UMOWA','TYP','STATUS','TERMIN KOŃCA','OKNO','WALORYZACJA','OPIEKUN'].map(col => (
-                  <th key={col} style={{ textAlign: 'left', fontSize: 10, fontWeight: 700, color: '#9e9389', letterSpacing: '0.06em', padding: '12px 8px 10px', borderBottom: '1px solid #f2f0ed' }}>{col}</th>
-                ))}
+              <tr style={{ borderBottom: '1px solid #f2f0ed', background: '#fafaf9' }}>
+                <th style={{ padding: '12px 18px', fontSize: 11, fontWeight: 700, color: '#9e9389' }}>NR UMOWY / KLIENT</th>
+                <th style={{ padding: '12px 18px', fontSize: 11, fontWeight: 700, color: '#9e9389' }}>TYP</th>
+                <th style={{ padding: '12px 18px', fontSize: 11, fontWeight: 700, color: '#9e9389' }}>STATUS</th>
+                <th style={{ padding: '12px 18px', fontSize: 11, fontWeight: 700, color: '#9e9389' }}>TERMIN</th>
               </tr>
             </thead>
             <tbody>
-              {contracts.map((c, i) => (
-                <tr key={c.id} style={{ borderBottom: i < contracts.length - 1 ? '1px solid #f9f8f6' : 'none', cursor: 'pointer' }}
-                  onMouseEnter={e => (e.currentTarget.style.background = '#fafaf9')}
-                  onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
-                >
-                  <td style={{ padding: '11px 8px 11px 0' }}>
-                    <div style={{ fontWeight: 700, color: '#1a1714' }}>{c.client}</div>
-                    <div style={{ fontSize: 11, color: '#9e9389', marginTop: 1 }}>{c.id}</div>
-                  </td>
-                  <td style={{ padding: '11px 8px', color: '#4b5563' }}>{c.type}</td>
-                  <td style={{ padding: '11px 8px' }}>
-                    <span style={{ fontSize: 11, padding: '3px 10px', borderRadius: 20, fontWeight: 600, background: STATUS_S[c.status]?.bg ?? '#f2f0ed', color: STATUS_S[c.status]?.color ?? '#374151' }}>
-                      {c.status}
-                    </span>
-                  </td>
-                  <td style={{ padding: '11px 8px', color: '#4b5563', fontSize: 12 }}>{c.end}</td>
-                  <td style={{ padding: '11px 8px', color: '#9e9389', fontSize: 12 }}>{c.notice}</td>
-                  <td style={{ padding: '11px 8px' }}>
-                    <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 4, fontWeight: 600, background: VAL_S[c.valType]?.bg ?? '#f2f0ed', color: VAL_S[c.valType]?.color ?? '#374151' }}>
-                      {c.val}
-                    </span>
-                  </td>
-                  <td style={{ padding: '11px 0', color: '#9e9389', fontSize: 12 }}>{c.owner}</td>
-                </tr>
-              ))}
+              {contractsLoading ? (
+                <tr><td colSpan={4} style={{ padding: '40px', textAlign: 'center', color: '#9e9389' }}>Ładowanie danych...</td></tr>
+              ) : realContracts.length === 0 ? (
+                <tr><td colSpan={4} style={{ padding: '40px', textAlign: 'center', color: '#9e9389' }}>Brak aktywnych umów w systemie.</td></tr>
+              ) : realContracts.map((c) => {
+                const client = customers.find(cust => cust.id === c.customer_id)
+                const statusStyles = STATUS_S[c.status] || STATUS_S['draft']
+                return (
+                  <tr key={c.id} style={{ borderBottom: '1px solid #f2f0ed', fontSize: 12.5 }}>
+                    <td style={{ padding: '14px 18px' }}>
+                      <div style={{ fontWeight: 700, color: '#1a1714' }}>{c.contract_number}</div>
+                      <div style={{ fontSize: 11, color: '#9e9389' }}>{client?.company_name || 'Nieznany klient'}</div>
+                    </td>
+                    <td style={{ padding: '14px 18px', color: '#4b5563' }}>{c.contract_type}</td>
+                    <td style={{ padding: '14px 18px' }}>
+                      <span style={{ padding: '3px 10px', borderRadius: 20, fontSize: 11, fontWeight: 600, background: statusStyles.bg, color: statusStyles.color }}>
+                        {c.status.toUpperCase()}
+                      </span>
+                    </td>
+                    <td style={{ padding: '14px 18px', color: '#4b5563' }}>
+                      {c.end_date || 'Bezterminowa'}
+                    </td>
+                  </tr>
+                )
+              })}
             </tbody>
           </table>
+        </div>
+
+        {/* Uploaded Documents (S3) */}
+        <div style={{ ...card, overflow: 'hidden' }}>
+          <div style={{ padding: '14px 18px', borderBottom: '1px solid #f2f0ed', background: '#fafaf9' }}>
+            <div style={{ fontSize: 14, fontWeight: 700, color: '#1a1714' }}>Ostatnie pliki (S3)</div>
+            <div style={{ fontSize: 11, color: '#9e9389' }}>Dokumenty przetworzone przez RAG</div>
+          </div>
+          <div style={{ maxHeight: 500, overflowY: 'auto' }}>
+            {docsLoading ? (
+              <div style={{ padding: 20, textAlign: 'center', color: '#9e9389' }}>Ładowanie...</div>
+            ) : realDocuments.length === 0 ? (
+              <div style={{ padding: 40, textAlign: 'center', color: '#9e9389', fontSize: 12 }}>Brak plików. Prześlij dokument, aby go tutaj zobaczyć.</div>
+            ) : realDocuments.map((doc) => (
+              <div key={doc.id} style={{ padding: '12px 18px', borderBottom: '1px solid #f2f0ed', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div style={{ minWidth: 0, flex: 1 }}>
+                  <div style={{ fontSize: 12.5, fontWeight: 700, color: '#1a1714', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{doc.original_filename}</div>
+                  <div style={{ fontSize: 11, color: '#9e9389', display: 'flex', gap: 8 }}>
+                    <span>{doc.document_type}</span>
+                    <span>•</span>
+                    <span style={{ color: doc.ocr_status === 'done' ? '#38a169' : '#e85c04' }}>{doc.ocr_status}</span>
+                  </div>
+                </div>
+                <button 
+                  onClick={() => handlePreview(doc.id)}
+                  style={{ background: 'none', border: '1px solid #e3e0db', borderRadius: 4, padding: '4px 8px', fontSize: 10, fontWeight: 700, cursor: 'pointer', color: '#e85c04' }}
+                >
+                  PODGLĄD
+                </button>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     </div>

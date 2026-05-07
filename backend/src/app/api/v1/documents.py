@@ -33,6 +33,18 @@ async def get_document_service(db: AsyncSession = Depends(get_db)) -> DocumentSe
     return DocumentService(db, storage_service=get_storage_service())
 
 
+@router.get("/", response_model=list[DocumentRead])
+async def list_documents(
+    company_id: UUID | None = None,
+    customer_id: UUID | None = None,
+    contract_id: UUID | None = None,
+    service: DocumentService = Depends(get_document_service),
+) -> Any:
+    return await service.list_documents(
+        company_id=company_id, customer_id=customer_id, contract_id=contract_id
+    )
+
+
 @router.post("/", response_model=DocumentRead, status_code=status.HTTP_201_CREATED)
 async def upload_document(
     background_tasks: BackgroundTasks,
