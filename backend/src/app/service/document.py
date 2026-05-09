@@ -173,6 +173,22 @@ class DocumentService:
         await self._get_requesting_user(requester_user_id)
         return attachment
 
+    async def list_documents(
+        self,
+        *,
+        company_id: UUID | None = None,
+        customer_id: UUID | None = None,
+        contract_id: UUID | None = None,
+    ) -> list[Attachment]:
+        filters = {}
+        if company_id:
+            filters["company_id"] = company_id
+        if customer_id:
+            filters["customer_id"] = customer_id
+        if contract_id:
+            filters["contract_id"] = contract_id
+        return await self._attachments.list(**filters)
+
     async def _get_requesting_user(self, user_id: UUID) -> User:
         user = await self._users.get(user_id)
         if user is None:

@@ -46,6 +46,9 @@ class Settings(BaseSettings):
     ollama_url: str = "http://localhost:11434"
     ollama_embed_model: str = "nomic-embed-text"
 
+    # Reranker
+    reranker_url: str = "http://localhost:8003"
+
     # OpenRouter (AI mode — swap base_url to ollama /v1 when switching to local)
     openrouter_api_key: str = ""
     openrouter_base_url: str = "https://openrouter.ai/api/v1"

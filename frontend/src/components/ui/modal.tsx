@@ -5,9 +5,10 @@ interface ModalProps {
   onClose: () => void
   title: string
   children: ReactNode
+  maxWidth?: number | string
 }
 
-export function Modal({ isOpen, onClose, title, children }: ModalProps) {
+export function Modal({ isOpen, onClose, title, children, maxWidth = 500 }: ModalProps) {
   useEffect(() => {
     const handleEsc = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose()
@@ -36,7 +37,7 @@ export function Modal({ isOpen, onClose, title, children }: ModalProps) {
         style={{
           background: 'white',
           width: '100%',
-          maxWidth: 500,
+          maxWidth: maxWidth,
           borderRadius: 12,
           boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
           display: 'flex', flexDirection: 'column',

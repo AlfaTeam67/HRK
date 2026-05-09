@@ -2,55 +2,44 @@ import { useEffect, useRef, useState } from 'react'
 import type { CSSProperties } from 'react'
 
 import { cardStyle } from '@/lib/styles'
+import { Modal } from '@/components/ui/modal'
+import { useCustomers } from '@/hooks/customers'
+import { useRagSearch } from '@/hooks/rag'
+import { useDocumentDownloadUrl } from '@/hooks/documents'
+import { useAppSelector } from '@/hooks/store'
 
-/* ─── Mock data (inline) ─────────────────────────────────────── */
+/* ─── Types ─────────────────────────────────────────────────── */
 type MessageRole = 'user' | 'assistant'
+
 interface ChatMessage {
   id: number
   role: MessageRole
   content: string
-  sources?: Array<{ title: string; page: string }>
+  sources?: Array<{ 
+    title: string; 
+    page: string; 
+    attachment_id: string; 
+    page_number?: number | null;
+  }>
   ts: string
 }
 
+/* ─── Constants ──────────────────────────────────────────────── */
 const initialMessages: ChatMessage[] = [
   {
-    id: 1, role: 'assistant', ts: '09:00',
-    content: 'Cześć! Jestem asystentem AI systemu HRK CRM. Mogę odpowiedzieć na pytania dotyczące umów, klientów, waloryzacji oraz historii współpracy. Co chcesz sprawdzić?',
-  },
-  {
-    id: 2, role: 'user', ts: '09:01',
-    content: 'Do kiedy obowiązuje nasza umowa z Empik?',
-  },
-  {
-    id: 3, role: 'assistant', ts: '09:01',
-    content: 'Umowa z Empik Sp. z o.o. o numerze **HRK/EMP/2024/07** (umowa ramowa HR) obowiązuje do **12 maja 2026 roku**. Okno wypowiedzenia wynosi 30 dni, co oznacza że ostateczny termin podjęcia decyzji o odnowieniu minął **12 kwietnia** – konieczne jest pilne działanie.\n\nW systemie masz aktywne 3 umowy z tym klientem łącznie o wartości 2,4 mln PLN/rok.',
-    sources: [
-      { title: 'Umowa HRK/EMP/2024/07', page: 'str. 1 – Czas trwania' },
-      { title: 'Aneks nr 5 (2025)',      page: 'str. 3 – Warunki odnowienia' },
-    ],
-  },
-  {
-    id: 4, role: 'user', ts: '09:02',
-    content: 'Kiedy była ostatnia waloryzacja i jaki miała wpływ na stawki?',
-  },
-  {
-    id: 5, role: 'assistant', ts: '09:02',
-    content: 'Ostatnia waloryzacja dla Empik została przeprowadzona **1 czerwca 2025 roku**. Zmiana wyniosła **+5,2%** na podstawie wskaźnika CPI GUS (próg umowny: min. 4%).\n\nObecny wskaźnik GUS wynosi **4,5%**, co kwalifikuje kolejną waloryzację. Propozycja aneksu jest gotowa do akceptacji – oczekuje na podpis dyrektora sprzedaży.',
-    sources: [
-      { title: 'Historia waloryzacji EMP', page: 'rekord 2025-06-01' },
-      { title: 'Wskaźnik GUS Q1 2026',    page: 'raport zewnętrzny' },
-    ],
+    id: 1, 
+    role: 'assistant', 
+    ts: new Date().toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' }),
+    content: 'Cześć! Jestem asystentem AI HRK CRM. Wybierz klienta z listy powyżej, abyśmy mogli rozmawiać o jego umowach i dokumentach. W czym mogę Ci dzisiaj pomóc?',
   },
 ]
 
 const suggestions = [
-  'Do kiedy obowiązuje nasza umowa z Empik?',
-  'Kiedy była ostatnia waloryzacja i jaki miała wpływ?',
-  'Ilu pracowników jest przypisanych do Biedronka?',
-  'Jakie umowy kończą się w maju 2026?',
-  'Generuj projekt aneksu dla Empik – waloryzacja +4,5%',
-  'Porównaj stawki Rossmann i MediaMarkt',
+  'Jaki jest termin obowiązywania obecnej umowy?',
+  'Czy w dokumentach są zapisy o karach umownych?',
+  'Kiedy była ostatnia waloryzacja stawek?',
+  'Jakie są warunki wypowiedzenia umowy?',
+  'Podsumuj ostatnie zmiany w aneksach.',
 ]
 
 const aiCapabilities = [
@@ -60,57 +49,97 @@ const aiCapabilities = [
   { icon: '🧠', title: 'Podsumowanie klienta', desc: 'Generowanie briefu przed spotkaniem na podstawie historii' },
 ]
 
-const clientOptions = ['Empik Sp. z o.o.', 'Rossmann Polska', 'Biedronka', 'Lidl Polska', 'MediaMarkt']
-
 const card: CSSProperties = cardStyle
-
-import { Modal } from '@/components/ui/modal'
 
 /* ─── Component ──────────────────────────────────────────────── */
 export function AdvisorPage() {
+  const { data: customers = [] } = useCustomers()
+  const ragSearch = useRagSearch()
+  const getDownloadUrl = useDocumentDownloadUrl()
+  const user = useAppSelector((s) => s.auth.user)
+
   const [messages, setMessages] = useState<ChatMessage[]>(initialMessages)
   const [input, setInput] = useState('')
   const [isTyping, setIsTyping] = useState(false)
-  const [activeClient, setActiveClient] = useState('Empik Sp. z o.o.')
+  const [selectedCustomerId, setSelectedCustomerId] = useState<string>('')
   const [isAiMode, setIsAiMode] = useState(false)
   const [isInfoModalOpen, setIsInfoModalOpen] = useState(false)
-  const nextIdRef = useRef(6)
-  const timeoutIdsRef = useRef<number[]>([])
+  
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false)
+  
+  const nextIdRef = useRef(100)
   const scrollRef = useRef<HTMLDivElement>(null)
   const clientContextSelectId = 'client-context'
+
+  // Initialize selectedCustomerId when customers load
+  useEffect(() => {
+    if (customers.length > 0 && !selectedCustomerId) {
+      setSelectedCustomerId(customers[0].id)
+    }
+  }, [customers, selectedCustomerId])
 
   useEffect(() => {
     if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight
   }, [messages, isTyping])
 
-  useEffect(() => {
-    return () => {
-      timeoutIdsRef.current.forEach((timeoutId) => window.clearTimeout(timeoutId))
-      timeoutIdsRef.current = []
-    }
-  }, [])
-
-  const sendMessage = (text: string) => {
-    if (!text.trim()) return
+  const sendMessage = async (text: string) => {
+    if (!text.trim() || !selectedCustomerId) return
+    
     const now = new Date().toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' })
     setMessages((prev) => [...prev, { id: nextIdRef.current++, role: 'user', content: text, ts: now }])
     setInput('')
     setIsTyping(true)
 
-    // AI Mode response simulation
-    const delay = isAiMode ? 3500 : 1800
-    const timeoutId = window.setTimeout(() => {
+    try {
+      const response = await ragSearch.mutateAsync({
+        query: text,
+        customer_id: selectedCustomerId,
+        ai_mode: isAiMode,
+        top_k: 5
+      })
+
+      const assistantMsg: ChatMessage = {
+        id: nextIdRef.current++,
+        role: 'assistant',
+        ts: new Date().toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' }),
+        content: response.ai_answer || (response.chunks.length > 0 
+          ? `**Najbardziej trafny fragment z dokumentów:**\n\n"${response.chunks[0].highlight || response.chunks[0].content.substring(0, 300) + '...'}"\n\nPozostałe fragmenty i źródła znajdziesz poniżej:` 
+          : "Niestety nie znalazłem informacji na ten temat w dostępnych dokumentach tego klienta."),
+        sources: response.chunks.map(chunk => ({
+          title: chunk.section_title || 'Dokument',
+          page: chunk.page_number ? `str. ${chunk.page_number}` : 'fragment',
+          attachment_id: chunk.attachment_id,
+          page_number: chunk.page_number
+        }))
+      }
+
+      setMessages((prev) => [...prev, assistantMsg])
+    } catch (err) {
+      console.error('RAG Search failed:', err)
       setMessages((prev) => [...prev, {
-        id: nextIdRef.current++, role: 'assistant', ts: new Date().toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' }),
-        content: isAiMode 
-          ? `Dokładna analiza prawno-biznesowa dla klienta **${activeClient}** zakończona.\n\nZastosowałem zaawansowane wnioskowanie na podstawie wszystkich umów i aneksów. Moja interpretacja: zapytanie dotyczy ryzyka operacyjnego. Wymaga to uwzględnienia paragrafów o karach umownych oraz terminach wypowiedzenia zawartych w umowie ramowej i aneksie z 2025 roku.`
-          : `Analizuję dane dla klienta **${activeClient}**...\n\nNa podstawie dokumentów w systemie: to pytanie dotyczy kluczowych informacji kontraktowych. W środowisku produkcyjnym ta odpowiedź byłaby oparta o rzeczywiste dokumenty klienta z indeksu RAG.`,
-        sources: [{ title: 'Baza CRM HRK', page: isAiMode ? 'analiza semantyczna + LLM reasoning' : 'wyszukiwanie semantyczne' }],
+        id: nextIdRef.current++,
+        role: 'assistant',
+        ts: new Date().toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' }),
+        content: "Przepraszam, wystąpił błąd podczas komunikacji z serwisem AI. Upewnij się, że serwery są uruchomione i dokumenty zostały przetworzone.",
       }])
+    } finally {
       setIsTyping(false)
-      timeoutIdsRef.current = timeoutIdsRef.current.filter((id) => id !== timeoutId)
-    }, delay)
-    timeoutIdsRef.current.push(timeoutId)
+    }
+  }
+
+  const handleSourceClick = async (attachmentId: string, pageNumber?: number | null) => {
+    if (!user?.id) return
+    try {
+      const { url } = await getDownloadUrl.mutateAsync({ id: attachmentId, userId: user.id })
+      // Append #page=N to the PDF URL
+      const finalUrl = pageNumber ? `${url}#page=${pageNumber}` : url
+      setPreviewUrl(finalUrl)
+      setIsPreviewOpen(true)
+    } catch (err) {
+      console.error('Failed to get preview URL:', err)
+      alert('Nie udało się wygenerować podglądu dokumentu.')
+    }
   }
 
   return (
@@ -126,12 +155,46 @@ export function AdvisorPage() {
             <label htmlFor={clientContextSelectId} style={{ fontSize: 12, color: '#9e9389' }}>
               Kontekst:
             </label>
-            <select id={clientContextSelectId} value={activeClient} onChange={(e) => setActiveClient(e.target.value)} style={{ border: '1px solid #e3e0db', borderRadius: 6, padding: '6px 12px', fontSize: 13, fontWeight: 600, color: '#1a1714', background: 'white', cursor: 'pointer', outline: 'none' }}>
-              {clientOptions.map((c) => <option key={c}>{c}</option>)}
+            <select 
+              id={clientContextSelectId} 
+              value={selectedCustomerId} 
+              onChange={(e) => setSelectedCustomerId(e.target.value)} 
+              style={{ border: '1px solid #e3e0db', borderRadius: 6, padding: '6px 12px', fontSize: 13, fontWeight: 600, color: '#1a1714', background: 'white', cursor: 'pointer', outline: 'none' }}
+            >
+              <option value="" disabled>Wybierz klienta...</option>
+              {customers.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.company_name || c.ckk}
+                </option>
+              ))}
             </select>
           </div>
         </div>
       </div>
+
+      <Modal 
+        isOpen={isPreviewOpen} 
+        onClose={() => {
+          setIsPreviewOpen(false)
+          setPreviewUrl(null)
+        }} 
+        title="Podgląd źródła dokumentu"
+        maxWidth="1200px"
+      >
+        <div style={{ height: '80vh', background: '#f5f2ef', borderRadius: 8, overflow: 'hidden' }}>
+          {previewUrl ? (
+            <iframe 
+              src={previewUrl} 
+              style={{ width: '100%', height: '100%', border: 'none' }} 
+              title="Document Source Preview"
+            />
+          ) : (
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#9e9389' }}>
+              Ładowanie podglądu...
+            </div>
+          )}
+        </div>
+      </Modal>
 
       <Modal isOpen={isInfoModalOpen} onClose={() => setIsInfoModalOpen(false)} title="Tryby pracy Asystenta AI">
         <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
@@ -140,13 +203,7 @@ export function AdvisorPage() {
             <div>
               <div style={{ fontSize: 14, fontWeight: 700, color: '#1a1714', marginBottom: 4 }}>Tryb Wyszukiwania (Standard)</div>
               <div style={{ fontSize: 12.5, color: '#6b6b6b', lineHeight: 1.5 }}>
-                Szybkie przeszukiwanie bazy wektorowej (RAG). Idealne do prostych pytań o fakty, np.:
-                <ul style={{ margin: '8px 0', paddingLeft: 20 }}>
-                  <li>"Do kiedy trwa umowa?"</li>
-                  <li>"Jakie są stawki w aneksie nr 2?"</li>
-                  <li>"Kto jest opiekunem firmy X?"</li>
-                </ul>
-                Odpowiedź otrzymasz w ciągu 1-2 sekund.
+                Szybkie przeszukiwanie bazy wektorowej (RAG). Idealne do prostych pytań o fakty. Odpowiedź otrzymasz w ciągu 1-2 sekund.
               </div>
             </div>
           </div>
@@ -156,13 +213,7 @@ export function AdvisorPage() {
             <div>
               <div style={{ fontSize: 14, fontWeight: 700, color: '#e85c04', marginBottom: 4 }}>Tryb Rozumowania AI (Głębokie wnioskowanie)</div>
               <div style={{ fontSize: 12.5, color: '#6b6b6b', lineHeight: 1.5 }}>
-                Model nie tylko szuka fragmentów, ale <strong>interpretuje i syntetyzuje</strong> dane z wielu źródeł. Wykorzystaj go do trudnych zadań:
-                <ul style={{ margin: '8px 0', paddingLeft: 20 }}>
-                  <li>"Jakie ryzyka grożą nam przy zerwaniu umowy?"</li>
-                  <li>"Porównaj warunki SLA u 3 największych klientów."</li>
-                  <li>"Przygotuj argumentację do negocjacji stawek."</li>
-                </ul>
-                Proces trwa dłużej (5-10 sekund), ale daje znacznie głębszą analizę.
+                Model nie tylko szuka fragmentów, ale <strong>interpretuje i syntetyzuje</strong> dane z wielu źródeł. Proces trwa dłużej (5-10 sekund).
               </div>
             </div>
           </div>
@@ -207,14 +258,24 @@ export function AdvisorPage() {
                       </p>
                     )
                   })}
-                  {msg.sources && (
+                  {msg.sources && msg.sources.length > 0 && (
                     <div style={{ marginTop: 10, paddingTop: 8, borderTop: '1px solid #fdd5b8' }}>
-                      <div style={{ fontSize: 10, fontWeight: 700, color: '#c94f02', marginBottom: 4 }}>📎 ŹRÓDŁA</div>
-                      {msg.sources.map((src, i) => (
-                        <div key={i} style={{ fontSize: 11, color: '#c94f02', display: 'flex', gap: 4 }}>
-                          <span>→</span><span><strong>{src.title}</strong> · {src.page}</span>
-                        </div>
-                      ))}
+                      <div style={{ fontSize: 10, fontWeight: 700, color: '#c94f02', marginBottom: 4 }}>📎 ŹRÓDŁA (KLIKNIJ ABY OTWORZYĆ)</div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                        {msg.sources.map((src, i) => (
+                          <button 
+                            key={i} 
+                            onClick={() => handleSourceClick(src.attachment_id, src.page_number)}
+                            style={{ 
+                              fontSize: 11, color: '#c94f02', background: 'none', border: 'none', padding: 0, textAlign: 'left', cursor: 'pointer', display: 'flex', gap: 4, transition: 'opacity 0.2s' 
+                            }}
+                            onMouseEnter={e => e.currentTarget.style.opacity = '0.7'}
+                            onMouseLeave={e => e.currentTarget.style.opacity = '1'}
+                          >
+                            <span>→</span><span><strong>{src.title}</strong> · {src.page}</span>
+                          </button>
+                        ))}
+                      </div>
                     </div>
                   )}
                 </div>
@@ -235,7 +296,7 @@ export function AdvisorPage() {
 
           {/* Quick suggestions */}
           <div style={{ padding: '8px 16px', borderTop: '1px solid #f2f0ed', display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-            {suggestions.slice(0, 3).map((s) => (
+            {suggestions.map((s) => (
               <button key={s} onClick={() => sendMessage(s)} style={{ padding: '4px 10px', fontSize: 11, borderRadius: 20, border: '1px solid #e3e0db', background: '#fafaf9', color: '#4b5563', cursor: 'pointer', fontWeight: 500, whiteSpace: 'nowrap' }}>
                 {s.length > 45 ? s.slice(0, 42) + '…' : s}
               </button>
@@ -337,12 +398,13 @@ export function AdvisorPage() {
 
             <button 
               onClick={() => sendMessage(input)} 
+              disabled={!input.trim() || isTyping}
               style={{ 
                 background: 'linear-gradient(135deg, #e85c04, #c94f02)', 
                 border: 'none', 
                 borderRadius: 12, 
                 padding: '12px 20px', 
-                cursor: 'pointer', 
+                cursor: (!input.trim() || isTyping) ? 'not-allowed' : 'pointer', 
                 color: 'white', 
                 fontSize: 14, 
                 fontWeight: 700,
@@ -350,9 +412,11 @@ export function AdvisorPage() {
                 alignItems: 'center',
                 gap: 8,
                 transition: 'all 0.2s',
+                opacity: (!input.trim() || isTyping) ? 0.7 : 1,
                 boxShadow: '0 4px 12px rgba(232, 92, 4, 0.2)'
               }}
               onMouseEnter={e => {
+                if (!input.trim() || isTyping) return
                 e.currentTarget.style.transform = 'translateY(-1px)'
                 e.currentTarget.style.boxShadow = '0 6px 16px rgba(232, 92, 4, 0.3)'
               }}
@@ -391,10 +455,9 @@ export function AdvisorPage() {
               🌐 Aktywny kontekst
             </div>
             {[
-              { label: 'Klient',    value: activeClient        },
-              { label: 'Dokumenty', value: '14 w indeksie'     },
-              { label: 'Vektory',   value: '2 841 fragmentów'  },
-              { label: 'Model',     value: 'Gemma 4 (Ollama)'  },
+              { label: 'Klient',    value: customers.find(c => c.id === selectedCustomerId)?.company_name || 'Nie wybrano' },
+              { label: 'Indeks',    value: 'Dokumenty RAG' },
+              { label: 'Silnik',    value: isAiMode ? 'Gemma 4' : 'pgvector' },
             ].map((item) => (
               <div key={item.label} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginBottom: 5 }}>
                 <span style={{ color: '#9e9389' }}>{item.label}</span>
@@ -407,7 +470,7 @@ export function AdvisorPage() {
           <div style={{ ...card, padding: '14px 16px' }}>
             <div style={{ fontSize: 13, fontWeight: 700, color: '#1a1714', marginBottom: 10 }}>Propozycje pytań</div>
             {suggestions.map((s) => (
-              <button key={s} onClick={() => sendMessage(s)} style={{ display: 'block', width: '100%', textAlign: 'left', padding: '7px 10px', marginBottom: 5, fontSize: 12, borderRadius: 6, border: '1px solid #f2f0ed', background: '#fafaf9', color: '#e85c04', cursor: 'pointer', lineHeight: 1.4, fontWeight: 500 }}>
+              <button key={s} onClick={() => sendMessage(s)} style={{ display: 'block', width: '100%', textAlign: 'left', padding: '7px 10px', marginBottom: 5, fontSize: 11, borderRadius: 6, border: '1px solid #f2f0ed', background: '#fafaf9', color: '#e85c04', cursor: 'pointer', lineHeight: 1.4, fontWeight: 500 }}>
                 {s}
               </button>
             ))}

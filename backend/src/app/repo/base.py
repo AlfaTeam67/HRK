@@ -34,6 +34,19 @@ class BaseRepository[ModelType: Base]:
         result = await self.session.execute(query)
         return result.scalars().all()
 
+    async def list(self, **filters: Any) -> Sequence[ModelType]:
+        query = select(self.model)
+        model_any = cast(Any, self.model)
+        for field, value in filters.items():
+            if value is not None:
+                query = query.where(getattr(model_any, field) == value)
+        
+        if hasattr(self.model, "deleted_at"):
+            query = query.where(model_any.deleted_at.is_(None))
+            
+        result = await self.session.execute(query)
+        return result.scalars().all()
+
     async def count(self, *, include_deleted: bool = False) -> int:
         query = select(func.count()).select_from(self.model)
         if not include_deleted and hasattr(self.model, "deleted_at"):

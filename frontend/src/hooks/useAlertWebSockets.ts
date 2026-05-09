@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 
 export function useAlertWebSockets(userId: string | undefined) {
   const [isConnected, setIsConnected] = useState(false)
-  const [lastMessage, setLastMessage] = useState<any>(null)
+  const [lastMessage, setLastMessage] = useState<unknown>(null)
   const socketRef = useRef<WebSocket | null>(null)
 
   useEffect(() => {

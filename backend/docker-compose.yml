@@ -99,6 +99,7 @@ services:
       OPENROUTER_MODEL: ${OPENROUTER_MODEL:-google/gemma-2-9b-it}
       AD_SERVICE_URL: http://ad:8001
       API_AD_DOMAIN: ${API_AD_DOMAIN:-HRK}
+      RERANKER_URL: http://reranker:8003
     ports:
       - "8000:8000"
     networks:
@@ -206,6 +207,27 @@ services:
     depends_on:
       db:
         condition: service_healthy
+
+  # ── Reranker microservice (FlashRank) ───────────────────────────────────────
+  reranker:
+    build:
+      context: ./services/reranker
+      dockerfile: Dockerfile
+    container_name: hrk-reranker
+    ports:
+      - "8003:8003"
+    networks:
+      - hrk-network
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          'python -c "import urllib.request; urllib.request.urlopen(''http://localhost:8003/health'')"',
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
 
 volumes:
   postgres_data:

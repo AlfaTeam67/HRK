@@ -8,6 +8,7 @@ from app.repo.document_chunk import DocumentChunkRepository
 from app.schemas.rag import ChunkResult, RagSearchRequest, RagSearchResponse
 from app.service.embedding import EmbeddingService
 from app.service.llm import LLMService
+from app.service.reranker_client import RerankerClient
 
 _STOPWORDS = {
     "kiedy",
@@ -61,15 +62,24 @@ class RAGService:
         self,
         embedding_service: EmbeddingService,
         llm_service: LLMService,
+        reranker_client: RerankerClient,
     ) -> None:
         self._embed = embedding_service
         self._llm = llm_service
+        self._reranker = reranker_client
 
     async def search(self, req: RagSearchRequest, db: AsyncSession) -> RagSearchResponse:
         query_embedding = await self._embed.embed(req.query)
 
         repo = DocumentChunkRepository(db)
-        results = await repo.search(req.customer_id, query_embedding, req.top_k)
+        # Fetch more candidates for reranking (e.g. 40)
+        fetch_k = max(40, req.top_k * 4)
+        results = await repo.search(
+            customer_id=req.customer_id, 
+            embedding=query_embedding, 
+            query_text=req.query,
+            top_k=fetch_k
+        )
 
         chunks = [
             ChunkResult(
@@ -84,6 +94,9 @@ class RAGService:
             )
             for chunk, score in results
         ]
+        
+        if chunks:
+            chunks = await self._reranker.rerank(req.query, chunks, req.top_k)
 
         ai_answer: str | None = None
         if req.ai_mode and chunks:
