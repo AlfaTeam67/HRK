@@ -40,10 +40,10 @@ class BaseRepository[ModelType: Base]:
         for field, value in filters.items():
             if value is not None:
                 query = query.where(getattr(model_any, field) == value)
-        
+
         if hasattr(self.model, "deleted_at"):
             query = query.where(model_any.deleted_at.is_(None))
-            
+
         result = await self.session.execute(query)
         return result.scalars().all()
 

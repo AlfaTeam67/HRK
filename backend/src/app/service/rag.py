@@ -75,8 +75,8 @@ class RAGService:
         # Fetch more candidates for reranking (e.g. 40)
         fetch_k = max(40, req.top_k * 4)
         results = await repo.search(
-            customer_id=req.customer_id, 
-            embedding=query_embedding, 
+            customer_id=req.customer_id,
+            embedding=query_embedding,
             query_text=req.query,
             top_k=fetch_k
         )
@@ -94,7 +94,7 @@ class RAGService:
             )
             for chunk, score in results
         ]
-        
+
         if chunks:
             chunks = await self._reranker.rerank(req.query, chunks, req.top_k)
 

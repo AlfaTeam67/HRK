@@ -32,5 +32,5 @@ class RerankerClient:
 
         # Sort descending by score
         chunks.sort(key=lambda c: c.score, reverse=True)
-        
+
         return chunks[:top_k]

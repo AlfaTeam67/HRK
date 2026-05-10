@@ -28,13 +28,13 @@ class DocumentChunkRepository(BaseRepository[DocumentChunk]):
         top_k: int = 5,
     ) -> list[tuple[Any, float]]:
         vec_str = "[" + ",".join(str(v) for v in embedding) + "]"
-        
+
         params: dict[str, Any] = {
-            "vec": vec_str, 
-            "customer_id": str(customer_id), 
+            "vec": vec_str,
+            "customer_id": str(customer_id),
             "top_k": top_k
         }
-        
+
         # Simple keyword boosting
         words = [w.lower() for w in (query_text or "").split() if len(w) > 2]
         boost_clauses = []
@@ -42,7 +42,7 @@ class DocumentChunkRepository(BaseRepository[DocumentChunk]):
             key = f"word_{i}"
             boost_clauses.append(f"(CASE WHEN content ILIKE :{key} THEN 0.2 ELSE 0 END)")
             params[key] = f"%{w}%"
-        
+
         keyword_boost = " + ".join(boost_clauses) if boost_clauses else "0"
 
         stmt = text(f"""
@@ -57,7 +57,7 @@ class DocumentChunkRepository(BaseRepository[DocumentChunk]):
             ORDER BY (vec_score - kw_score) ASC
             LIMIT :top_k
         """)
-        
+
         result = await self.session.execute(stmt, params)
         rows = result.all()
         return [(row, float(row.vec_score) - float(row.kw_score)) for row in rows]

@@ -41,29 +41,29 @@ def _split_long(text: str, page: int | None) -> list[tuple[str, int | None]]:
 
 def _extract_from_pdf(content: bytes) -> list[tuple[str, int | None]]:
     raw: list[tuple[str, int | None]] = []
-    
+
     # We'll use a hybrid approach: try pdfplumber first, if a page is empty, try OCR
     # To do OCR efficiently, we convert to images once if needed
     images: list[Image.Image] | None = None
-    
+
     with pdfplumber.open(io.BytesIO(content)) as pdf:
         for page_num, page in enumerate(pdf.pages, start=1):
             page_text = page.extract_text() or ""
             page_paras = [p.strip() for p in page_text.split("\n\n") if p.strip()]
-            
+
             if not page_paras:
                 # Page is empty or image-based, try OCR for THIS page
                 if images is None:
                     images = convert_from_bytes(content, dpi=200)
-                
+
                 # Check if we have an image for this page (enumerate starts at 1)
                 if len(images) >= page_num:
                     ocr_text = pytesseract.image_to_string(images[page_num - 1], lang="pol+eng")
                     page_paras = [p.strip() for p in ocr_text.split("\n\n") if p.strip()]
-            
+
             for para in page_paras:
                 raw.append((para, page_num))
-                
+
     return raw
 
 
@@ -105,14 +105,14 @@ def _build_chunks(paragraphs: list[tuple[str, int | None]]) -> list[dict]:
         addition = len(para) + (2 if current_parts else 0)
         # Force split if page changes OR size limit exceeded
         page_changed = page != current_page
-        
+
         if not page_changed and current_size + addition <= CHUNK_SIZE:
             current_parts.append(para)
             current_size += addition
         else:
             if current_parts:
                 chunks.append({"content": "\n\n".join(current_parts), "page_number": current_page})
-                
+
                 if page_changed:
                     # Don't carry over overlap if page changed
                     current_parts = [para]
@@ -130,7 +130,7 @@ def _build_chunks(paragraphs: list[tuple[str, int | None]]) -> list[dict]:
                             break
                     current_parts = overlap + [para]
                     current_size = overlap_size + len(para)
-                
+
                 current_page = page
             else:
                 current_parts = [para]
