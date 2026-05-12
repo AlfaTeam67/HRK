@@ -61,3 +61,15 @@ export function useDocumentDownloadUrl() {
     },
   })
 }
+
+export function useDeleteDocument() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ id, userId }: { id: string; userId: string }) => {
+      await apiClient.delete(`${BASE}/${id}`, { params: { requester_user_id: userId } })
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['documents'] })
+    },
+  })
+}
