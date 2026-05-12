@@ -53,6 +53,12 @@ class StorageService:
         except S3ClientError as exc:
             raise StorageServiceError("Failed to generate download URL") from exc
 
+    async def get_object_bytes(self, *, key: str) -> tuple[bytes, str]:
+        try:
+            return await self._adapter.get_object_bytes(bucket=self._bucket, key=key)
+        except S3ClientError as exc:
+            raise StorageServiceError("Failed to retrieve object from storage") from exc
+
     async def generate_upload_url(
         self, *, key: str, content_type: str, expires_in: int | None = None
     ) -> str:

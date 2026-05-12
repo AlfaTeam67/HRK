@@ -11,6 +11,7 @@ from fastapi import (
     UploadFile,
     status,
 )
+from fastapi.responses import Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
@@ -114,6 +115,29 @@ async def get_download_url(
             document_id=id, requester_user_id=requester_user_id
         )
         return {"url": url, "expires_in": expires_in}
+    except DocumentValidationError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    except DocumentAccessDeniedError as exc:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
+    except DocumentNotFoundError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    except DocumentStorageError as exc:
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exc)) from exc
+
+
+@router.get("/{id}/stream")
+async def stream_document(
+    id: UUID, requester_user_id: UUID, service: DocumentService = Depends(get_document_service)
+) -> Response:
+    try:
+        content, content_type = await service.stream_document_bytes(
+            document_id=id, requester_user_id=requester_user_id
+        )
+        return Response(
+            content=content,
+            media_type=content_type,
+            headers={"Content-Disposition": "inline"},
+        )
     except DocumentValidationError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     except DocumentAccessDeniedError as exc:

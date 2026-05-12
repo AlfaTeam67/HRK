@@ -91,6 +91,17 @@ class S3ClientAdapter:
         except (ClientError, BotoCoreError) as exc:
             raise S3ClientError("S3 upload URL generation failed") from exc
 
+    async def get_object_bytes(self, *, bucket: str, key: str) -> tuple[bytes, str]:
+        try:
+            response = await asyncio.to_thread(
+                self._client.get_object, Bucket=bucket, Key=key
+            )
+            body: bytes = await asyncio.to_thread(response["Body"].read)
+            content_type: str = response.get("ContentType", "application/octet-stream")
+            return body, content_type
+        except (ClientError, BotoCoreError) as exc:
+            raise S3ClientError("S3 get object failed") from exc
+
     async def assert_bucket_private(self, *, bucket: str) -> None:
         try:
             acl = await asyncio.to_thread(self._client.get_bucket_acl, Bucket=bucket)

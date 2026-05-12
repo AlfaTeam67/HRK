@@ -89,5 +89,15 @@ async def test_upload_document_persists_s3_and_db(client: AsyncClient, monkeypat
 
             s3_object = s3.head_object(Bucket=settings.s3_bucket, Key=s3_key)
             assert s3_object["ContentLength"] > 0
+
+            # Test streaming
+            stream_response = await client.get(
+                f"/api/v1/documents/{document_id}/stream",
+                params={"requester_user_id": str(user_id)},
+            )
+            assert stream_response.status_code == 200
+            assert stream_response.content == b"%PDF-1.4 test"
+            assert stream_response.headers["content-type"] == "application/pdf"
+            assert stream_response.headers["content-disposition"] == "inline"
         finally:
             app.dependency_overrides.pop(get_document_service, None)

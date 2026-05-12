@@ -1,5 +1,5 @@
 import uuid
-from datetime import date, datetime, timedelta, timezone
+from datetime import UTC, date, datetime, timedelta
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -20,7 +20,7 @@ class AlertService:
     async def get_alerts(self, account_manager_id: uuid.UUID | None = None) -> list[AlertRead]:
         alerts: list[AlertRead] = []
         today = date.today()
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
 
         # 1. Contract expiry 30/60/90
         contract_query = (
@@ -140,7 +140,7 @@ class AlertService:
 
         customers = (await self.db.execute(cust_query)).scalars().all()
         customer_ids = [cust.id for cust in customers]
-        
+
         latest_activity_by_customer_id: dict[uuid.UUID, datetime] = {}
         if customer_ids:
             latest_activity_query = (
@@ -157,7 +157,7 @@ class AlertService:
 
         for cust in customers:
             latest_act_dt = latest_activity_by_customer_id.get(cust.id)
-            
+
             days_no_contact = 0
             if latest_act_dt:
                 last_date = latest_act_dt.date() if isinstance(latest_act_dt, datetime) else latest_act_dt

@@ -152,6 +152,19 @@ class DocumentService:
 
         return url, settings.document_presigned_url_ttl_seconds
 
+    async def stream_document_bytes(
+        self, *, document_id: UUID, requester_user_id: UUID
+    ) -> tuple[bytes, str]:
+        attachment = await self._attachments.get(document_id)
+        if not attachment:
+            raise DocumentNotFoundError("Document not found.")
+        await self._get_requesting_user(requester_user_id)
+        try:
+            content, content_type = await self._storage.get_object_bytes(key=attachment.s3_key)
+        except StorageServiceError as exc:
+            raise DocumentStorageError("Could not retrieve document from storage.") from exc
+        return content, content_type
+
     async def delete_document(self, *, document_id: UUID, requester_user_id: UUID) -> None:
         attachment = await self._attachments.get(document_id)
         if not attachment:
