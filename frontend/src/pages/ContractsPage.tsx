@@ -19,6 +19,22 @@ const STATUS_S: Record<string, { bg: string; color: string }> = {
 
 const CONTRACT_TYPES = ['ramowa', 'aneks', 'SLA', 'DPA', 'PPK', 'inne'] as const
 
+const OCR_S: Record<string, { bg: string; color: string }> = {
+  pending:    { bg: '#f2f0ed', color: '#6b6b6b' },
+  processing: { bg: '#eff6ff', color: '#1d4ed8' },
+  done:       { bg: '#f0fff4', color: '#276749' },
+  failed:     { bg: '#fff5f0', color: '#c94f02' },
+  skipped:    { bg: '#fafaf9', color: '#9e9389' },
+}
+
+const OCR_LABEL: Record<string, string> = {
+  pending:    'Oczekuje',
+  processing: 'Przetwarza…',
+  done:       'RAG gotowy',
+  failed:     'Błąd OCR',
+  skipped:    'Pominięto',
+}
+
 /* ─── Component ──────────────────────────────────────────────── */
 export function ContractsPage() {
   const [isModalOpen, setIsModalOpen] = useState(false)
@@ -323,12 +339,23 @@ export function ContractsPage() {
                   </td>
                   <td style={{ padding: '14px 18px' }}>
                     {linkedDoc ? (
-                      <button
-                        onClick={() => handlePreview(c.id)}
-                        style={{ background: 'none', border: '1px solid #e3e0db', borderRadius: 4, padding: '4px 8px', fontSize: 10, fontWeight: 700, cursor: 'pointer', color: '#e85c04' }}
-                      >
-                        PODGLĄD
-                      </button>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                        <button
+                          onClick={() => handlePreview(c.id)}
+                          style={{ background: 'none', border: '1px solid #e3e0db', borderRadius: 4, padding: '4px 8px', fontSize: 10, fontWeight: 700, cursor: 'pointer', color: '#e85c04', whiteSpace: 'nowrap' }}
+                        >
+                          PODGLĄD
+                        </button>
+                        {(() => {
+                          const status = linkedDoc.ocr_status ?? 'pending'
+                          const s = OCR_S[status] ?? OCR_S['pending']
+                          return (
+                            <span style={{ padding: '2px 8px', borderRadius: 20, fontSize: 10, fontWeight: 600, background: s.bg, color: s.color, whiteSpace: 'nowrap' }}>
+                              {OCR_LABEL[status] ?? status}
+                            </span>
+                          )
+                        })()}
+                      </div>
                     ) : (
                       <span style={{ fontSize: 11, color: '#c8c2ba' }}>Brak pliku</span>
                     )}

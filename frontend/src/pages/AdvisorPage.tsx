@@ -340,7 +340,9 @@ export function AdvisorPage() {
         content:
           response.ai_answer ||
           (response.chunks.length > 0
-            ? `**Najbardziej trafny fragment z dokumentów:**\n\n"${response.chunks[0].highlight || response.chunks[0].content.substring(0, 300) + '...'}"\n\nPozostałe fragmenty i źródła znajdziesz poniżej:`
+            ? response.chunks
+                .map((c, i) => `**Fragment ${i + 1}:**\n"${c.highlight || c.content.substring(0, 300) + '...'}"`)
+                .join('\n\n')
             : 'Niestety nie znalazłem informacji na ten temat w dostępnych dokumentach tego klienta.'),
         sources: response.chunks.map((chunk) => ({
           title: chunk.section_title || 'Dokument',
