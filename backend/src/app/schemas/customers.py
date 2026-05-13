@@ -84,3 +84,10 @@ class CustomerRead(ORMBaseSchema):
     created_at: datetime
     updated_at: datetime
     deleted_at: datetime | None
+
+
+class AiSummaryResponse(BaseModel):
+    """Response payload for AI-generated customer summary."""
+
+    summary: str
+    generated_at: datetime
