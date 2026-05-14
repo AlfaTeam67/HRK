@@ -1,0 +1,43 @@
+{% extends "_shared/base.html.j2" %}
+
+{% set title = "Pismo przewodnie — " ~ company.name %}
+{% set document_number = "Pismo do " ~ contract.contract_number %}
+
+{% block extra_styles %}
+  .letter-body { margin-top: 6mm; font-size: 11pt; line-height: 1.65; white-space: pre-wrap; }
+  .salutation { margin-top: 6mm; font-weight: 600; }
+{% endblock %}
+
+{% block body %}
+<div class="header">
+  <div>
+    <p style="margin:0;font-size:9.5pt;color:#6b6258;">HRK Payroll Consulting Sp. z o.o.<br>ul. Przykładowa 1, 00-000 Warszawa</p>
+  </div>
+  <div class="meta">
+    {% if draft %}<span class="badge badge-draft">Draft — do akceptacji</span><br>{% endif %}
+    Warszawa, {{ amendment_date | pl_date }}
+  </div>
+</div>
+
+<div style="margin-top:8mm;">
+  <p><strong>{{ company.name }}</strong><br>
+  {% if company.address_street %}{{ company.address_street }}<br>{% endif %}
+  {% if company.address_postal or company.address_city %}{{ company.address_postal }} {{ company.address_city }}{% endif %}
+  </p>
+</div>
+
+<p class="salutation">Szanowni Państwo,</p>
+
+<div class="letter-body">{{ cover_letter_text }}</div>
+
+<div style="margin-top:10mm;">
+  <p>Z poważaniem,</p>
+  <p style="margin-top:14mm;">{{ account_manager_name or "Opiekun klienta" }}<br>
+     <span style="font-size:9pt;color:#6b6258;">HRK Payroll Consulting</span></p>
+</div>
+
+<div class="footnote">
+  Załącznik: Aneks nr {{ amendment_number }} do umowy {{ contract.contract_number }}.
+  Wygenerowano {{ generated_at | pl_datetime }}.
+</div>
+{% endblock %}

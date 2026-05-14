@@ -10,9 +10,12 @@ from app.core.database import AsyncSessionLocal
 from app.models.activity import ActivityLog
 from app.models.company import Company
 from app.models.contract import Contract
+from app.models.contract_service import ContractService
 from app.models.customer import Customer
 from app.models.enums import (
     ActivityType,
+    BillingFrequency,
+    BillingUnit,
     ContractStatus,
     ContractType,
     CustomerStatus,
@@ -21,7 +24,9 @@ from app.models.enums import (
     ValorizationStatus,
 )
 from app.models.note import Note
-from app.models.rate import Valorization
+from app.models.rate import CustomerRate, CustomerRateMonth, Valorization
+from app.models.service import Service
+from app.models.service_group import ServiceGroup
 from app.models.user import User
 
 
@@ -94,7 +99,55 @@ async def seed() -> None:
         session.add_all(customers)
         await session.flush()
 
-        # 5. Create related data (Contracts, Notes, Activities)
+        # 5. Service catalog (1 group, 4 services) — single source of truth
+        # for the contract_services relation that drives the rate engine.
+        service_group = ServiceGroup(name="Kadry & Płace")
+        session.add(service_group)
+        await session.flush()
+
+        service_catalog = [
+            Service(
+                group_id=service_group.id,
+                name="Listy płac — pracownicy etatowi",
+                billing_unit=BillingUnit.PER_PERSON,
+                billing_frequency=BillingFrequency.MONTHLY,
+                vat_rate=Decimal("23.00"),
+            ),
+            Service(
+                group_id=service_group.id,
+                name="ZUS DRA — obsługa miesięczna",
+                billing_unit=BillingUnit.RYCZALT,
+                billing_frequency=BillingFrequency.MONTHLY,
+                vat_rate=Decimal("23.00"),
+            ),
+            Service(
+                group_id=service_group.id,
+                name="PPK — obsługa wpłat",
+                billing_unit=BillingUnit.PER_PERSON,
+                billing_frequency=BillingFrequency.MONTHLY,
+                vat_rate=Decimal("23.00"),
+            ),
+            Service(
+                group_id=service_group.id,
+                name="Konsultacje kadrowe",
+                billing_unit=BillingUnit.PER_HOUR,
+                billing_frequency=BillingFrequency.ON_DEMAND,
+                vat_rate=Decimal("23.00"),
+            ),
+        ]
+        session.add_all(service_catalog)
+        await session.flush()
+
+        # Reference rates per service (base price for year 2024 / no discount).
+        # Subsequent years apply small valorisation deltas so the simulator has
+        # historical context to render in the wizard.
+        base_rates_2024 = {
+            service_catalog[0].id: Decimal("32.00"),
+            service_catalog[1].id: Decimal("450.00"),
+            service_catalog[2].id: Decimal("12.00"),
+            service_catalog[3].id: Decimal("180.00"),
+        }
+        # 6. Create related data (Contracts, Notes, Activities)
         today = date.today()
         for idx, customer in enumerate(customers, start=1):
             manager_id = customer.account_manager_id
@@ -114,6 +167,48 @@ async def seed() -> None:
             )
             session.add_all([c1, c2])
             await session.flush()
+
+            # Attach billable services to contract A and seed yearly rates.
+            # Three years of history (2024 → 2026) so the wizard has data to
+            # work against when valorising for 2027.
+            contract_services_a = [
+                ContractService(
+                    contract_id=c1.id,
+                    service_id=service.id,
+                    valid_from=c1.start_date,
+                    is_billable=True,
+                    scope_description=f"Realizacja w ramach umowy {c1.contract_number}",
+                )
+                for service in service_catalog[:3]
+            ]
+            session.add_all(contract_services_a)
+            await session.flush()
+
+            yearly_index_pct = {2025: Decimal("3.50"), 2026: Decimal("4.20")}
+            for cs in contract_services_a:
+                base_price = base_rates_2024[cs.service_id]
+                for year in (2024, 2025, 2026):
+                    if year == 2024:
+                        price = base_price
+                    else:
+                        multiplier = Decimal("1") + yearly_index_pct[year] / Decimal("100")
+                        price = (price * multiplier).quantize(Decimal("0.01"))
+                    rate = CustomerRate(
+                        contract_service_id=cs.id,
+                        year=year,
+                        base_price=price,
+                        discount_pct=Decimal("0.00"),
+                        created_by=manager_id,
+                    )
+                    session.add(rate)
+                    await session.flush()
+                    # Monthly breakdown — same price every month for simplicity.
+                    for month in range(1, 13):
+                        session.add(
+                            CustomerRateMonth(
+                                rate_id=rate.id, month=month, net_price=price
+                            )
+                        )
 
             # Varied Notes
             notes = [

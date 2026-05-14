@@ -1,0 +1,134 @@
+{% extends "_shared/base.html.j2" %}
+
+{% set title = "Aneks nr " ~ amendment_number ~ " do umowy " ~ contract.contract_number %}
+{% set document_number = "Aneks " ~ amendment_number %}
+
+{% block body %}
+
+<div class="header">
+  <div>
+    <h1>Aneks nr {{ amendment_number }}</h1>
+    <p>do umowy <strong>{{ contract.contract_number }}</strong> z dnia {{ contract.start_date | pl_date }}</p>
+  </div>
+  <div class="meta">
+    {% if draft %}<span class="badge badge-draft">Draft — do akceptacji</span><br>{% endif %}
+    Sporządzono dnia: {{ amendment_date | pl_date }}<br>
+    Miejsce: Warszawa
+  </div>
+</div>
+
+<h2>I. Strony</h2>
+<div class="parties">
+  <div class="col">
+    <strong>Wykonawca</strong>
+    <p>HRK Payroll Consulting Sp. z o.o.<br>
+       ul. Przykładowa 1, 00-000 Warszawa<br>
+       NIP: 0000000000</p>
+  </div>
+  <div class="col">
+    <strong>Zamawiający</strong>
+    <p>{{ company.name }}<br>
+       {% if company.address_street %}{{ company.address_street }}<br>{% endif %}
+       {% if company.address_postal or company.address_city %}{{ company.address_postal }} {{ company.address_city }}<br>{% endif %}
+       {% if company.nip %}NIP: {{ company.nip }}{% endif %}
+    </p>
+  </div>
+</div>
+
+<h2>II. Przedmiot aneksu</h2>
+<div class="clause">
+  <p>Strony zgodnie postanawiają, że z dniem
+  <strong>{{ params.effective_date | pl_date }}</strong>
+  ulegają zmianie stawki za świadczone usługi określone w Załączniku nr 1 do umowy
+  ramowej, w wyniku rocznej waloryzacji zgodnie z postanowieniami § dotyczącymi
+  indeksacji wynagrodzenia.</p>
+
+  <p>Podstawa indeksacji:
+  {% if params.index_type == "GUS_CPI" %}
+    wskaźnik CPI publikowany przez Główny Urząd Statystyczny za rok {{ params.year - 1 }} —
+    <strong>{{ params.index_value | pl_pct }}</strong>.
+  {% elif params.index_type == "fixed_pct" %}
+    stała indeksacja umowna na poziomie <strong>{{ params.index_value | pl_pct }}</strong>.
+  {% else %}
+    indywidualnie uzgodniona indeksacja w wysokości <strong>{{ params.index_value | pl_pct }}</strong>.
+  {% endif %}
+  </p>
+</div>
+
+{% if rationale_bullets %}
+<h2>III. Uzasadnienie biznesowe</h2>
+<div class="clause">
+  <ul>
+    {% for bullet in rationale_bullets %}
+    <li>{{ bullet }}</li>
+    {% endfor %}
+  </ul>
+</div>
+{% endif %}
+
+<h2>{{ "IV" if rationale_bullets else "III" }}. Zestawienie zmian stawek</h2>
+<table class="simulation">
+  <thead>
+    <tr>
+      <th>Usługa</th>
+      <th>Cena obecna</th>
+      <th>Indeks</th>
+      <th>Cena nowa</th>
+      <th>Δ / okres</th>
+      <th>Δ / rok</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for row in simulation.services %}
+    <tr>
+      <td>{{ row.service_name }}</td>
+      <td class="num">{{ row.current_effective_price | pl_money }}</td>
+      <td class="num">{{ row.applied_index_pct | pl_pct }}</td>
+      <td class="num">{{ row.proposed_effective_price | pl_money }}</td>
+      <td class="num {{ 'delta-pos' if row.delta_per_period > 0 else 'delta-neg' if row.delta_per_period < 0 else '' }}">
+        {{ row.delta_per_period | pl_money_signed }}
+      </td>
+      <td class="num {{ 'delta-pos' if row.delta_yearly > 0 else 'delta-neg' if row.delta_yearly < 0 else '' }}">
+        {{ row.delta_yearly | pl_money_signed }}
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+  <tfoot>
+    <tr>
+      <td>Razem (rok)</td>
+      <td class="num">{{ simulation.current_annual_revenue | pl_money }}</td>
+      <td class="num">≈ {{ simulation.weighted_avg_index_pct | pl_pct }}</td>
+      <td class="num">{{ simulation.proposed_annual_revenue | pl_money }}</td>
+      <td></td>
+      <td class="num {{ 'delta-pos' if simulation.delta_annual_revenue > 0 else 'delta-neg' if simulation.delta_annual_revenue < 0 else '' }}">
+        {{ simulation.delta_annual_revenue | pl_money_signed }}
+      </td>
+    </tr>
+  </tfoot>
+</table>
+
+<h2>{{ "V" if rationale_bullets else "IV" }}. Postanowienia końcowe</h2>
+<div class="clause">
+  <p>1. Pozostałe postanowienia umowy ramowej {{ contract.contract_number }} pozostają bez zmian.</p>
+  <p>2. Aneks wchodzi w życie z dniem {{ params.effective_date | pl_date }} i ma zastosowanie do faktur wystawianych za okresy rozpoczynające się nie wcześniej niż w tym dniu.</p>
+  <p>3. Aneks sporządzono w dwóch jednobrzmiących egzemplarzach, po jednym dla każdej ze Stron.</p>
+  <p>4. Prawem właściwym dla aneksu jest prawo Rzeczypospolitej Polskiej.</p>
+</div>
+
+<div class="signatures">
+  <div class="col">
+    <div class="line">Wykonawca<br>HRK Payroll Consulting Sp. z o.o.</div>
+  </div>
+  <div class="col">
+    <div class="line">Zamawiający<br>{{ company.name }}</div>
+  </div>
+</div>
+
+<div class="footnote">
+  Wygenerowano automatycznie {{ generated_at | pl_datetime }} przez system HRK CRM.
+  Identyfikator generacji: {{ generation_id }}.
+  Szablon: {{ template_key }} v{{ template_version }}.
+</div>
+
+{% endblock %}
