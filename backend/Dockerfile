@@ -27,6 +27,14 @@ RUN apt-get clean && apt-get update && (DEBIAN_FRONTEND=noninteractive apt-get i
     tesseract-ocr \
     tesseract-ocr-pol \
     poppler-utils \
+    libpango-1.0-0 \
+    libpangoft2-1.0-0 \
+    libcairo2 \
+    libgdk-pixbuf-2.0-0 \
+    libffi-dev \
+    shared-mime-info \
+    fonts-liberation \
+    fonts-dejavu-core \
     || apt-get -f install) \
     && rm -rf /var/lib/apt/lists/*
 
@@ -42,7 +50,12 @@ COPY --from=builder /usr/local/bin /usr/local/bin
 COPY . .
 
 RUN adduser --disabled-password --gecos "" --no-create-home appuser \
-    && chown -R appuser:appuser /app
+    && chown -R appuser:appuser /app \
+    && mkdir -p /home/appuser/.cache/fontconfig \
+    && chown -R appuser:appuser /home/appuser
+
+ENV HOME=/home/appuser \
+    XDG_CACHE_HOME=/home/appuser/.cache
 
 USER appuser
 

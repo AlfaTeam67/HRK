@@ -83,6 +83,7 @@ class DocumentType(enum.StrEnum):
     DPA = "DPA"
     PPK = "PPK"
     REPORT = "report"
+    COVER_LETTER = "cover_letter"
     OTHER = "other"
 
 
@@ -172,6 +173,30 @@ class ValorizationStatus(enum.StrEnum):
     APPROVED = "approved"
     APPLIED = "applied"
     REJECTED = "rejected"
+
+
+# ── Document Generation ──────────────────────────────────────────────────────
+
+
+class DocumentGenerationStatus(enum.StrEnum):
+    """Lifecycle of an AI-assisted document generation."""
+
+    DRAFT = "draft"           # initial preview, no PDF persisted yet
+    PREVIEW = "preview"       # PDF rendered as draft (watermark), not finalized
+    FINALIZED = "finalized"   # PDF locked, watermark removed, awaiting acceptance
+    ACCEPTED = "accepted"     # reviewed and approved by user (ready to send)
+    SENT = "sent"             # delivered to client
+    SUPERSEDED = "superseded" # replaced by a regenerated version
+    REJECTED = "rejected"
+
+
+class DocumentTone(enum.StrEnum):
+    """Stylistic tone for AI-generated narrative parts (cover letter, rationale)."""
+
+    FORMAL = "formal"
+    NEUTRAL = "neutral"
+    WARM = "warm"
+    ASSERTIVE = "assertive"
 
 
 # ── Audit ────────────────────────────────────────────────────────────────────
