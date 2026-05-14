@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Modal } from '@/components/ui/modal'
 
 import { useContactPersons } from '@/hooks/contactPersons'
@@ -6,6 +6,7 @@ import { useContracts } from '@/hooks/contracts'
 import {
   useCreateCustomer,
   useCustomer,
+  useCustomerAiSummaryStream,
   useCustomers,
   useDeleteCustomer,
   useUpdateCustomer,
@@ -233,6 +234,14 @@ export function ClientsPageApi() {
   const updateCustomer = useUpdateCustomer()
   const deleteCustomer = useDeleteCustomer()
   const createNote = useCreateNote()
+  const aiSummary = useCustomerAiSummaryStream()
+
+  useEffect(() => {
+    if (selectedId) {
+      aiSummary.reset()
+      aiSummary.trigger(selectedId)
+    }
+  }, [selectedId, aiSummary.reset, aiSummary.trigger])
 
   const selected = useMemo(() => {
     const list = clients ?? []
@@ -607,39 +616,119 @@ export function ClientsPageApi() {
 
               <div className="cp-tab-body">
                 {tab === 'info' && (
-                  <div className="cp-info-grid">
-                    {[
-                      { icon: '🏢', label: 'Branża', value: selected.industry || '—' },
-                      { icon: '💳', label: 'Nr konta', value: selected.account_number || '—' },
-                      {
-                        icon: '📅',
-                        label: 'Termin płatności',
-                        value: selected.payment_period_days
-                          ? `${selected.payment_period_days} dni`
-                          : '—',
-                      },
-                      { icon: '📞', label: 'Telefon', value: selected.phone || '—' },
-                      {
-                        icon: '📧',
-                        label: 'Email bilingowy',
-                        value: selected.billing_email || '—',
-                      },
-                      {
-                        icon: '👤',
-                        label: 'Kontakt',
-                        value: contacts[0]
-                          ? `${contacts[0].first_name} ${contacts[0].last_name}`
-                          : 'Brak',
-                      },
-                    ].map((it) => (
-                      <div key={it.label} className="cp-info-card">
-                        <div className="cp-info-icon">{it.icon}</div>
-                        <div>
-                          <div className="cp-info-label">{it.label}</div>
-                          <div className="cp-info-value">{it.value}</div>
-                        </div>
+                  <div>
+                    <div
+                      style={{
+                        marginBottom: 20,
+                        padding: '14px 16px',
+                        borderRadius: 10,
+                        background: '#faf5ff',
+                        border: '1px solid #e9d8fd',
+                      }}
+                    >
+                      <div
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          marginBottom: 10,
+                        }}
+                      >
+                        <span
+                          style={{
+                            fontSize: 12,
+                            fontWeight: 700,
+                            color: '#553c9a',
+                            letterSpacing: 0.3,
+                          }}
+                        >
+                          ✦ Podsumowanie AI
+                        </span>
+                        <button
+                          style={{
+                            fontSize: 11,
+                            fontWeight: 600,
+                            color: '#553c9a',
+                            background: 'transparent',
+                            border: '1px solid #c4b5fd',
+                            borderRadius: 5,
+                            padding: '3px 10px',
+                            cursor: aiSummary.isPending ? 'not-allowed' : 'pointer',
+                            opacity: aiSummary.isPending ? 0.5 : 1,
+                          }}
+                          onClick={() => selectedId && aiSummary.trigger(selectedId)}
+                          disabled={aiSummary.isPending}
+                        >
+                          {aiSummary.isPending ? 'Generowanie…' : 'Odśwież'}
+                        </button>
                       </div>
-                    ))}
+
+                      {aiSummary.isPending && !aiSummary.text && (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
+                          {[100, 85, 60].map((w) => (
+                            <div
+                              key={w}
+                              style={{
+                                height: 12,
+                                borderRadius: 6,
+                                background:
+                                  'linear-gradient(90deg, #e9d8fd 25%, #d6bcfa 50%, #e9d8fd 75%)',
+                                backgroundSize: '200% 100%',
+                                animation: 'cp-shimmer 1.4s infinite',
+                                width: `${w}%`,
+                              }}
+                            />
+                          ))}
+                        </div>
+                      )}
+
+                      {aiSummary.text && (
+                        <p style={{ fontSize: 13, lineHeight: 1.65, color: '#3b2f6e', margin: 0 }}>
+                          {aiSummary.text}
+                        </p>
+                      )}
+
+                      {aiSummary.isError && (
+                        <p style={{ fontSize: 12, color: '#c94f02', margin: 0 }}>
+                          Nie udało się wygenerować podsumowania.
+                        </p>
+                      )}
+                    </div>
+
+                    <div className="cp-info-grid">
+                      {[
+                        { icon: '🏢', label: 'Branża', value: selected.industry || '—' },
+                        { icon: '💳', label: 'Nr konta', value: selected.account_number || '—' },
+                        {
+                          icon: '📅',
+                          label: 'Termin płatności',
+                          value: selected.payment_period_days
+                            ? `${selected.payment_period_days} dni`
+                            : '—',
+                        },
+                        { icon: '📞', label: 'Telefon', value: selected.phone || '—' },
+                        {
+                          icon: '📧',
+                          label: 'Email bilingowy',
+                          value: selected.billing_email || '—',
+                        },
+                        {
+                          icon: '👤',
+                          label: 'Kontakt',
+                          value: contacts[0]
+                            ? `${contacts[0].first_name} ${contacts[0].last_name}`
+                            : 'Brak',
+                        },
+                      ].map((it) => (
+                        <div key={it.label} className="cp-info-card">
+                          <div className="cp-info-icon">{it.icon}</div>
+                          <div>
+                            <div className="cp-info-label">{it.label}</div>
+                            <div className="cp-info-value">{it.value}</div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 )}
 
@@ -734,20 +823,32 @@ export function ClientsPageApi() {
         </div>
       </div>
 
-      <Modal 
-        isOpen={modalOpen} 
-        onClose={() => setModalOpen(false)} 
+      <Modal
+        isOpen={modalOpen}
+        onClose={() => setModalOpen(false)}
         title={modalMode === 'add' ? '✦ Nowy klient' : '✦ Edytuj klienta'}
       >
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          <div style={{ 
-            display: 'grid', 
-            gridTemplateColumns: '1fr 1fr', 
-            gap: '12px 16px'
-          }}>
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: '1fr 1fr',
+              gap: '12px 16px',
+            }}
+          >
             {FORM_FIELDS.map(([field, label, type]) => (
               <div key={field} className="cp-form-group">
-                <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#4a4340', marginBottom: 4 }}>{label}</label>
+                <label
+                  style={{
+                    display: 'block',
+                    fontSize: 12,
+                    fontWeight: 700,
+                    color: '#4a4340',
+                    marginBottom: 4,
+                  }}
+                >
+                  {label}
+                </label>
                 <input
                   className="cp-form-input"
                   type={type}
@@ -763,7 +864,7 @@ export function ClientsPageApi() {
                     border: '1px solid #e3e0db',
                     fontSize: 13,
                     outline: 'none',
-                    ...(formErrors[field] ? { borderColor: '#e53e3e' } : {})
+                    ...(formErrors[field] ? { borderColor: '#e53e3e' } : {}),
                   }}
                 />
                 {formErrors[field] && (
@@ -775,7 +876,17 @@ export function ClientsPageApi() {
             ))}
 
             <div className="cp-form-group">
-              <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#4a4340', marginBottom: 4 }}>Status</label>
+              <label
+                style={{
+                  display: 'block',
+                  fontSize: 12,
+                  fontWeight: 700,
+                  color: '#4a4340',
+                  marginBottom: 4,
+                }}
+              >
+                Status
+              </label>
               <select
                 className="cp-form-input"
                 value={form.status}
@@ -787,7 +898,7 @@ export function ClientsPageApi() {
                   border: '1px solid #e3e0db',
                   fontSize: 13,
                   outline: 'none',
-                  background: 'white'
+                  background: 'white',
                 }}
               >
                 <option value="active">Aktywny</option>
@@ -808,7 +919,7 @@ export function ClientsPageApi() {
                 background: 'white',
                 fontSize: 13,
                 fontWeight: 600,
-                cursor: 'pointer'
+                cursor: 'pointer',
               }}
               onClick={() => setModalOpen(false)}
             >
@@ -824,12 +935,14 @@ export function ClientsPageApi() {
                 color: 'white',
                 fontSize: 13,
                 fontWeight: 600,
-                cursor: 'pointer'
+                cursor: 'pointer',
               }}
               onClick={saveCustomer}
               disabled={createCustomer.isPending || updateCustomer.isPending}
             >
-              {createCustomer.isPending || updateCustomer.isPending ? 'Zapisywanie…' : 'Zapisz klienta'}
+              {createCustomer.isPending || updateCustomer.isPending
+                ? 'Zapisywanie…'
+                : 'Zapisz klienta'}
             </button>
           </div>
         </div>
