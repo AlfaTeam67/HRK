@@ -42,6 +42,9 @@ class Settings(BaseSettings):
     document_max_file_size_bytes: int = 10 * 1024 * 1024
     document_presigned_url_ttl_seconds: int = 300
 
+    # GUS BDL
+    gus_client_id: str = ""
+
     # Ollama (embeddings)
     ollama_url: str = "http://localhost:11434"
     ollama_embed_model: str = "nomic-embed-text"
