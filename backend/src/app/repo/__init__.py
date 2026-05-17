@@ -16,6 +16,7 @@ __all__ = [
     "ContractRepository",
     "ServiceRepository",
     "ContractServiceRepository",
+    "GusCpiRepository",
     "LookupRepository",
     "NoteRepository",
     "ContactPersonRepository",

@@ -49,6 +49,9 @@ from app.models.enums import (
     ValorizationStatus,
 )
 
+# Tier 7 — External integrations
+from app.models.gus import GusCpiSnapshot
+
 # Tier 4 — Documents & Notes
 from app.models.note import Note
 from app.models.rate import CustomerRate, CustomerRateMonth, Valorization
@@ -112,4 +115,6 @@ __all__ = [
     "Alert",
     # Tier 6
     "AuditLog",
+    # Tier 7
+    "GusCpiSnapshot",
 ]
