@@ -28,6 +28,7 @@ from app.models.contract import Contract, ContractAmendment
 from app.models.contract_service import ContractService
 from app.models.customer import ContactPerson, Customer
 from app.models.document_chunk import DocumentChunk
+from app.models.document_generation import DocumentGeneration
 from app.models.enums import (
     ActivityType,
     AlertStatus,
@@ -40,6 +41,8 @@ from app.models.enums import (
     ContractStatus,
     ContractType,
     CustomerStatus,
+    DocumentGenerationStatus,
+    DocumentTone,
     DocumentType,
     IndexType,
     NoteType,
@@ -85,6 +88,8 @@ __all__ = [
     "IndexType",
     "ValorizationStatus",
     "AuditAction",
+    "DocumentGenerationStatus",
+    "DocumentTone",
     # Tier 1
     "Company",
     "User",
@@ -104,6 +109,7 @@ __all__ = [
     "Note",
     "Attachment",
     "DocumentChunk",
+    "DocumentGeneration",
     # Tier 5
     "ActivityLog",
     "CustomerRelationScore",

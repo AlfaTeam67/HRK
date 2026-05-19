@@ -14,6 +14,8 @@ import {
 import { useCustomerTimeline } from '@/hooks/timeline'
 import { useCreateNote, useNotes } from '@/hooks/notes'
 import { useAppSelector } from '@/hooks/store'
+import { DocumentWizard } from '@/features/documentGeneration/DocumentWizard'
+import { DocumentsTab } from '@/features/documentGeneration/DocumentsTab'
 import {
   CUSTOMER_STATUS_PL,
   NOTE_TYPE_LABELS,
@@ -24,7 +26,7 @@ import {
   type ValidationErrors,
 } from '@/lib/customerConstants'
 
-type TabKey = 'info' | 'contracts' | 'notes' | 'timeline'
+type TabKey = 'info' | 'contracts' | 'documents' | 'notes' | 'timeline'
 
 interface TLEvent {
   id: string
@@ -218,6 +220,7 @@ export function ClientsPageApi() {
   const [formErrors, setFormErrors] = useState<ValidationErrors>({})
   const [noteText, setNoteText] = useState('')
   const [noteType, setNoteType] = useState<NoteType>('internal')
+  const [wizardOpen, setWizardOpen] = useState(false)
 
   const user = useAppSelector((s) => s.auth.user)
 
@@ -526,6 +529,20 @@ export function ClientsPageApi() {
                       </div>
 
                       <div style={{ display: 'flex', gap: 8, flexShrink: 0, alignItems: 'center' }}>
+                        <button
+                          className="cp-btn-edit"
+                          onClick={() => {
+                            setTab('documents')
+                            setWizardOpen(true)
+                          }}
+                          style={{
+                            background: '#e85c04',
+                            color: 'white',
+                            borderColor: '#e85c04',
+                          }}
+                        >
+                          ✦ Generuj dokument
+                        </button>
                         <button className="cp-btn-edit" onClick={openEdit}>
                           Edytuj
                         </button>
@@ -599,6 +616,7 @@ export function ClientsPageApi() {
                     [
                       ['info', 'Informacje'],
                       ['contracts', `Umowy (${contracts.length})`],
+                      ['documents', 'Dokumenty'],
                       ['notes', `Notatki (${notes.length})`],
                       ['timeline', 'Oś czasu'],
                     ] as [TabKey, string][]
@@ -751,6 +769,13 @@ export function ClientsPageApi() {
                   </div>
                 )}
 
+                {tab === 'documents' && selectedId && (
+                  <DocumentsTab
+                    customerId={selectedId}
+                    onGenerateClick={() => setWizardOpen(true)}
+                  />
+                )}
+
                 {tab === 'notes' && (
                   <div>
                     <div className="cp-note-form">
@@ -822,6 +847,19 @@ export function ClientsPageApi() {
           )}
         </div>
       </div>
+
+      {selected && (
+        <DocumentWizard
+          isOpen={wizardOpen}
+          customer={selected}
+          contracts={contracts}
+          onClose={() => setWizardOpen(false)}
+          onFinalized={() => {
+            setWizardOpen(false)
+            setTab('documents')
+          }}
+        />
+      )}
 
       <Modal
         isOpen={modalOpen}

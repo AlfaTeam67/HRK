@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="pl">
+<head>
+  <meta charset="utf-8">
+  <title>{{ title }}</title>
+  <style>
+    @page {
+      size: A4;
+      margin: 22mm 20mm 22mm 20mm;
+      @bottom-center {
+        content: "Strona " counter(page) " z " counter(pages);
+        font-size: 9pt;
+        color: #6b6258;
+      }
+      @top-right {
+        content: "{{ document_number or '' }}";
+        font-size: 9pt;
+        color: #6b6258;
+      }
+    }
+    {% if draft -%}
+    .draft-watermark {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%) rotate(-30deg);
+      font-size: 140pt;
+      font-weight: 800;
+      letter-spacing: 6pt;
+      color: rgba(232, 92, 4, 0.16);
+      z-index: -1;
+      pointer-events: none;
+      white-space: nowrap;
+      font-family: "Liberation Sans", "DejaVu Sans", sans-serif;
+    }
+    {%- endif %}
+    html { font-family: "Liberation Sans", "DejaVu Sans", sans-serif; color: #1a1714; font-size: 10.5pt; line-height: 1.5; }
+    h1 { font-size: 16pt; margin: 0 0 4mm 0; color: #1a1714; }
+    h2 { font-size: 12pt; margin: 6mm 0 2mm 0; color: #2d2620; border-bottom: 1px solid #e6dfd6; padding-bottom: 1mm; }
+    p { margin: 0 0 2mm 0; }
+    .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 6mm; }
+    .header .meta { text-align: right; font-size: 9pt; color: #6b6258; }
+    .parties { display: table; width: 100%; margin-bottom: 4mm; }
+    .parties .col { display: table-cell; width: 50%; vertical-align: top; padding-right: 4mm; }
+    .parties strong { display: block; font-size: 9.5pt; color: #6b6258; text-transform: uppercase; letter-spacing: 0.4pt; margin-bottom: 1mm; }
+    table.simulation { width: 100%; border-collapse: collapse; margin: 3mm 0 4mm 0; }
+    table.simulation th, table.simulation td { border-bottom: 1px solid #e6dfd6; padding: 2mm 2mm; font-size: 9.5pt; text-align: right; }
+    table.simulation th { background: #faf5ef; color: #2d2620; text-align: right; font-weight: 600; }
+    table.simulation th:first-child, table.simulation td:first-child { text-align: left; }
+    table.simulation tfoot td { border-top: 2px solid #1a1714; font-weight: 700; }
+    .num { font-variant-numeric: tabular-nums; }
+    .delta-pos { color: #276749; font-weight: 600; }
+    .delta-neg { color: #9b2c2c; font-weight: 600; }
+    .clause { margin-bottom: 4mm; }
+    .clause .num { font-weight: 700; color: #2d2620; margin-right: 2mm; }
+    .signatures { display: table; width: 100%; margin-top: 14mm; page-break-inside: avoid; }
+    .signatures .col { display: table-cell; width: 50%; padding: 0 8mm; vertical-align: top; }
+    .signatures .line { border-top: 1px solid #1a1714; padding-top: 2mm; font-size: 9pt; color: #6b6258; }
+    .footnote { font-size: 8.5pt; color: #6b6258; margin-top: 8mm; padding-top: 2mm; border-top: 1px dashed #d4cabd; }
+    .badge { display: inline-block; padding: 1mm 2mm; border-radius: 2mm; font-size: 8.5pt; font-weight: 700; letter-spacing: 0.3pt; text-transform: uppercase; }
+    .badge-draft { background: #fff5f0; color: #c94f02; border: 1px solid #fdd5b8; }
+    {% block extra_styles %}{% endblock %}
+  </style>
+</head>
+<body>
+{% if draft %}<div class="draft-watermark">DRAFT</div>{% endif %}
+{% block body %}{% endblock %}
+</body>
+</html>

@@ -1,0 +1,66 @@
+key: amendment_valorization
+version: "1.0.0"
+title: "Aneks waloryzacyjny do umowy"
+description: >
+  Roczny aneks indeksacyjny stawek dla wybranych usług w ramach istniejącej
+  umowy ramowej. Generuje aneks PDF + opcjonalne pismo przewodnie.
+
+output_document_type: amendment
+creates_amendment: true
+
+template_file: v1.html.j2
+cover_letter_template_file: ../cover_letter/v1.html.j2
+
+# JSON-Schema for the wizard form (frontend renders dynamically)
+params_schema:
+  type: object
+  required: [year, index_type, index_value, effective_date]
+  properties:
+    year:
+      type: integer
+      minimum: 2020
+      maximum: 2100
+      title: "Rok waloryzacji"
+    index_type:
+      type: string
+      enum: [GUS_CPI, fixed_pct, custom]
+      title: "Typ indeksacji"
+      description: "GUS_CPI = wskaźnik inflacji GUS; fixed_pct = stałe %; custom = ręczne uzasadnienie"
+    index_value:
+      type: number
+      title: "Wartość indeksacji (%)"
+      minimum: -50
+      maximum: 100
+    effective_date:
+      type: string
+      format: date
+      title: "Data wejścia w życie"
+    services:
+      type: array
+      title: "Usługi (opcjonalne nadpisania)"
+      items:
+        type: object
+        properties:
+          contract_service_id:
+            type: string
+            format: uuid
+          include:
+            type: boolean
+            default: true
+          custom_index_pct:
+            type: number
+            description: "Nadpisuje globalny index dla tej usługi"
+
+# Clauses oznaczone jako legally_locked są ZAWSZE renderowane jak zdefiniowane —
+# LLM nie może ich parafrazować ani zmieniać.
+clauses:
+  parties:
+    locked: true
+  scope_of_change:
+    locked: true
+  effective_date:
+    locked: true
+  governing_law:
+    locked: true
+  signatures:
+    locked: true
