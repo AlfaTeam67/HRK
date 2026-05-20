@@ -1,5 +1,7 @@
 import { useRef, useState, useMemo } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { cardStyle as card } from '@/lib/styles'
+import { ContractModal } from '@/features/contracts/ContractModal'
 import { useAppSelector } from '@/hooks/store'
 import { useAlerts, useDashboardKpi } from '@/hooks/alerts'
 import { Modal } from '@/components/ui/modal'
@@ -37,6 +39,8 @@ const OCR_LABEL: Record<string, string> = {
 
 /* ─── Component ──────────────────────────────────────────────── */
 export function ContractsPage() {
+  const navigate = useNavigate()
+  const [contractModalId, setContractModalId] = useState<{ contractId: string; customerId: string } | null>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isContractModalOpen, setIsContractModalOpen] = useState(false)
   const user = useAppSelector((s) => s.auth.user)
@@ -87,11 +91,42 @@ export function ContractsPage() {
   const createContract = useCreateContract()
   const getDownloadUrl = useDocumentDownloadUrl()
 
+  type SortCol = 'client' | 'number' | 'type' | 'status' | 'end_date'
+  const [sortCol, setSortCol] = useState<SortCol | null>(null)
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
+
+  function handleSort(col: SortCol) {
+    if (sortCol === col) setSortDir(d => d === 'asc' ? 'desc' : 'asc')
+    else { setSortCol(col); setSortDir('asc') }
+  }
+
   // Client-side filter by contract type
   const filteredContracts = useMemo(() => {
-    if (!filterContractType) return realContracts
-    return realContracts.filter(c => c.contract_type === filterContractType)
-  }, [realContracts, filterContractType])
+    let list = filterContractType
+      ? realContracts.filter(c => c.contract_type === filterContractType)
+      : [...realContracts]
+
+    if (sortCol) {
+      list.sort((a, b) => {
+        let va = '', vb = ''
+        if (sortCol === 'client') {
+          va = customers.find(c => c.id === a.customer_id)?.company_name ?? ''
+          vb = customers.find(c => c.id === b.customer_id)?.company_name ?? ''
+        } else if (sortCol === 'number') {
+          va = a.contract_number; vb = b.contract_number
+        } else if (sortCol === 'type') {
+          va = a.contract_type; vb = b.contract_type
+        } else if (sortCol === 'status') {
+          va = a.status; vb = b.status
+        } else if (sortCol === 'end_date') {
+          va = a.end_date ?? '9999'; vb = b.end_date ?? '9999'
+        }
+        const cmp = va.localeCompare(vb, 'pl')
+        return sortDir === 'asc' ? cmp : -cmp
+      })
+    }
+    return list
+  }, [realContracts, filterContractType, sortCol, sortDir, customers])
 
   // Map: contract_id → first linked document (for preview lookup)
   const docsMap = useMemo(() => {
@@ -454,30 +489,52 @@ export function ContractsPage() {
         <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
           <thead>
             <tr style={{ borderBottom: '1px solid #f2f0ed', background: '#fafaf9' }}>
-              <th style={{ padding: '12px 18px', fontSize: 11, fontWeight: 700, color: '#9e9389' }}>NR UMOWY / KLIENT</th>
-              <th style={{ padding: '12px 18px', fontSize: 11, fontWeight: 700, color: '#9e9389' }}>TYP</th>
-              <th style={{ padding: '12px 18px', fontSize: 11, fontWeight: 700, color: '#9e9389' }}>STATUS</th>
-              <th style={{ padding: '12px 18px', fontSize: 11, fontWeight: 700, color: '#9e9389' }}>TERMIN</th>
+              {(['client','number','type','status','end_date'] as SortCol[]).map((col) => {
+                const labels: Record<SortCol, string> = { client: 'KLIENT', number: 'NR UMOWY', type: 'TYP', status: 'STATUS', end_date: 'TERMIN' }
+                const active = sortCol === col
+                return (
+                  <th key={col} style={{ padding: '12px 18px', fontSize: 11, fontWeight: 700, color: active ? '#e85c04' : '#9e9389', userSelect: 'none' }}>
+                    <button
+                      onClick={() => handleSort(col)}
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: 11, fontWeight: 700, color: 'inherit', display: 'flex', alignItems: 'center', gap: 4, padding: 0 }}
+                    >
+                      {labels[col]}
+                      <span style={{ fontSize: 9, opacity: active ? 1 : 0.4 }}>
+                        {active ? (sortDir === 'asc' ? '▲' : '▼') : '⇅'}
+                      </span>
+                    </button>
+                  </th>
+                )
+              })}
               <th style={{ padding: '12px 18px', fontSize: 11, fontWeight: 700, color: '#9e9389' }}>DOKUMENT</th>
-              <th style={{ padding: '12px 18px', fontSize: 11, fontWeight: 700, color: '#9e9389' }}></th>
+              <th style={{ padding: '12px 18px' }}></th>
             </tr>
           </thead>
           <tbody>
             {contractsLoading ? (
-              <tr><td colSpan={6} style={{ padding: '40px', textAlign: 'center', color: '#9e9389' }}>Ładowanie danych...</td></tr>
+              <tr><td colSpan={7} style={{ padding: '40px', textAlign: 'center', color: '#9e9389' }}>Ładowanie danych...</td></tr>
             ) : filteredContracts.length === 0 ? (
-              <tr><td colSpan={6} style={{ padding: '40px', textAlign: 'center', color: '#9e9389' }}>Brak umów spełniających kryteria.</td></tr>
+              <tr><td colSpan={7} style={{ padding: '40px', textAlign: 'center', color: '#9e9389' }}>Brak umów spełniających kryteria.</td></tr>
             ) : filteredContracts.map((c) => {
               const client = customers.find(cust => cust.id === c.customer_id)
               const statusStyles = STATUS_S[c.status] || STATUS_S['draft']
               const linkedDoc = docsMap.get(c.id)
               const isDeleting = deletingId === c.id
               return (
-                <tr key={c.id} style={{ borderBottom: '1px solid #f2f0ed', fontSize: 12.5, opacity: isDeleting ? 0.5 : 1 }}>
+                <tr
+                  key={c.id}
+                  style={{ borderBottom: '1px solid #f2f0ed', fontSize: 12.5, opacity: isDeleting ? 0.5 : 1, cursor: 'pointer' }}
+                  onClick={() => setContractModalId({ contractId: c.id, customerId: c.customer_id })}
+                >
                   <td style={{ padding: '14px 18px' }}>
-                    <div style={{ fontWeight: 700, color: '#1a1714' }}>{c.contract_number}</div>
-                    <div style={{ fontSize: 11, color: '#9e9389' }}>{client?.company_name || 'Nieznany klient'}</div>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); navigate(`/clients/${c.customer_id}`) }}
+                      style={{ background: 'none', border: 'none', padding: 0, fontSize: 13.5, fontWeight: 800, color: '#1a1714', cursor: 'pointer', fontFamily: 'inherit' }}
+                    >
+                      {client?.company_name || 'Nieznany klient'}
+                    </button>
                   </td>
+                  <td style={{ padding: '14px 18px', color: '#4b5563', fontWeight: 500 }}>{c.contract_number}</td>
                   <td style={{ padding: '14px 18px', color: '#4b5563' }}>{c.contract_type}</td>
                   <td style={{ padding: '14px 18px' }}>
                     <span style={{ padding: '3px 10px', borderRadius: 20, fontSize: 11, fontWeight: 600, background: statusStyles.bg, color: statusStyles.color }}>
@@ -491,7 +548,7 @@ export function ContractsPage() {
                     {linkedDoc ? (
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                         <button
-                          onClick={() => handlePreview(c.id)}
+                          onClick={(e) => { e.stopPropagation(); handlePreview(c.id) }}
                           style={{ background: 'none', border: '1px solid #e3e0db', borderRadius: 4, padding: '4px 8px', fontSize: 10, fontWeight: 700, cursor: 'pointer', color: '#e85c04', whiteSpace: 'nowrap' }}
                         >
                           PODGLĄD
@@ -512,7 +569,7 @@ export function ContractsPage() {
                   </td>
                   <td style={{ padding: '14px 18px', textAlign: 'right' }}>
                     <button
-                      onClick={() => handleDelete(c.id)}
+                      onClick={(e) => { e.stopPropagation(); handleDelete(c.id) }}
                       disabled={isDeleting}
                       title="Usuń umowę"
                       style={{ background: 'none', border: '1px solid #f2cfc8', borderRadius: 4, padding: '4px 8px', fontSize: 12, cursor: isDeleting ? 'not-allowed' : 'pointer', color: '#c94f02', lineHeight: 1 }}
@@ -526,6 +583,14 @@ export function ContractsPage() {
           </tbody>
         </table>
       </div>
+
+      {contractModalId && (
+        <ContractModal
+          contractId={contractModalId.contractId}
+          customerId={contractModalId.customerId}
+          onClose={() => setContractModalId(null)}
+        />
+      )}
     </div>
   )
 }
