@@ -40,7 +40,11 @@ export function useUploadDocument() {
   })
 }
 
-export function useDocumentsQuery(params?: { customer_id?: string; contract_id?: string }) {
+export function useDocumentsQuery(params?: {
+  customer_id?: string
+  contract_id?: string
+  exclude_draft?: boolean
+}) {
   return useQuery({
     queryKey: ['documents', params],
     queryFn: async () => {

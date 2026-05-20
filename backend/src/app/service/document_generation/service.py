@@ -25,7 +25,7 @@ from datetime import UTC, date, datetime
 from decimal import Decimal
 from typing import Any
 
-from fastapi import HTTPException, status
+from fastapi import BackgroundTasks, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
@@ -37,6 +37,7 @@ from app.models.enums import (
     ActivityType,
     DocumentGenerationStatus,
     DocumentType,
+    OcrStatus,
 )
 from app.repo.activity import ActivityLogRepository
 from app.repo.attachment import AttachmentRepository
@@ -58,6 +59,7 @@ from app.service.document_generation.templates import (
     TemplateRegistry,
     get_template_registry,
 )
+from app.service.document_processing import DocumentProcessingService
 from app.service.llm import LLMService
 from app.service.storage import StorageService, StorageServiceError
 
@@ -205,6 +207,7 @@ class DocumentGenerationService:
             document_type=DocumentType.AMENDMENT,
             filename=f"aneks_{safe_amendment_no}_{safe_contract_no}_DRAFT.pdf",
             uploaded_by=generated_by,
+            ocr_status=OcrStatus.SKIPPED,
         )
 
         cover_letter_attachment = None
@@ -231,6 +234,7 @@ class DocumentGenerationService:
                 document_type=DocumentType.COVER_LETTER,
                 filename=f"pismo_przewodnie_{safe_amendment_no}_DRAFT.pdf",
                 uploaded_by=generated_by,
+                ocr_status=OcrStatus.SKIPPED,
             )
 
         gen = await self._gen_repo.create(
@@ -287,8 +291,9 @@ class DocumentGenerationService:
         generation_id: uuid.UUID,
         *,
         accepted_by: uuid.UUID,
+        background_tasks: BackgroundTasks,
     ) -> DocumentGeneration:
-        """Re-render without DRAFT watermark, replace S3 object, mark accepted."""
+        """Re-render without DRAFT watermark, upload as new attachment, schedule indexing."""
         gen = await self.get(generation_id)
         if gen.status not in (
             DocumentGenerationStatus.PREVIEW,
@@ -299,12 +304,33 @@ class DocumentGenerationService:
                 detail=f"Generation cannot be accepted from status '{gen.status.value}'",
             )
 
+        # Capture draft references as plain values before any ORM mutations.
+        old_amendment_s3_key: str | None = None
+        old_amendment_att_id: uuid.UUID | None = None
+        old_cover_letter_s3_key: str | None = None
+        old_cover_letter_att_id: uuid.UUID | None = None
+
+        if gen.attachment_pdf_id:
+            old_att = await self._attachment_repo.get(gen.attachment_pdf_id)
+            if old_att:
+                old_amendment_s3_key = old_att.s3_key
+                old_amendment_att_id = old_att.id
+
+        if gen.cover_letter_attachment_id:
+            old_cl = await self._attachment_repo.get(gen.cover_letter_attachment_id)
+            if old_cl:
+                old_cover_letter_s3_key = old_cl.s3_key
+                old_cover_letter_att_id = old_cl.id
+
         request = GenerationRequest(**gen.payload["request"])
         context, simulation = await self._build_context_and_simulation(request)
         amendment_number = gen.payload["amendment_number"]
         amendment_date = date.fromisoformat(gen.payload["amendment_date"])
         rationale_bullets = gen.ai_artifacts.get("rationale_bullets") or []
         cover_letter_text = gen.ai_artifacts.get("cover_letter_text")
+        safe_amendment_no = self._safe_filename(amendment_number)
+        safe_contract_no = self._safe_filename(context["contract"].contract_number)
+        customer_id: uuid.UUID = gen.customer_id
 
         clean_html = self._registry.render_main(
             request.template_key,
@@ -320,14 +346,19 @@ class DocumentGenerationService:
             ),
         )
         clean_pdf = await self._renderer.render(clean_html)
-        safe_amendment_no = self._safe_filename(amendment_number)
-        safe_contract_no = self._safe_filename(context["contract"].contract_number)
-        await self._replace_pdf(
-            attachment_id=gen.attachment_pdf_id,
+        new_amendment_att = await self._upload_pdf(
             pdf=clean_pdf,
-            new_filename=f"aneks_{safe_amendment_no}_{safe_contract_no}.pdf",
+            customer=context["customer"],
+            contract=context["contract"],
+            document_type=DocumentType.AMENDMENT,
+            filename=f"aneks_{safe_amendment_no}_{safe_contract_no}.pdf",
+            uploaded_by=accepted_by,
+            ocr_status=OcrStatus.PENDING,
         )
+        new_amendment_att_id: uuid.UUID = new_amendment_att.id
 
+        new_cover_letter_att_id: uuid.UUID | None = None
+        clean_cover_pdf: bytes | None = None
         if cover_letter_text and gen.cover_letter_attachment_id:
             cover_html = self._registry.render_cover_letter(
                 request.template_key,
@@ -343,16 +374,23 @@ class DocumentGenerationService:
                     extra={"cover_letter_text": cover_letter_text},
                 ),
             )
-            cover_pdf = await self._renderer.render(cover_html)
-            await self._replace_pdf(
-                attachment_id=gen.cover_letter_attachment_id,
-                pdf=cover_pdf,
-                new_filename=f"pismo_przewodnie_{safe_amendment_no}.pdf",
+            clean_cover_pdf = await self._renderer.render(cover_html)
+            new_cover_letter_att = await self._upload_pdf(
+                pdf=clean_cover_pdf,
+                customer=context["customer"],
+                contract=context["contract"],
+                document_type=DocumentType.COVER_LETTER,
+                filename=f"pismo_przewodnie_{safe_amendment_no}.pdf",
+                uploaded_by=accepted_by,
+                ocr_status=OcrStatus.PENDING,
             )
+            new_cover_letter_att_id = new_cover_letter_att.id
 
         gen = await self._gen_repo.update(
             gen,
             {
+                "attachment_pdf_id": new_amendment_att_id,
+                "cover_letter_attachment_id": new_cover_letter_att_id,
                 "status": DocumentGenerationStatus.ACCEPTED,
                 "accepted_by": accepted_by,
                 "pdf_sha256": PdfRenderer.sha256(clean_pdf),
@@ -371,6 +409,33 @@ class DocumentGenerationService:
             performed_by=accepted_by,
         )
         await self._session.commit()
+
+        # Schedule vector indexing for the new clean attachments.
+        processing = DocumentProcessingService()
+        background_tasks.add_task(
+            processing.process,
+            new_amendment_att_id,
+            customer_id,
+            clean_pdf,
+            "application/pdf",
+        )
+        if new_cover_letter_att_id and clean_cover_pdf:
+            background_tasks.add_task(
+                processing.process,
+                new_cover_letter_att_id,
+                customer_id,
+                clean_cover_pdf,
+                "application/pdf",
+            )
+
+        # Best-effort cleanup of draft artifacts after commit.
+        await self._delete_draft_attachment(
+            s3_key=old_amendment_s3_key, attachment_id=old_amendment_att_id
+        )
+        await self._delete_draft_attachment(
+            s3_key=old_cover_letter_s3_key, attachment_id=old_cover_letter_att_id
+        )
+
         return gen
 
     async def reject(self, generation_id: uuid.UUID, *, rejected_by: uuid.UUID) -> None:
@@ -519,10 +584,9 @@ class DocumentGenerationService:
         document_type: DocumentType,
         filename: str,
         uploaded_by: uuid.UUID,
+        ocr_status: OcrStatus,
     ) -> Any:
         company_id = customer.company_id
-        # Filename can still contain `/` if caller forgot to sanitise it; do it here
-        # defensively to keep S3 keys flat (no nested directories from filename).
         safe_filename = filename.replace("/", "-").replace("\\", "-")
         s3_key = (
             f"companies/{company_id or 'unassigned'}/generated/{uuid.uuid4()}_{safe_filename}"
@@ -546,25 +610,27 @@ class DocumentGenerationService:
                 "mime_type": "application/pdf",
                 "file_size_bytes": len(pdf),
                 "uploaded_by": uploaded_by,
+                "ocr_status": ocr_status,
             }
         )
 
-    async def _replace_pdf(
-        self, *, attachment_id: uuid.UUID | None, pdf: bytes, new_filename: str
+    async def _delete_draft_attachment(
+        self, *, s3_key: str | None, attachment_id: uuid.UUID | None
     ) -> None:
-        if attachment_id is None:
-            return
-        attachment = await self._attachment_repo.get(attachment_id)
-        if attachment is None:
-            return
-        try:
-            await self._storage.upload_bytes(
-                key=attachment.s3_key, content=pdf, content_type="application/pdf"
-            )
-        except StorageServiceError as exc:
-            raise DocumentStorageError("Could not replace generated PDF") from exc
-        attachment.original_filename = new_filename
-        attachment.file_size_bytes = len(pdf)
+        if s3_key is not None:
+            try:
+                await self._storage.delete_object(key=s3_key)
+            except Exception:
+                logger.exception("Failed to delete draft S3 object", extra={"key": s3_key})
+        if attachment_id is not None:
+            try:
+                await self._attachment_repo.delete(attachment_id, soft=False)
+                await self._session.commit()
+            except Exception:
+                logger.exception(
+                    "Failed to delete draft attachment record",
+                    extra={"id": str(attachment_id)},
+                )
 
 
 # ── Module helpers ───────────────────────────────────────────────────────────
@@ -577,7 +643,7 @@ def _serializable(payload: Any) -> Any:
         return [_serializable(v) for v in payload]
     if isinstance(payload, Decimal):
         return str(payload)
-    if isinstance(payload, (date, datetime)):
+    if isinstance(payload, date | datetime):
         return payload.isoformat()
     if isinstance(payload, uuid.UUID):
         return str(payload)

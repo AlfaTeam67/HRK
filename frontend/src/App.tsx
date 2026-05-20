@@ -49,6 +49,7 @@ function App() {
           <Route index element={<DashboardRedirect />} />
           <Route path="managed-dashboard" element={<ManagerDashboardPage />} />
           <Route path="clients" element={<ClientsPageApi />} />
+          <Route path="clients/:customerId" element={<ClientsPageApi />} />
           <Route path="contracts" element={<ContractsPage />} />
           <Route path="valorization" element={<ValorizationPage />} />
           <Route path="assistant" element={<AdvisorPage />} />

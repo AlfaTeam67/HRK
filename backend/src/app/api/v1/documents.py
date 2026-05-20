@@ -39,10 +39,14 @@ async def list_documents(
     company_id: UUID | None = None,
     customer_id: UUID | None = None,
     contract_id: UUID | None = None,
+    exclude_draft: bool = False,
     service: DocumentService = Depends(get_document_service),
 ) -> Any:
     return await service.list_documents(
-        company_id=company_id, customer_id=customer_id, contract_id=contract_id
+        company_id=company_id,
+        customer_id=customer_id,
+        contract_id=contract_id,
+        exclude_draft=exclude_draft,
     )
 
 

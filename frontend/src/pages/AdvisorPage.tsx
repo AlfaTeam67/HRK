@@ -138,13 +138,24 @@ function DocumentList({
             <div style={{ fontSize: 13, fontWeight: 700, color: '#1a1714', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginBottom: 3 }}>
               {doc.original_filename}
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
               <span style={{ fontSize: 10, fontWeight: 600, color: '#c94f02', background: '#fff5f0', border: '1px solid #fdd5b8', borderRadius: 4, padding: '1px 6px', letterSpacing: '0.02em' }}>
                 {doc.document_type}
               </span>
               {doc.file_size_bytes ? (
                 <span style={{ fontSize: 10, color: '#b5afa8' }}>{fmtBytes(doc.file_size_bytes)}</span>
               ) : null}
+              {(doc.ocr_status === 'pending' || doc.ocr_status === 'processing' || !doc.ocr_status) && (
+                <span style={{ fontSize: 9, fontWeight: 600, color: '#9e9389', background: '#f5f2ef', border: '1px solid #e3e0db', borderRadius: 10, padding: '1px 6px', display: 'flex', alignItems: 'center', gap: 3 }}>
+                  <span style={{ display: 'inline-block', width: 6, height: 6, borderRadius: '50%', background: '#c8c2ba', animation: 'dot-bounce 1.2s ease-in-out infinite' }} />
+                  indeksowanie...
+                </span>
+              )}
+              {doc.ocr_status === 'failed' && (
+                <span style={{ fontSize: 9, fontWeight: 600, color: '#c94f02', background: '#fff5f0', border: '1px solid #fdd5b8', borderRadius: 10, padding: '1px 6px' }}>
+                  ⚠ błąd indeksowania
+                </span>
+              )}
             </div>
           </div>
 
@@ -204,7 +215,9 @@ export function AdvisorPage() {
   const [selectedCustomerId, setSelectedCustomerId] = useState<string>('')
 
   const { data: customerDocs = [], isLoading: docsLoading } = useDocumentsQuery(
-    selectedCustomerId ? { customer_id: selectedCustomerId } : undefined,
+    selectedCustomerId
+      ? { customer_id: selectedCustomerId, exclude_draft: true }
+      : undefined,
   )
   const [isAiMode, setIsAiMode] = useState(false)
   const [isInfoModalOpen, setIsInfoModalOpen] = useState(false)

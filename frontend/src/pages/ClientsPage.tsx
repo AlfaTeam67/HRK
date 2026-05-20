@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { Modal } from '@/components/ui/modal'
 
 import { useContactPersons } from '@/hooks/contactPersons'
@@ -16,6 +17,7 @@ import { useCreateNote, useNotes } from '@/hooks/notes'
 import { useAppSelector } from '@/hooks/store'
 import { DocumentWizard } from '@/features/documentGeneration/DocumentWizard'
 import { DocumentsTab } from '@/features/documentGeneration/DocumentsTab'
+import { ContractModal } from '@/features/contracts/ContractModal'
 import {
   CUSTOMER_STATUS_PL,
   NOTE_TYPE_LABELS,
@@ -200,9 +202,16 @@ function Timeline({ events, loading = false }: { events: TLEvent[]; loading?: bo
 }
 
 export function ClientsPageApi() {
+  const { customerId: routeCustomerId } = useParams<{ customerId?: string }>()
+  const [searchParams] = useSearchParams()
+  const navigate = useNavigate()
+
   const [search, setSearch] = useState('')
-  const [selectedId, setSelectedId] = useState<string | null>(null)
-  const [tab, setTab] = useState<TabKey>('info')
+  const selectedId = routeCustomerId ?? null
+  const tabParam = (searchParams.get('tab') as TabKey) ?? 'info'
+  const [tabState, setTabState] = useState<{ forId: string | null; value: TabKey } | null>(null)
+  const tab: TabKey = tabState?.forId === selectedId ? tabState.value : tabParam
+  function setTab(t: TabKey) { setTabState({ forId: selectedId, value: t }) }
   const [modalOpen, setModalOpen] = useState(false)
   const [modalMode, setModalMode] = useState<'add' | 'edit'>('add')
   const [form, setForm] = useState<CustomerForm>({
@@ -221,6 +230,7 @@ export function ClientsPageApi() {
   const [noteText, setNoteText] = useState('')
   const [noteType, setNoteType] = useState<NoteType>('internal')
   const [wizardOpen, setWizardOpen] = useState(false)
+  const [contractModalId, setContractModalId] = useState<string | null>(null)
 
   const user = useAppSelector((s) => s.auth.user)
 
@@ -349,8 +359,7 @@ export function ClientsPageApi() {
 
     try {
       await deleteCustomer.mutateAsync(selected.id)
-      setSelectedId(null)
-      setTab('info')
+      navigate('/clients')
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Nieznany błąd'
       console.error('[ClientsPage] removeCustomer failed:', err)
@@ -429,8 +438,7 @@ export function ClientsPageApi() {
                   key={c.id}
                   className={`cp-client-row${active ? ' active' : ''}`}
                   onClick={() => {
-                    setSelectedId(c.id)
-                    setTab('info')
+                    navigate(`/clients/${c.id}`)
                   }}
                 >
                   <div className={`cp-avatar ${active ? 'active-av' : 'inactive'}`}>
@@ -756,7 +764,12 @@ export function ClientsPageApi() {
                       <p style={{ color: '#9e9389', fontSize: 13 }}>Brak umów dla tego klienta.</p>
                     )}
                     {contracts.map((c) => (
-                      <div key={c.id} className="cp-contract-row">
+                      <div
+                        key={c.id}
+                        className="cp-contract-row"
+                        style={{ cursor: 'pointer' }}
+                        onClick={() => setContractModalId(c.id)}
+                      >
                         <div>
                           <div className="cp-contract-num">{c.contract_number}</div>
                           <div className="cp-contract-sub">
@@ -985,6 +998,14 @@ export function ClientsPageApi() {
           </div>
         </div>
       </Modal>
+
+      {contractModalId && selectedId && (
+        <ContractModal
+          contractId={contractModalId}
+          customerId={selectedId}
+          onClose={() => setContractModalId(null)}
+        />
+      )}
     </div>
   )
 }
