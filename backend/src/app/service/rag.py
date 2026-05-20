@@ -4,6 +4,7 @@ import re
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import settings
 from app.repo.document_chunk import DocumentChunkRepository
 from app.schemas.rag import ChunkResult, RagSearchRequest, RagSearchResponse
 from app.service.embedding import EmbeddingService
@@ -78,7 +79,8 @@ class RAGService:
             customer_id=req.customer_id,
             embedding=query_embedding,
             query_text=req.query,
-            top_k=fetch_k
+            top_k=fetch_k,
+            max_distance=settings.rag_vec_max_distance,
         )
 
         chunks = [
@@ -91,6 +93,7 @@ class RAGService:
                 bbox=chunk.bbox,
                 section_title=chunk.section_title,
                 score=score,
+                similarity=max(0.0, 1.0 - float(chunk.vec_score)),
             )
             for chunk, score in results
         ]
@@ -102,4 +105,8 @@ class RAGService:
         if req.ai_mode and chunks:
             ai_answer = await self._llm.generate(req.query, [c.content for c in chunks])
 
-        return RagSearchResponse(chunks=chunks, ai_answer=ai_answer)
+        return RagSearchResponse(
+            chunks=chunks,
+            ai_answer=ai_answer,
+            no_results_found=not bool(chunks),
+        )
