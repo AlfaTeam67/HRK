@@ -2,10 +2,17 @@
 
 import asyncio
 import os
+import sys
 from collections.abc import AsyncGenerator, Generator
+from unittest.mock import MagicMock
 
 import pytest
 from httpx import ASGITransport, AsyncClient
+
+# weasyprint is a system-level dependency not available in the CI/local venv.
+# Mock it so that all unit tests can import app modules without the binary.
+if "weasyprint" not in sys.modules:
+    sys.modules["weasyprint"] = MagicMock()
 
 # Required settings consumed at import time by app.config.Settings.
 database_url = os.getenv("DATABASE_URL")

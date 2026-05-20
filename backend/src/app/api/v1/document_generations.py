@@ -5,7 +5,7 @@ from __future__ import annotations
 import uuid
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
@@ -80,9 +80,14 @@ async def get_generation(
 async def accept_generation(
     generation_id: uuid.UUID,
     payload: GenerationAccept,
+    background_tasks: BackgroundTasks,
     service: Annotated[DocumentGenerationService, Depends(get_generation_service)],
 ) -> Any:
-    return await service.accept(generation_id, accepted_by=payload.accepted_by)
+    return await service.accept(
+        generation_id,
+        accepted_by=payload.accepted_by,
+        background_tasks=background_tasks,
+    )
 
 
 @router.post(

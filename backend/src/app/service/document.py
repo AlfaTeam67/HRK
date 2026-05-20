@@ -23,7 +23,7 @@ from app.core.exceptions import (
 from app.models.attachment import Attachment
 from app.models.contract import Contract
 from app.models.customer import Customer
-from app.models.enums import DocumentType
+from app.models.enums import DocumentType, OcrStatus
 from app.models.user import User
 from app.repo.attachment import AttachmentRepository
 from app.repo.contract import ContractRepository
@@ -192,15 +192,25 @@ class DocumentService:
         company_id: UUID | None = None,
         customer_id: UUID | None = None,
         contract_id: UUID | None = None,
+        exclude_draft: bool = False,
     ) -> list[Attachment]:
-        filters = {}
+        if exclude_draft:
+            return list(
+                await self._attachments.list_excluding_status(
+                    customer_id=customer_id,
+                    contract_id=contract_id,
+                    company_id=company_id,
+                    excluded_status=OcrStatus.SKIPPED,
+                )
+            )
+        filters: dict = {}
         if company_id:
             filters["company_id"] = company_id
         if customer_id:
             filters["customer_id"] = customer_id
         if contract_id:
             filters["contract_id"] = contract_id
-        return await self._attachments.list(**filters)
+        return list(await self._attachments.list(**filters))
 
     async def _get_requesting_user(self, user_id: UUID) -> User:
         user = await self._users.get(user_id)
