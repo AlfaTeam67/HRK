@@ -746,115 +746,102 @@ export function AdvisorPage() {
           {/* Input */}
           <div
             style={{
-              padding: '16px 20px', borderTop: '1px solid #f2f0ed',
-              display: 'flex', gap: 10, alignItems: 'center',
+              padding: '12px 20px 16px', borderTop: '1px solid #f2f0ed',
+              display: 'flex', flexDirection: 'column', gap: 10,
               background: 'white', flexShrink: 0,
             }}
           >
-            <input
-              name="assistant-question"
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && sendMessage(input)}
-              placeholder="Zadaj pytanie o klienta, umowę lub waloryzację…"
-              style={{
-                flex: 1, border: '1px solid #e3e0db', borderRadius: 12,
-                padding: '12px 16px', fontSize: 14, outline: 'none', color: '#1a1714',
-                transition: 'all 0.2s', background: '#fafaf9',
-                boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.02)',
-              }}
-              onFocus={(e) => {
-                e.currentTarget.style.borderColor = '#e85c04'
-                e.currentTarget.style.background = 'white'
-                e.currentTarget.style.boxShadow = '0 0 0 3px rgba(232, 92, 4, 0.1)'
-              }}
-              onBlur={(e) => {
-                e.currentTarget.style.borderColor = '#e3e0db'
-                e.currentTarget.style.background = '#fafaf9'
-                e.currentTarget.style.boxShadow = 'inset 0 1px 2px rgba(0,0,0,0.02)'
-              }}
-            />
-
-            {/* Mode toggle */}
-            <div
-              style={{
-                display: 'flex', alignItems: 'center', gap: 8,
-                background: '#f5f2ef', padding: '4px', borderRadius: 14, border: '1px solid #e3e0db',
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                <button
-                  onClick={() => setIsAiMode(false)}
-                  style={{
-                    padding: '8px 14px', borderRadius: 10, border: 'none',
-                    background: !isAiMode ? 'white' : 'transparent',
-                    color: !isAiMode ? '#1a1714' : '#9e9389',
-                    fontSize: 10, fontWeight: 800, cursor: 'pointer',
-                    transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
-                    boxShadow: !isAiMode ? '0 2px 8px rgba(0,0,0,0.08)' : 'none',
-                    letterSpacing: '0.02em',
-                  }}
-                >
-                  WYSZUKIWANIE
-                </button>
-                <button
-                  onClick={() => setIsAiMode(true)}
-                  style={{
-                    padding: '8px 14px', borderRadius: 10, border: 'none',
-                    background: isAiMode ? '#e85c04' : 'transparent',
-                    color: isAiMode ? 'white' : '#9e9389',
-                    fontSize: 10, fontWeight: 800, cursor: 'pointer',
-                    transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
-                    boxShadow: isAiMode ? '0 4px 12px rgba(232, 92, 4, 0.25)' : 'none',
-                    letterSpacing: '0.02em',
-                  }}
-                >
-                  ROZUMOWANIE AI
-                </button>
-              </div>
-              <div style={{ width: 1, height: 16, background: '#e3e0db', margin: '0 2px' }} />
+            {/* Controls row */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <button
+                onClick={() => setIsAiMode(!isAiMode)}
+                title={isAiMode ? 'Wyłącz rozumowanie AI' : 'Włącz rozumowanie AI'}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 7,
+                  padding: '6px 14px', borderRadius: 20, flexShrink: 0,
+                  border: `1px solid ${isAiMode ? '#fdd5b8' : '#e3e0db'}`,
+                  background: isAiMode ? 'linear-gradient(135deg, #e85c04, #c94f02)' : '#fafaf9',
+                  color: isAiMode ? 'white' : '#9e9389',
+                  fontSize: 11, fontWeight: 700, cursor: 'pointer',
+                  transition: 'all 0.2s',
+                  boxShadow: isAiMode ? '0 3px 10px rgba(232,92,4,0.25)' : 'none',
+                }}
+              >
+                <span style={{ fontSize: 13 }}>🧠</span>
+                Rozumowanie AI
+                <div style={{ width: 24, height: 12, borderRadius: 6, background: isAiMode ? 'rgba(255,255,255,0.3)' : '#e3e0db', position: 'relative', flexShrink: 0 }}>
+                  <div style={{ position: 'absolute', top: 2, left: isAiMode ? 12 : 2, width: 8, height: 8, borderRadius: '50%', background: isAiMode ? 'white' : '#9e9389', transition: 'left 0.2s' }} />
+                </div>
+              </button>
               <button
                 onClick={() => setIsInfoModalOpen(true)}
+                title="Informacje o trybach"
                 style={{
-                  background: 'white', border: '1px solid #e3e0db', color: '#9e9389',
+                  background: '#f5f2ef', border: '1px solid #e3e0db', color: '#9e9389',
                   cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  width: 28, height: 28, borderRadius: 8, transition: 'all 0.2s',
+                  width: 28, height: 28, borderRadius: 8, transition: 'all 0.2s', flexShrink: 0,
                 }}
                 onMouseEnter={(e) => { e.currentTarget.style.color = '#e85c04'; e.currentTarget.style.borderColor = '#fdd5b8' }}
                 onMouseLeave={(e) => { e.currentTarget.style.color = '#9e9389'; e.currentTarget.style.borderColor = '#e3e0db' }}
               >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                   <circle cx="12" cy="12" r="10" /><line x1="12" y1="16" x2="12" y2="12" /><line x1="12" y1="8" x2="12.01" y2="8" />
                 </svg>
               </button>
             </div>
 
-            <button
-              onClick={() => sendMessage(input)}
-              disabled={!input.trim() || isTyping}
-              style={{
-                background: 'linear-gradient(135deg, #e85c04, #c94f02)', border: 'none', borderRadius: 12,
-                padding: '12px 20px', cursor: !input.trim() || isTyping ? 'not-allowed' : 'pointer',
-                color: 'white', fontSize: 14, fontWeight: 700,
-                display: 'flex', alignItems: 'center', gap: 8, transition: 'all 0.2s',
-                opacity: !input.trim() || isTyping ? 0.7 : 1,
-                boxShadow: '0 4px 12px rgba(232, 92, 4, 0.2)',
-              }}
-              onMouseEnter={(e) => {
-                if (!input.trim() || isTyping) return
-                e.currentTarget.style.transform = 'translateY(-1px)'
-                e.currentTarget.style.boxShadow = '0 6px 16px rgba(232, 92, 4, 0.3)'
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.transform = 'translateY(0)'
-                e.currentTarget.style.boxShadow = '0 4px 12px rgba(232, 92, 4, 0.2)'
-              }}
-            >
-              Wyślij
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <line x1="22" y1="2" x2="11" y2="13" /><polygon points="22 2 15 22 11 13 2 9 22 2" />
-              </svg>
-            </button>
+            {/* Input row */}
+            <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+              <input
+                name="assistant-question"
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && sendMessage(input)}
+                placeholder="Zadaj pytanie o klienta, umowę lub waloryzację…"
+                style={{
+                  flex: 1, border: '1px solid #e3e0db', borderRadius: 12,
+                  padding: '12px 16px', fontSize: 14, outline: 'none', color: '#1a1714',
+                  transition: 'all 0.2s', background: '#fafaf9',
+                  boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.02)',
+                }}
+                onFocus={(e) => {
+                  e.currentTarget.style.borderColor = '#e85c04'
+                  e.currentTarget.style.background = 'white'
+                  e.currentTarget.style.boxShadow = '0 0 0 3px rgba(232, 92, 4, 0.1)'
+                }}
+                onBlur={(e) => {
+                  e.currentTarget.style.borderColor = '#e3e0db'
+                  e.currentTarget.style.background = '#fafaf9'
+                  e.currentTarget.style.boxShadow = 'inset 0 1px 2px rgba(0,0,0,0.02)'
+                }}
+              />
+              <button
+                onClick={() => sendMessage(input)}
+                disabled={!input.trim() || isTyping}
+                style={{
+                  background: 'linear-gradient(135deg, #e85c04, #c94f02)', border: 'none', borderRadius: 12,
+                  padding: '12px 20px', cursor: !input.trim() || isTyping ? 'not-allowed' : 'pointer',
+                  color: 'white', fontSize: 14, fontWeight: 700,
+                  display: 'flex', alignItems: 'center', gap: 8, transition: 'all 0.2s',
+                  opacity: !input.trim() || isTyping ? 0.7 : 1,
+                  boxShadow: '0 4px 12px rgba(232, 92, 4, 0.2)', flexShrink: 0,
+                }}
+                onMouseEnter={(e) => {
+                  if (!input.trim() || isTyping) return
+                  e.currentTarget.style.transform = 'translateY(-1px)'
+                  e.currentTarget.style.boxShadow = '0 6px 16px rgba(232, 92, 4, 0.3)'
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = 'translateY(0)'
+                  e.currentTarget.style.boxShadow = '0 4px 12px rgba(232, 92, 4, 0.2)'
+                }}
+              >
+                Wyślij
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="22" y1="2" x2="11" y2="13" /><polygon points="22 2 15 22 11 13 2 9 22 2" />
+                </svg>
+              </button>
+            </div>
           </div>
         </div>
       </div>
