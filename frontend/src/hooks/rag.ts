@@ -19,11 +19,13 @@ export interface ChunkResult {
   bbox: Record<string, unknown> | null
   section_title: string | null
   score: number
+  similarity: number
 }
 
 export interface RagSearchResponse {
   chunks: ChunkResult[]
   ai_answer: string | null
+  no_results_found: boolean
 }
 
 export function useRagSearch() {

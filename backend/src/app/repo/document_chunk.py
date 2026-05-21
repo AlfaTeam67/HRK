@@ -26,13 +26,15 @@ class DocumentChunkRepository(BaseRepository[DocumentChunk]):
         embedding: list[float],
         query_text: str | None = None,
         top_k: int = 5,
+        max_distance: float = 1.0,
     ) -> list[tuple[Any, float]]:
         vec_str = "[" + ",".join(str(v) for v in embedding) + "]"
 
         params: dict[str, Any] = {
             "vec": vec_str,
             "customer_id": str(customer_id),
-            "top_k": top_k
+            "top_k": top_k,
+            "max_distance": max_distance,
         }
 
         # Simple keyword boosting
@@ -53,6 +55,7 @@ class DocumentChunkRepository(BaseRepository[DocumentChunk]):
                        ({keyword_boost}) AS kw_score
                 FROM document_chunks
                 WHERE customer_id = :customer_id
+                  AND (embedding <=> CAST(:vec AS vector(768))) < :max_distance
             ) sub
             ORDER BY (vec_score - kw_score) ASC
             LIMIT :top_k

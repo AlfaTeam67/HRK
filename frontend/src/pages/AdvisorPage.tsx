@@ -30,11 +30,19 @@ interface MessageSource {
   highlight?: string | null
 }
 
+interface MessageFragment {
+  index: number
+  text: string
+  similarity: number
+  source: MessageSource
+}
+
 interface ChatMessage {
   id: number
   role: MessageRole
   content: string
   sources?: MessageSource[]
+  fragments?: MessageFragment[]
   ts: string
 }
 
@@ -346,24 +354,39 @@ export function AdvisorPage() {
         top_k: 5,
       })
 
+      const hasChunks = response.chunks.length > 0
+      const sortedChunks = response.chunks
+        .slice()
+        .sort((a, b) => b.similarity - a.similarity)
       const assistantMsg: ChatMessage = {
         id: nextIdRef.current++,
         role: 'assistant',
         ts: new Date().toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' }),
-        content:
-          response.ai_answer ||
-          (response.chunks.length > 0
-            ? response.chunks
-                .map((c, i) => `**Fragment ${i + 1}:**\n"${c.highlight || c.content.substring(0, 300) + '...'}"`)
-                .join('\n\n')
-            : 'Niestety nie znalazłem informacji na ten temat w dostępnych dokumentach tego klienta.'),
-        sources: response.chunks.map((chunk) => ({
-          title: chunk.section_title || 'Dokument',
-          page: chunk.page_number ? `str. ${chunk.page_number}` : 'fragment',
-          attachment_id: chunk.attachment_id,
-          page_number: chunk.page_number,
-          highlight: chunk.highlight || chunk.content.substring(0, 300),
-        })),
+        content: response.ai_answer
+          ?? (hasChunks ? '' : 'Niestety nie znalazłem informacji na ten temat w dostępnych dokumentach tego klienta.'),
+        fragments: !response.ai_answer && hasChunks
+          ? sortedChunks.map((c, i) => ({
+              index: i + 1,
+              text: c.highlight || c.content.substring(0, 300) + '...',
+              similarity: c.similarity,
+              source: {
+                title: c.section_title || 'Dokument',
+                page: c.page_number ? `str. ${c.page_number}` : 'fragment',
+                attachment_id: c.attachment_id,
+                page_number: c.page_number,
+                highlight: c.highlight || c.content.substring(0, 300),
+              },
+            }))
+          : undefined,
+        sources: response.ai_answer
+          ? response.chunks.map((chunk) => ({
+              title: chunk.section_title || 'Dokument',
+              page: chunk.page_number ? `str. ${chunk.page_number}` : 'fragment',
+              attachment_id: chunk.attachment_id,
+              page_number: chunk.page_number,
+              highlight: chunk.highlight || chunk.content.substring(0, 300),
+            }))
+          : undefined,
       }
 
       setMessages((prev) => [...prev, assistantMsg])
@@ -671,14 +694,61 @@ export function AdvisorPage() {
                     border: msg.role === 'assistant' ? '1px solid #f2f0ed' : 'none',
                   }}
                 >
-                  {msg.content.split('\n').map((line, i) => {
-                    const parts = line.split(/\*\*(.*?)\*\*/g)
-                    return (
-                      <p key={i} style={{ margin: i === 0 ? 0 : '4px 0 0 0' }}>
-                        {parts.map((part, j) => (j % 2 === 1 ? <strong key={j}>{part}</strong> : part))}
-                      </p>
-                    )
-                  })}
+                  {/* Non-AI mode: structured fragments with inline source button */}
+                  {msg.fragments && msg.fragments.length > 0 ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                      {msg.fragments.map((frag) => (
+                        <div key={frag.index}>
+                          <button
+                            onClick={() => handleSourceClick(frag.source.attachment_id, frag.source.title, frag.source.page_number, frag.source.highlight)}
+                            style={{
+                              display: 'inline-flex', alignItems: 'center', gap: 5,
+                              padding: '3px 10px 3px 7px', borderRadius: 20, marginBottom: 6,
+                              border: '1px solid #fdd5b8', background: '#fff8f4',
+                              color: '#c94f02', fontSize: 11, fontWeight: 600,
+                              cursor: 'pointer', fontFamily: 'inherit',
+                              transition: 'all 0.15s',
+                            }}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.background = '#fff0e6'
+                              e.currentTarget.style.borderColor = '#e85c04'
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.background = '#fff8f4'
+                              e.currentTarget.style.borderColor = '#fdd5b8'
+                            }}
+                          >
+                            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/>
+                            </svg>
+                            <span>{frag.source.title}</span>
+                            <span style={{ opacity: 0.5 }}>·</span>
+                            <span>{frag.source.page}</span>
+                          </button>
+                          <div style={{ fontSize: 12.5, lineHeight: 1.6, color: '#3d3530' }}>
+                            <span style={{ fontWeight: 700 }}>Fragment {frag.index}</span>
+                            <span style={{ fontSize: 11, color: '#9e9389', marginLeft: 4 }}>
+                              ({Math.round(frag.similarity * 100)}% zgodności)
+                            </span>
+                            <br />
+                            <span style={{ fontStyle: 'italic' }}>&ldquo;{frag.text}&rdquo;</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    /* AI mode / plain text messages */
+                    msg.content.split('\n').map((line, i) => {
+                      const parts = line.split(/\*\*(.*?)\*\*/g)
+                      return (
+                        <p key={i} style={{ margin: i === 0 ? 0 : '4px 0 0 0' }}>
+                          {parts.map((part, j) => (j % 2 === 1 ? <strong key={j}>{part}</strong> : part))}
+                        </p>
+                      )
+                    })
+                  )}
+
+                  {/* Bottom sources — only for AI mode */}
                   {msg.sources && msg.sources.length > 0 && (
                     <div style={{ marginTop: 10, paddingTop: 8, borderTop: '1px solid #fdd5b8' }}>
                       <div style={{ fontSize: 10, fontWeight: 700, color: '#c94f02', marginBottom: 4 }}>
@@ -698,9 +768,7 @@ export function AdvisorPage() {
                             onMouseLeave={(e) => (e.currentTarget.style.opacity = '1')}
                           >
                             <span>→</span>
-                            <span>
-                              <strong>{src.title}</strong> · {src.page}
-                            </span>
+                            <span><strong>{src.title}</strong> · {src.page}</span>
                           </button>
                         ))}
                       </div>
