@@ -1,14 +1,15 @@
-import { useRef, useState, useMemo } from 'react'
+import { useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { cardStyle as card } from '@/lib/styles'
 import { ContractModal } from '@/features/contracts/ContractModal'
+import { UploadWizard } from '@/features/documents/UploadWizard'
 import { useAppSelector } from '@/hooks/store'
 import { useAlerts, useDashboardKpi } from '@/hooks/alerts'
 import { Modal } from '@/components/ui/modal'
 import { useCustomers } from '@/hooks/customers'
-import { useUploadDocument, useDocumentsQuery, useDocumentDownloadUrl, useDeleteDocument } from '@/hooks/documents'
+import { useDocumentsQuery, useDocumentDownloadUrl, useDeleteDocument } from '@/hooks/documents'
 import { useContracts, useDeleteContract, useCreateContract } from '@/hooks/contracts'
-import type { DocumentType, ContractType, ContractStatus, BillingCycle, ContractCreate } from '@/types/models'
+import type { ContractType, ContractStatus, BillingCycle, ContractCreate } from '@/types/models'
 
 /* ─── Style helpers ──────────────────────────────────────────── */
 const STATUS_S: Record<string, { bg: string; color: string }> = {
@@ -41,20 +42,14 @@ const OCR_LABEL: Record<string, string> = {
 export function ContractsPage() {
   const navigate = useNavigate()
   const [contractModalId, setContractModalId] = useState<{ contractId: string; customerId: string } | null>(null)
-  const [isModalOpen, setIsModalOpen] = useState(false)
   const [isContractModalOpen, setIsContractModalOpen] = useState(false)
+  // After contract creation: show UploadWizard for the new contract
+  const [postCreationWizard, setPostCreationWizard] = useState<{ contractId: string; customerId: string } | null>(null)
   const user = useAppSelector((s) => s.auth.user)
 
   // Page-level filters
   const [filterCustomerId, setFilterCustomerId] = useState('')
   const [filterContractType, setFilterContractType] = useState('')
-
-  // Upload modal state
-  const [uploadCustomerId, setUploadCustomerId] = useState('')
-  const [uploadContractId, setUploadContractId] = useState('')
-  const [selectedDocType, setSelectedDocType] = useState<DocumentType>('contract')
-  const [selectedFile, setSelectedFile] = useState<File | null>(null)
-  const fileInputRef = useRef<HTMLInputElement>(null)
 
   // Preview / delete state
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
@@ -78,14 +73,9 @@ export function ContractsPage() {
     filterCustomerId ? { customer_id: filterCustomerId } : undefined
   )
   const { data: allDocuments = [] } = useDocumentsQuery()
-  // Contracts for upload modal dropdown — fetched by selected customer
-  const { data: uploadModalContracts = [] } = useContracts(
-    uploadCustomerId ? { customer_id: uploadCustomerId } : undefined
-  )
   const { data: realAlerts, isLoading: alertsLoading } = useAlerts(user?.id)
   const { data: kpiData, isLoading: kpiLoading } = useDashboardKpi(user?.id)
 
-  const uploadDoc = useUploadDocument()
   const deleteDoc = useDeleteDocument()
   const deleteContract = useDeleteContract()
   const createContract = useCreateContract()
@@ -152,27 +142,6 @@ export function ContractsPage() {
     { label: 'AKTYWNYCH UMÓW', value: activeContractsCount === null ? '—' : String(activeContractsCount), sub: 'Łącznie w systemie', color: '#38a169' },
   ]
 
-  const handleUpload = async () => {
-    if (!selectedFile || !user?.id) return
-    try {
-      await uploadDoc.mutateAsync({
-        file: selectedFile,
-        document_type: selectedDocType,
-        customer_id: uploadCustomerId || undefined,
-        contract_id: uploadContractId || undefined,
-        uploaded_by: user.id,
-      })
-      setIsModalOpen(false)
-      setSelectedFile(null)
-      setUploadCustomerId('')
-      setUploadContractId('')
-      alert('Dokument przesłany pomyślnie. Proces OCR i RAG został uruchomiony.')
-    } catch (err) {
-      console.error('Upload failed:', err)
-      alert('Nie udało się przesłać dokumentu.')
-    }
-  }
-
   const handlePreview = async (contractId: string) => {
     if (!user?.id) return
     const doc = docsMap.get(contractId)
@@ -211,9 +180,8 @@ export function ContractsPage() {
       alert('Proszę wypełnić wymagane pola (Klient i Numer umowy).')
       return
     }
-
     try {
-      await createContract.mutateAsync({
+      const created = await createContract.mutateAsync({
         ...contractForm,
         account_manager_id: user?.id,
       } as ContractCreate)
@@ -227,7 +195,7 @@ export function ContractsPage() {
         billing_cycle: '' as BillingCycle,
         status: 'draft' as ContractStatus,
       })
-      alert('Umowa została utworzona pomyślnie.')
+      setPostCreationWizard({ contractId: created.id, customerId: created.customer_id })
     } catch (err) {
       console.error('Failed to create contract:', err)
       alert('Nie udało się utworzyć umowy.')
@@ -242,96 +210,13 @@ export function ContractsPage() {
           <h1 style={{ fontSize: 22, fontWeight: 700, color: '#1a1714', margin: 0, marginBottom: 2 }}>Umowy i Dokumenty</h1>
           <p style={{ fontSize: 12.5, color: '#9e9389', margin: 0 }}>Zarządzanie cyklem życia kontraktów i repozytorium dokumentów RAG.</p>
         </div>
-        <div style={{ display: 'flex', gap: 10 }}>
-          <button
-            onClick={() => setIsContractModalOpen(true)}
-            style={{ background: 'white', color: '#e85c04', border: '1px solid #e85c04', borderRadius: 8, padding: '10px 18px', fontSize: 13, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8 }}
-          >
-            <span>+</span> Nowa Umowa
-          </button>
-          <button
-            onClick={() => setIsModalOpen(true)}
-            style={{ background: 'linear-gradient(135deg, #e85c04, #c94f02)', color: 'white', border: 'none', borderRadius: 8, padding: '10px 18px', fontSize: 13, fontWeight: 700, cursor: 'pointer', boxShadow: '0 4px 12px rgba(232, 92, 4, 0.25)', display: 'flex', alignItems: 'center', gap: 8 }}
-          >
-            <span>+</span> Nowy Dokument
-          </button>
-        </div>
+        <button
+          onClick={() => setIsContractModalOpen(true)}
+          style={{ background: 'linear-gradient(135deg, #e85c04, #c94f02)', color: 'white', border: 'none', borderRadius: 8, padding: '10px 18px', fontSize: 13, fontWeight: 700, cursor: 'pointer', boxShadow: '0 4px 12px rgba(232, 92, 4, 0.25)', display: 'flex', alignItems: 'center', gap: 8 }}
+        >
+          <span>+</span> Nowa Umowa
+        </button>
       </div>
-
-      {/* Upload Modal */}
-      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Prześlij nowy dokument">
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <label style={{ fontSize: 12, fontWeight: 700, color: '#1a1714' }}>Klient</label>
-            <select
-              value={uploadCustomerId}
-              onChange={(e) => { setUploadCustomerId(e.target.value); setUploadContractId('') }}
-              style={{ padding: '10px', borderRadius: 6, border: '1px solid #e3e0db', fontSize: 13, background: 'white' }}
-            >
-              <option value="">Wybierz klienta (opcjonalnie)...</option>
-              {customers.map(c => <option key={c.id} value={c.id}>{c.company_name || c.ckk}</option>)}
-            </select>
-          </div>
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <label style={{ fontSize: 12, fontWeight: 700, color: '#1a1714' }}>Umowa (opcjonalnie)</label>
-            <select
-              value={uploadContractId}
-              onChange={(e) => setUploadContractId(e.target.value)}
-              disabled={!uploadCustomerId}
-              style={{ padding: '10px', borderRadius: 6, border: '1px solid #e3e0db', fontSize: 13, background: uploadCustomerId ? 'white' : '#fafaf9', color: uploadCustomerId ? '#1a1714' : '#9e9389' }}
-            >
-              <option value="">{uploadCustomerId ? 'Wybierz umowę...' : 'Wybierz najpierw klienta'}</option>
-              {uploadModalContracts.map(c => <option key={c.id} value={c.id}>{c.contract_number}</option>)}
-            </select>
-          </div>
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <label style={{ fontSize: 12, fontWeight: 700, color: '#1a1714' }}>Typ dokumentu</label>
-            <select
-              value={selectedDocType}
-              onChange={(e) => setSelectedDocType(e.target.value as DocumentType)}
-              style={{ padding: '10px', borderRadius: 6, border: '1px solid #e3e0db', fontSize: 13, background: 'white' }}
-            >
-              <option value="contract">Umowa</option>
-              <option value="amendment">Aneks</option>
-              <option value="service_order">Zamówienie</option>
-              <option value="other">Inny</option>
-            </select>
-          </div>
-
-          <input
-            type="file"
-            ref={fileInputRef}
-            style={{ display: 'none' }}
-            accept=".pdf,.doc,.docx"
-            onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
-          />
-
-          <div
-            onClick={() => fileInputRef.current?.click()}
-            style={{
-              border: selectedFile ? '2px solid #38a169' : '2px dashed #e3e0db',
-              borderRadius: 8, padding: '32px 20px', textAlign: 'center', background: selectedFile ? '#f0fff4' : '#fafaf9', cursor: 'pointer',
-            }}
-          >
-            <div style={{ fontSize: 24, marginBottom: 8 }}>{selectedFile ? '✅' : '📄'}</div>
-            <div style={{ fontSize: 13, fontWeight: 700, color: '#1a1714' }}>{selectedFile ? selectedFile.name : 'Kliknij, aby wybrać plik'}</div>
-            <div style={{ fontSize: 11, color: '#9e9389' }}>PDF, DOCX, TXT (max 15MB)</div>
-          </div>
-
-          <div style={{ display: 'flex', gap: 10, marginTop: 10 }}>
-            <button onClick={() => setIsModalOpen(false)} style={{ flex: 1, padding: '10px', borderRadius: 6, border: '1px solid #e3e0db', background: 'white', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Anuluj</button>
-            <button
-              onClick={handleUpload}
-              disabled={!selectedFile || uploadDoc.isPending}
-              style={{ flex: 1, padding: '10px', borderRadius: 6, border: 'none', background: (!selectedFile || uploadDoc.isPending) ? '#9e9389' : '#e85c04', color: 'white', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
-            >
-              {uploadDoc.isPending ? 'Przesyłanie...' : 'Utwórz i prześlij'}
-            </button>
-          </div>
-        </div>
-      </Modal>
 
       {/* New Contract Modal */}
       <Modal isOpen={isContractModalOpen} onClose={() => setIsContractModalOpen(false)} title="Utwórz nową umowę">
@@ -589,6 +474,15 @@ export function ContractsPage() {
           contractId={contractModalId.contractId}
           customerId={contractModalId.customerId}
           onClose={() => setContractModalId(null)}
+        />
+      )}
+
+      {postCreationWizard && (
+        <UploadWizard
+          customerId={postCreationWizard.customerId}
+          preselectedContractId={postCreationWizard.contractId}
+          allowSkip
+          onClose={() => setPostCreationWizard(null)}
         />
       )}
     </div>

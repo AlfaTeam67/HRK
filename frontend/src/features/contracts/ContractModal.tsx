@@ -1,11 +1,12 @@
-import { useRef, useState } from 'react'
+import { useState } from 'react'
 
 import { useContract, useUpdateContract } from '@/hooks/contracts'
-import { useDocumentsQuery, useDocumentDownloadUrl, useUploadDocument, useDeleteDocument } from '@/hooks/documents'
+import { useDocumentsQuery, useDocumentDownloadUrl, useDeleteDocument } from '@/hooks/documents'
 import { useDocumentGenerations, useAcceptGeneration, useRejectGeneration } from '@/hooks/documentGenerations'
 import { useNotes, useCreateNote } from '@/hooks/notes'
 import { useAppSelector } from '@/hooks/store'
-import type { ContractStatus, ContractType, BillingCycle, DocumentType } from '@/types/models'
+import { UploadWizard } from '@/features/documents/UploadWizard'
+import type { ContractStatus, ContractType, BillingCycle } from '@/types/models'
 
 /* ─── Palette ─────────────────────────────────────────────────── */
 const C = {
@@ -66,7 +67,7 @@ function fmtDate(v?: string | null) {
   return new Date(v).toLocaleDateString('pl-PL', { day: '2-digit', month: 'short', year: 'numeric' })
 }
 
-type Tab = 'dane' | 'pliki' | 'aneksy' | 'historia'
+type Tab = 'dane' | 'dokumenty' | 'notatki'
 
 interface Props {
   contractId: string
@@ -85,12 +86,13 @@ export function ContractModal({ contractId, customerId, onClose }: Props) {
   const generations = allGenerations.filter((g) => g.contract_id === contractId)
 
   const updateContract = useUpdateContract()
-  const uploadMut = useUploadDocument()
   const deleteMut = useDeleteDocument()
   const downloadMut = useDocumentDownloadUrl()
   const acceptMut = useAcceptGeneration()
   const rejectMut = useRejectGeneration()
   const createNote = useCreateNote()
+
+  const [uploadWizardOpen, setUploadWizardOpen] = useState(false)
 
   /* ─── Edit form state ───────────────────────────────────────── */
   const [editing, setEditing] = useState(false)
@@ -132,25 +134,6 @@ export function ContractModal({ contractId, customerId, onClose }: Props) {
       },
     })
     setEditing(false)
-  }
-
-  /* ─── Upload state ──────────────────────────────────────────── */
-  const [uploadOpen, setUploadOpen] = useState(false)
-  const [uploadFile, setUploadFile] = useState<File | null>(null)
-  const [uploadDocType, setUploadDocType] = useState<DocumentType>('contract')
-  const fileInputRef = useRef<HTMLInputElement>(null)
-
-  async function handleUpload() {
-    if (!uploadFile || !user?.id) return
-    await uploadMut.mutateAsync({
-      file: uploadFile,
-      document_type: uploadDocType,
-      customer_id: customerId,
-      contract_id: contractId,
-      uploaded_by: user.id,
-    })
-    setUploadOpen(false)
-    setUploadFile(null)
   }
 
   async function handleDownload(id: string) {
@@ -258,9 +241,8 @@ export function ContractModal({ contractId, customerId, onClose }: Props) {
           <div style={{ display: 'flex', gap: 0 }}>
             {([
               ['dane', 'Dane umowy'],
-              ['pliki', `Pliki (${attachments.length})`],
-              ['aneksy', `Aneksy AI (${generations.length})`],
-              ['historia', `Notatki (${notes.length})`],
+              ['dokumenty', `Dokumenty (${attachments.length})`],
+              ['notatki', `Notatki (${notes.length})`],
             ] as [Tab, string][]).map(([k, label]) => (
               <button
                 key={k}
@@ -295,35 +277,22 @@ export function ContractModal({ contractId, customerId, onClose }: Props) {
             />
           )}
 
-          {activeTab === 'pliki' && (
-            <PlikiTab
+          {activeTab === 'dokumenty' && (
+            <DokumentyTab
+              contract={contract}
               attachments={attachments}
-              uploadOpen={uploadOpen}
-              uploadFile={uploadFile}
-              uploadDocType={uploadDocType}
-              uploading={uploadMut.isPending}
-              fileInputRef={fileInputRef}
-              onToggleUpload={() => setUploadOpen((v) => !v)}
-              onFilePick={(f) => setUploadFile(f)}
-              onDocTypeChange={(t) => setUploadDocType(t)}
-              onUpload={handleUpload}
-              onCancelUpload={() => { setUploadOpen(false); setUploadFile(null) }}
+              generations={generations}
+              busyGenId={busyGenId}
+              onOpenWizard={() => setUploadWizardOpen(true)}
+              onSetPrimary={(id) => updateContract.mutateAsync({ id: contractId, payload: { primary_document_id: id } })}
               onDownload={handleDownload}
               onDelete={handleDeleteDoc}
-            />
-          )}
-
-          {activeTab === 'aneksy' && (
-            <AneksyTab
-              generations={generations}
-              busyId={busyGenId}
-              onDownload={handleDownload}
               onAccept={handleAccept}
               onReject={handleReject}
             />
           )}
 
-          {activeTab === 'historia' && (
+          {activeTab === 'notatki' && (
             <HistoriaTab
               notes={notes}
               noteText={noteText}
@@ -334,6 +303,14 @@ export function ContractModal({ contractId, customerId, onClose }: Props) {
           )}
         </div>
       </div>
+
+      {uploadWizardOpen && (
+        <UploadWizard
+          customerId={customerId}
+          preselectedContractId={contractId}
+          onClose={() => setUploadWizardOpen(false)}
+        />
+      )}
     </div>
   )
 }
@@ -433,147 +410,142 @@ function DaneTab({ contract, editing, form, saving, onStartEdit, onCancelEdit, o
   )
 }
 
-/* ─── Tab: Pliki ──────────────────────────────────────────────── */
-function PlikiTab({ attachments, uploadOpen, uploadFile, uploadDocType, uploading, fileInputRef, onToggleUpload, onFilePick, onDocTypeChange, onUpload, onCancelUpload, onDownload, onDelete }: {
+/* ─── Tab: Dokumenty ──────────────────────────────────────────── */
+function DokumentyTab({ contract, attachments, generations, busyGenId, onOpenWizard, onSetPrimary, onDownload, onDelete, onAccept, onReject }: {
+  contract: ReturnType<typeof useContract>['data']
   attachments: ReturnType<typeof useDocumentsQuery>['data'] & object[]
-  uploadOpen: boolean
-  uploadFile: File | null
-  uploadDocType: DocumentType
-  uploading: boolean
-  fileInputRef: React.RefObject<HTMLInputElement | null>
-  onToggleUpload: () => void
-  onFilePick: (f: File) => void
-  onDocTypeChange: (t: DocumentType) => void
-  onUpload: () => void
-  onCancelUpload: () => void
+  generations: ReturnType<typeof useDocumentGenerations>['data'] & object[]
+  busyGenId: string | null
+  onOpenWizard: () => void
+  onSetPrimary: (id: string) => void
   onDownload: (id: string) => void
   onDelete: (id: string) => void
+  onAccept: (id: string) => void
+  onReject: (id: string, customerId: string) => void
 }) {
+  const primaryDocId = contract?.primary_document_id
+  const primaryDoc = attachments.find((a) => a.id === primaryDocId)
+  const otherDocs = attachments.filter((a) => a.id !== primaryDocId)
+  const pendingGens = generations.filter((g) => g.status === 'preview' || g.status === 'draft')
+  const pastGens = generations.filter((g) => g.status !== 'preview' && g.status !== 'draft')
+
   return (
-    <div>
-      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
-        <button onClick={onToggleUpload} style={uploadOpen ? btnSecondary : btnPrimary}>
-          {uploadOpen ? 'Anuluj' : '+ Wgraj plik'}
-        </button>
-      </div>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
 
-      {uploadOpen && (
-        <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 10, padding: 14, marginBottom: 14, display: 'flex', flexDirection: 'column', gap: 10 }}>
-          <input ref={fileInputRef} type="file" accept=".pdf,.doc,.docx" style={{ display: 'none' }} onChange={(e) => onFilePick(e.target.files?.[0] as File)} />
-          <div
-            onClick={() => fileInputRef.current?.click()}
-            style={{
-              border: uploadFile ? '2px solid #38a169' : '2px dashed #e3e0db',
-              borderRadius: 8, padding: 16, textAlign: 'center', cursor: 'pointer',
-              fontSize: 12.5, color: uploadFile ? C.green : C.muted,
-            }}
-          >
-            {uploadFile ? `✓ ${uploadFile.name}` : 'Kliknij, aby wybrać plik (PDF, DOC)'}
+      {/* Główny dokument */}
+      <section>
+        <SectionHeader label="Główny dokument" />
+        {primaryDoc ? (
+          <DocRow
+            doc={primaryDoc}
+            isPrimary
+            onDownload={() => onDownload(primaryDoc.id)}
+            onDelete={() => onDelete(primaryDoc.id)}
+          />
+        ) : (
+          <div style={{ background: C.surface, border: `2px dashed ${C.border}`, borderRadius: 10, padding: '20px 16px', textAlign: 'center' }}>
+            <p style={{ fontSize: 12.5, color: C.muted, margin: '0 0 12px' }}>Brak głównego dokumentu umowy</p>
+            <button onClick={onOpenWizard} style={btnPrimary}>+ Wgraj dokument</button>
           </div>
-          <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-            <select
-              value={uploadDocType}
-              onChange={(e) => onDocTypeChange(e.target.value as DocumentType)}
-              style={{ flex: 1, ...inputStyle }}
-            >
-              <option value="contract">Umowa</option>
-              <option value="amendment">Aneks</option>
-              <option value="power_of_attorney">Pełnomocnictwo</option>
-              <option value="service_order">Zamówienie</option>
-              <option value="other">Inny</option>
-            </select>
-            <button onClick={onCancelUpload} style={btnSecondary}>Anuluj</button>
-            <button onClick={onUpload} disabled={!uploadFile || uploading} style={{ ...btnPrimary, opacity: uploadFile ? 1 : 0.5 }}>
-              {uploading ? 'Wgrywam…' : 'Wgraj'}
-            </button>
-          </div>
+        )}
+      </section>
+
+      {/* Załączniki */}
+      <section>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+          <SectionHeader label="Załączniki" noMargin />
+          <button onClick={onOpenWizard} style={btnSecondary}>+ Dodaj</button>
         </div>
-      )}
+        {otherDocs.length === 0 ? (
+          <Empty>Brak dodatkowych załączników.</Empty>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {otherDocs.map((doc) => (
+              <DocRow
+                key={doc.id}
+                doc={doc}
+                onDownload={() => onDownload(doc.id)}
+                onDelete={() => onDelete(doc.id)}
+                onSetPrimary={() => onSetPrimary(doc.id)}
+              />
+            ))}
+          </div>
+        )}
+      </section>
 
-      {attachments.length === 0 && !uploadOpen && (
-        <Empty>Brak plików dla tej umowy. Kliknij <strong>+ Wgraj plik</strong>, aby dodać.</Empty>
+      {/* Wersje robocze AI */}
+      {(pendingGens.length > 0 || pastGens.length > 0) && (
+        <section>
+          <SectionHeader label="Wersje robocze AI" />
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {[...pendingGens, ...pastGens].map((g) => {
+              const meta = GEN_STATUS_META[g.status] ?? GEN_STATUS_META['draft']
+              const canAct = g.status === 'preview' || g.status === 'draft'
+              const busy = busyGenId === g.id
+              const delta = (g.simulation as Record<string, unknown>)?.delta_annual_revenue as string | undefined
+              return (
+                <div key={g.id} style={{ ...rowStyle, borderLeft: `3px solid ${meta.fg}` }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 3 }}>
+                      <span style={{ fontSize: 9.5, fontWeight: 700, padding: '2px 8px', borderRadius: 4, background: meta.bg, color: meta.fg, textTransform: 'uppercase' as const, letterSpacing: 0.3 }}>{meta.l}</span>
+                      <span style={{ fontSize: 12.5, fontWeight: 700, color: C.text }}>{g.template_key} v{g.template_version}</span>
+                    </div>
+                    <div style={{ fontSize: 11, color: C.muted }}>{fmtDate(g.created_at)}{delta && <> · Δ rok: <strong style={{ color: C.text }}>{delta}</strong></>}</div>
+                  </div>
+                  <div style={{ display: 'flex', gap: 6, flexShrink: 0, alignItems: 'center' }}>
+                    {g.attachment_pdf_id && <button onClick={() => onDownload(g.attachment_pdf_id!)} style={btnSecondary}>PDF</button>}
+                    {canAct && (
+                      <>
+                        <button onClick={() => onReject(g.id, g.customer_id)} disabled={busy} style={btnDanger}>Odrzuć</button>
+                        <button onClick={() => onAccept(g.id)} disabled={busy} style={btnPrimary}>{busy ? 'Akceptuję…' : 'Akceptuj'}</button>
+                      </>
+                    )}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </section>
       )}
+    </div>
+  )
+}
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-        {(attachments ?? []).map((doc) => {
-          const ocrKey = doc.ocr_status ?? 'pending'
-          const ocr = OCR_META[ocrKey] ?? OCR_META['pending']
-          return (
-            <div key={doc.id} style={rowStyle}>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 13, fontWeight: 700, color: C.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  {doc.original_filename}
-                </div>
-                <div style={{ display: 'flex', gap: 8, marginTop: 3, alignItems: 'center' }}>
-                  <span style={tagStyle}>{DOC_TYPE_LABELS[doc.document_type] ?? doc.document_type}</span>
-                  <span style={{ fontSize: 11, color: C.muted }}>{fmtDate(doc.created_at)}</span>
-                  <span style={{ fontSize: 10, fontWeight: 600, padding: '1px 7px', borderRadius: 10, background: ocr.bg, color: ocr.fg }}>{ocr.l}</span>
-                </div>
-              </div>
-              <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
-                <button onClick={() => onDownload(doc.id)} style={btnSecondary}>Pobierz</button>
-                <button onClick={() => onDelete(doc.id)} style={btnDanger}>✕</button>
-              </div>
-            </div>
-          )
-        })}
+function DocRow({ doc, isPrimary, onDownload, onDelete, onSetPrimary }: {
+  doc: { id: string; original_filename: string; document_type: string; ocr_status?: string | null; created_at: string }
+  isPrimary?: boolean
+  onDownload: () => void
+  onDelete: () => void
+  onSetPrimary?: () => void
+}) {
+  const ocrKey = doc.ocr_status ?? 'pending'
+  const ocr = OCR_META[ocrKey] ?? OCR_META['pending']
+  return (
+    <div style={{ ...rowStyle, borderLeft: isPrimary ? `3px solid ${C.orange}` : `1px solid ${C.border}` }}>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontSize: 13, fontWeight: 700, color: C.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {isPrimary && <span style={{ fontSize: 9, fontWeight: 700, color: C.orange, background: '#fff8f4', border: `1px solid #fdd5b8`, borderRadius: 4, padding: '1px 6px', marginRight: 6, textTransform: 'uppercase' as const }}>GŁÓWNY</span>}
+          {doc.original_filename}
+        </div>
+        <div style={{ display: 'flex', gap: 8, marginTop: 3, alignItems: 'center' }}>
+          <span style={tagStyle}>{DOC_TYPE_LABELS[doc.document_type] ?? doc.document_type}</span>
+          <span style={{ fontSize: 11, color: C.muted }}>{fmtDate(doc.created_at)}</span>
+          <span style={{ fontSize: 10, fontWeight: 600, padding: '1px 7px', borderRadius: 10, background: ocr.bg, color: ocr.fg }}>{ocr.l}</span>
+        </div>
+      </div>
+      <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+        {onSetPrimary && <button onClick={onSetPrimary} title="Ustaw jako główny" style={{ ...btnSecondary, fontSize: 11 }}>Ustaw główny</button>}
+        <button onClick={onDownload} style={btnSecondary}>Pobierz</button>
+        <button onClick={onDelete} style={btnDanger}>✕</button>
       </div>
     </div>
   )
 }
 
-/* ─── Tab: Aneksy AI ──────────────────────────────────────────── */
-function AneksyTab({ generations, busyId, onDownload, onAccept, onReject }: {
-  generations: ReturnType<typeof useDocumentGenerations>['data'] & object[]
-  busyId: string | null
-  onDownload: (id: string) => void
-  onAccept: (id: string) => void
-  onReject: (id: string, customerId: string) => void
-}) {
-  if (generations.length === 0) {
-    return <Empty>Brak wygenerowanych aneksów dla tej umowy.</Empty>
-  }
-
+function SectionHeader({ label, noMargin }: { label: string; noMargin?: boolean }) {
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-      {(generations ?? []).map((g) => {
-        const meta = GEN_STATUS_META[g.status] ?? GEN_STATUS_META['draft']
-        const canAct = g.status === 'preview' || g.status === 'draft'
-        const busy = busyId === g.id
-        const sim = (g.simulation as Record<string, unknown>) ?? {}
-        const delta = sim.delta_annual_revenue as string | undefined
-
-        return (
-          <div key={g.id} style={{ ...rowStyle, borderLeft: `3px solid ${meta.fg}` }}>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                <span style={{ fontSize: 9.5, fontWeight: 700, padding: '2px 8px', borderRadius: 4, background: meta.bg, color: meta.fg, textTransform: 'uppercase', letterSpacing: 0.3 }}>
-                  {meta.l}
-                </span>
-                <span style={{ fontSize: 13, fontWeight: 700, color: C.text }}>
-                  {g.template_key} v{g.template_version}
-                </span>
-              </div>
-              <div style={{ fontSize: 11.5, color: C.muted }}>
-                {fmtDate(g.created_at)}
-                {delta && <>{' · Δ rok: '}<strong style={{ color: C.text }}>{delta}</strong></>}
-              </div>
-            </div>
-            <div style={{ display: 'flex', gap: 6, flexShrink: 0, alignItems: 'center' }}>
-              {g.attachment_pdf_id && <button onClick={() => onDownload(g.attachment_pdf_id!)} style={btnSecondary}>Aneks PDF</button>}
-              {g.cover_letter_attachment_id && <button onClick={() => onDownload(g.cover_letter_attachment_id!)} style={btnSecondary}>Pismo PDF</button>}
-              {canAct && (
-                <>
-                  <button onClick={() => onReject(g.id, g.customer_id)} disabled={busy} style={btnDanger}>Odrzuć</button>
-                  <button onClick={() => onAccept(g.id)} disabled={busy} style={btnPrimary}>
-                    {busy ? 'Akceptuję…' : 'Akceptuj'}
-                  </button>
-                </>
-              )}
-            </div>
-          </div>
-        )
-      })}
+    <div style={{ fontSize: 10.5, fontWeight: 700, color: C.muted, textTransform: 'uppercase' as const, letterSpacing: '0.07em', marginBottom: noMargin ? 0 : 8 }}>
+      {label}
     </div>
   )
 }
