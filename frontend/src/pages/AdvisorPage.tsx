@@ -12,7 +12,9 @@ import { useDocumentsQuery } from '@/hooks/documents'
 import { useCustomers } from '@/hooks/customers'
 import { useRagSearch } from '@/hooks/rag'
 import { useAppSelector } from '@/hooks/store'
+import { OcrStatusBadge } from '@/components/ui/OcrStatusBadge'
 import type { DocumentRead } from '@/types/models'
+import type { OcrStatus } from '@/components/ui/OcrStatusBadge'
 
 pdfjs.GlobalWorkerOptions.workerSrc = new URL(
   'pdfjs-dist/build/pdf.worker.min.mjs',
@@ -153,17 +155,7 @@ function DocumentList({
               {doc.file_size_bytes ? (
                 <span style={{ fontSize: 10, color: '#b5afa8' }}>{fmtBytes(doc.file_size_bytes)}</span>
               ) : null}
-              {(doc.ocr_status === 'pending' || doc.ocr_status === 'processing' || !doc.ocr_status) && (
-                <span style={{ fontSize: 9, fontWeight: 600, color: '#9e9389', background: '#f5f2ef', border: '1px solid #e3e0db', borderRadius: 10, padding: '1px 6px', display: 'flex', alignItems: 'center', gap: 3 }}>
-                  <span style={{ display: 'inline-block', width: 6, height: 6, borderRadius: '50%', background: '#c8c2ba', animation: 'dot-bounce 1.2s ease-in-out infinite' }} />
-                  indeksowanie...
-                </span>
-              )}
-              {doc.ocr_status === 'failed' && (
-                <span style={{ fontSize: 9, fontWeight: 600, color: '#c94f02', background: '#fff5f0', border: '1px solid #fdd5b8', borderRadius: 10, padding: '1px 6px' }}>
-                  ⚠ błąd indeksowania
-                </span>
-              )}
+              <OcrStatusBadge status={doc.ocr_status as OcrStatus} />
             </div>
           </div>
 

@@ -11,9 +11,9 @@ from datetime import date, datetime
 from decimal import Decimal
 from functools import lru_cache
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
-import yaml
+import yaml  # type: ignore[import-untyped]
 from jinja2 import Environment, FileSystemLoader, StrictUndefined, select_autoescape
 
 from app.schemas.document_generation import DocumentTemplateRead
@@ -121,7 +121,8 @@ class TemplateRegistry:
         manifest_path = self._base_dir / template_key / "manifest.yml"
         if not manifest_path.exists():
             raise TemplateNotFoundError(f"Template '{template_key}' not found")
-        return yaml.safe_load(manifest_path.read_text(encoding="utf-8"))
+        manifest = yaml.safe_load(manifest_path.read_text(encoding="utf-8"))
+        return cast(dict[str, Any], manifest)
 
     def render_main(self, template_key: str, context: dict[str, Any]) -> str:
         manifest = self.get_manifest(template_key)

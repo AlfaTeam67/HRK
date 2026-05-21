@@ -7,7 +7,7 @@ import { useAppSelector } from '@/hooks/store'
 import { useAlerts, useDashboardKpi } from '@/hooks/alerts'
 import { Modal } from '@/components/ui/modal'
 import { useCustomers } from '@/hooks/customers'
-import { useDocumentsQuery, useDocumentDownloadUrl, useDeleteDocument } from '@/hooks/documents'
+
 import { useContracts, useDeleteContract, useCreateContract } from '@/hooks/contracts'
 import type { ContractType, ContractStatus, BillingCycle, ContractCreate } from '@/types/models'
 
@@ -22,22 +22,6 @@ const STATUS_S: Record<string, { bg: string; color: string }> = {
 
 const CONTRACT_TYPES = ['ramowa', 'aneks', 'SLA', 'DPA', 'PPK', 'inne'] as const
 
-const OCR_S: Record<string, { bg: string; color: string }> = {
-  pending:    { bg: '#f2f0ed', color: '#6b6b6b' },
-  processing: { bg: '#eff6ff', color: '#1d4ed8' },
-  done:       { bg: '#f0fff4', color: '#276749' },
-  failed:     { bg: '#fff5f0', color: '#c94f02' },
-  skipped:    { bg: '#fafaf9', color: '#9e9389' },
-}
-
-const OCR_LABEL: Record<string, string> = {
-  pending:    'Oczekuje',
-  processing: 'Przetwarza…',
-  done:       'RAG gotowy',
-  failed:     'Błąd OCR',
-  skipped:    'Pominięto',
-}
-
 /* ─── Component ──────────────────────────────────────────────── */
 export function ContractsPage() {
   const navigate = useNavigate()
@@ -51,9 +35,7 @@ export function ContractsPage() {
   const [filterCustomerId, setFilterCustomerId] = useState('')
   const [filterContractType, setFilterContractType] = useState('')
 
-  // Preview / delete state
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
-  const [isPreviewOpen, setIsPreviewOpen] = useState(false)
+  // Delete state
   const [deletingId, setDeletingId] = useState<string | null>(null)
 
   // New Contract state
@@ -72,14 +54,11 @@ export function ContractsPage() {
   const { data: realContracts = [], isLoading: contractsLoading } = useContracts(
     filterCustomerId ? { customer_id: filterCustomerId } : undefined
   )
-  const { data: allDocuments = [] } = useDocumentsQuery()
   const { data: realAlerts, isLoading: alertsLoading } = useAlerts(user?.id)
   const { data: kpiData, isLoading: kpiLoading } = useDashboardKpi(user?.id)
 
-  const deleteDoc = useDeleteDocument()
   const deleteContract = useDeleteContract()
   const createContract = useCreateContract()
-  const getDownloadUrl = useDocumentDownloadUrl()
 
   type SortCol = 'client' | 'number' | 'type' | 'status' | 'end_date'
   const [sortCol, setSortCol] = useState<SortCol | null>(null)
@@ -118,17 +97,6 @@ export function ContractsPage() {
     return list
   }, [realContracts, filterContractType, sortCol, sortDir, customers])
 
-  // Map: contract_id → first linked document (for preview lookup)
-  const docsMap = useMemo(() => {
-    const map = new Map<string, typeof allDocuments[0]>()
-    for (const doc of allDocuments) {
-      if (doc.contract_id && !map.has(doc.contract_id)) {
-        map.set(doc.contract_id, doc)
-      }
-    }
-    return map
-  }, [allDocuments])
-
   // KPIs
   const exp30 = alertsLoading ? null : (realAlerts?.filter(a => a.type === 'contract_expiry_30').length ?? 0)
   const exp60 = alertsLoading ? null : (realAlerts?.filter(a => a.type === 'contract_expiry_60').length ?? 0)
@@ -142,31 +110,10 @@ export function ContractsPage() {
     { label: 'AKTYWNYCH UMÓW', value: activeContractsCount === null ? '—' : String(activeContractsCount), sub: 'Łącznie w systemie', color: '#38a169' },
   ]
 
-  const handlePreview = async (contractId: string) => {
-    if (!user?.id) return
-    const doc = docsMap.get(contractId)
-    if (!doc) {
-      alert('Brak powiązanego dokumentu dla tej umowy.')
-      return
-    }
-    try {
-      const { url } = await getDownloadUrl.mutateAsync({ id: doc.id, userId: user.id })
-      setPreviewUrl(url)
-      setIsPreviewOpen(true)
-    } catch (err) {
-      console.error('Failed to get preview URL:', err)
-      alert('Nie udało się wygenerować podglądu dokumentu.')
-    }
-  }
-
   const handleDelete = async (contractId: string) => {
     if (!window.confirm('Czy na pewno chcesz usunąć tę umowę?')) return
     setDeletingId(contractId)
     try {
-      const doc = docsMap.get(contractId)
-      if (doc && user?.id) {
-        await deleteDoc.mutateAsync({ id: doc.id, userId: user.id })
-      }
       await deleteContract.mutateAsync(contractId)
     } catch {
       alert('Nie udało się usunąć umowy. Spróbuj ponownie.')
@@ -319,24 +266,6 @@ export function ContractsPage() {
         </div>
       </Modal>
 
-      {/* Preview Modal */}
-      <Modal
-        isOpen={isPreviewOpen}
-        onClose={() => { setIsPreviewOpen(false); setPreviewUrl(null) }}
-        title="Podgląd dokumentu"
-        maxWidth="1200px"
-      >
-        <div style={{ height: '80vh', background: '#f5f2ef', borderRadius: 8, overflow: 'hidden' }}>
-          {previewUrl ? (
-            <iframe src={previewUrl} style={{ width: '100%', height: '100%', border: 'none' }} title="Document Preview" />
-          ) : (
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#9e9389' }}>
-              Ładowanie podglądu...
-            </div>
-          )}
-        </div>
-      </Modal>
-
       {/* KPI cards */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 14, marginBottom: 20 }}>
         {kpis.map((kpi) => (
@@ -391,19 +320,17 @@ export function ContractsPage() {
                   </th>
                 )
               })}
-              <th style={{ padding: '12px 18px', fontSize: 11, fontWeight: 700, color: '#9e9389' }}>DOKUMENT</th>
               <th style={{ padding: '12px 18px' }}></th>
             </tr>
           </thead>
           <tbody>
             {contractsLoading ? (
-              <tr><td colSpan={7} style={{ padding: '40px', textAlign: 'center', color: '#9e9389' }}>Ładowanie danych...</td></tr>
+              <tr><td colSpan={6} style={{ padding: '40px', textAlign: 'center', color: '#9e9389' }}>Ładowanie danych...</td></tr>
             ) : filteredContracts.length === 0 ? (
-              <tr><td colSpan={7} style={{ padding: '40px', textAlign: 'center', color: '#9e9389' }}>Brak umów spełniających kryteria.</td></tr>
+              <tr><td colSpan={6} style={{ padding: '40px', textAlign: 'center', color: '#9e9389' }}>Brak umów spełniających kryteria.</td></tr>
             ) : filteredContracts.map((c) => {
               const client = customers.find(cust => cust.id === c.customer_id)
               const statusStyles = STATUS_S[c.status] || STATUS_S['draft']
-              const linkedDoc = docsMap.get(c.id)
               const isDeleting = deletingId === c.id
               return (
                 <tr
@@ -428,29 +355,6 @@ export function ContractsPage() {
                   </td>
                   <td style={{ padding: '14px 18px', color: '#4b5563' }}>
                     {c.end_date || 'Bezterminowa'}
-                  </td>
-                  <td style={{ padding: '14px 18px' }}>
-                    {linkedDoc ? (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                        <button
-                          onClick={(e) => { e.stopPropagation(); handlePreview(c.id) }}
-                          style={{ background: 'none', border: '1px solid #e3e0db', borderRadius: 4, padding: '4px 8px', fontSize: 10, fontWeight: 700, cursor: 'pointer', color: '#e85c04', whiteSpace: 'nowrap' }}
-                        >
-                          PODGLĄD
-                        </button>
-                        {(() => {
-                          const status = linkedDoc.ocr_status ?? 'pending'
-                          const s = OCR_S[status] ?? OCR_S['pending']
-                          return (
-                            <span style={{ padding: '2px 8px', borderRadius: 20, fontSize: 10, fontWeight: 600, background: s.bg, color: s.color, whiteSpace: 'nowrap' }}>
-                              {OCR_LABEL[status] ?? status}
-                            </span>
-                          )
-                        })()}
-                      </div>
-                    ) : (
-                      <span style={{ fontSize: 11, color: '#c8c2ba' }}>Brak pliku</span>
-                    )}
                   </td>
                   <td style={{ padding: '14px 18px', textAlign: 'right' }}>
                     <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>

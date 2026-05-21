@@ -13,14 +13,15 @@ import {
 } from '@/hooks/documents'
 import { useContracts } from '@/hooks/contracts'
 import { useAppSelector } from '@/hooks/store'
-import { UploadWizard } from '@/features/documents/UploadWizard'
+import { OcrStatusBadge } from '@/components/ui/OcrStatusBadge'
+import { PdfPreviewModal } from '@/components/ui/PdfPreviewModal'
 import type { DocumentRead } from '@/types/models'
+import type { OcrStatus } from '@/components/ui/OcrStatusBadge'
 
 import { colors, fmtMoneyPL } from './wizardStyles'
 
 interface Props {
   customerId: string
-  onGenerateClick: () => void
 }
 
 const STATUS_META: Record<
@@ -66,13 +67,6 @@ const STATUS_META: Record<
   },
 }
 
-const OCR_META: Record<string, { label: string; bg: string; fg: string }> = {
-  pending:    { label: 'Oczekuje', bg: '#f2f0ed', fg: '#6b6b6b' },
-  processing: { label: 'Przetwarza…', bg: '#eff6ff', fg: '#1d4ed8' },
-  done:       { label: 'RAG gotowy', bg: '#f0fff4', fg: '#276749' },
-  failed:     { label: 'Błąd OCR', bg: '#fff5f0', fg: '#c94f02' },
-  skipped:    { label: 'Pominięto', bg: '#fafaf9', fg: '#9e9389' },
-}
 
 const DOC_TYPE_LABELS: Record<string, string> = {
   contract:          'Umowa',
@@ -83,7 +77,7 @@ const DOC_TYPE_LABELS: Record<string, string> = {
   other:             'Inny',
 }
 
-export function DocumentsTab({ customerId, onGenerateClick }: Props) {
+export function DocumentsTab({ customerId }: Props) {
   const user = useAppSelector((s) => s.auth.user)
   const { data: generations = [], isLoading: genLoading } = useDocumentGenerations(customerId)
   const { data: attachments = [], isLoading: attLoading } = useDocumentsQuery({ customer_id: customerId })
@@ -93,8 +87,7 @@ export function DocumentsTab({ customerId, onGenerateClick }: Props) {
   const downloadMut = useDocumentDownloadUrl()
   const [busyId, setBusyId] = useState<string | null>(null)
 
-  const [wizardOpen, setWizardOpen] = useState(false)
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
+  const [previewDoc, setPreviewDoc] = useState<{ id: string; title: string } | null>(null)
 
   const isLoading = genLoading || attLoading
   const clientDocs = attachments.filter((a) => !a.contract_id)
@@ -143,15 +136,9 @@ export function DocumentsTab({ customerId, onGenerateClick }: Props) {
     }
   }
 
-  async function handlePreview(attachmentId: string | null) {
+  function handlePreview(attachmentId: string | null, title: string) {
     if (!attachmentId || !user?.id) return
-    try {
-      const { url } = await downloadMut.mutateAsync({ id: attachmentId, userId: user.id })
-      setPreviewUrl(url)
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Nieznany błąd'
-      alert(`Nie udało się wygenerować podglądu.\n\n${msg}`)
-    }
+    setPreviewDoc({ id: attachmentId, title })
   }
 
   return (
@@ -159,10 +146,6 @@ export function DocumentsTab({ customerId, onGenerateClick }: Props) {
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
         <h3 style={{ fontSize: 14, fontWeight: 800, color: colors.textPrimary, margin: 0 }}>Dokumenty klienta</h3>
-        <div style={{ display: 'flex', gap: 8 }}>
-          <button onClick={() => setWizardOpen(true)} style={btnSecStyle}>+ Wgraj plik</button>
-          <button onClick={onGenerateClick} style={btnPriStyle}>✦ Generuj aneks</button>
-        </div>
       </div>
 
       {isLoading && <p style={{ fontSize: 13, color: colors.textMuted }}>Ładowanie…</p>}
@@ -191,10 +174,10 @@ export function DocumentsTab({ customerId, onGenerateClick }: Props) {
       <section style={{ marginBottom: 20 }}>
         <SectionLabel>Dokumenty ogólne</SectionLabel>
         {clientDocs.length === 0 ? (
-          <EmptyState>Brak dokumentów ogólnych. Użyj <strong>Wgraj plik</strong>, aby dodać pełnomocnictwo lub inne dokumenty klienta.</EmptyState>
+          <EmptyState>Brak dokumentów ogólnych. Użyj <strong>Dodaj dokument</strong>, aby dodać pełnomocnictwo lub inne dokumenty klienta.</EmptyState>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {clientDocs.map((doc) => <AttachmentRow key={doc.id} doc={doc} onDownload={() => handleDownload(doc.id)} onPreview={() => handlePreview(doc.id)} />)}
+            {clientDocs.map((doc) => <AttachmentRow key={doc.id} doc={doc} onDownload={() => handleDownload(doc.id)} onPreview={() => handlePreview(doc.id, doc.original_filename)} />)}
           </div>
         )}
       </section>
@@ -211,7 +194,7 @@ export function DocumentsTab({ customerId, onGenerateClick }: Props) {
                 <div key={doc.id} style={{ background: 'white', border: `1px solid ${colors.border}`, borderRadius: 8, padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 10, opacity: 0.8 }}>
                   {contract && <span style={{ fontSize: 10, fontWeight: 700, color: colors.textMuted, background: '#f2f0ed', border: `1px solid ${colors.border}`, borderRadius: 4, padding: '1px 6px', whiteSpace: 'nowrap' }}>{contract.contract_number}</span>}
                   <span style={{ fontSize: 12.5, color: colors.textPrimary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>{doc.original_filename}</span>
-                  <button onClick={() => handlePreview(doc.id)} style={btnSecStyle}>Podgląd</button>
+                  <button onClick={() => handlePreview(doc.id, doc.original_filename)} style={btnSecStyle}>Podgląd</button>
                   <button onClick={() => handleDownload(doc.id)} style={btnSecStyle}>Pobierz</button>
                 </div>
               )
@@ -221,26 +204,17 @@ export function DocumentsTab({ customerId, onGenerateClick }: Props) {
       )}
 
       {!isLoading && pendingGens.length === 0 && clientDocs.length === 0 && contractDocs.length === 0 && (
-        <EmptyState>Brak dokumentów. Kliknij <strong>Wgraj plik</strong> lub <strong>Generuj aneks</strong>, aby zacząć.</EmptyState>
+        <EmptyState>Brak dokumentów. Kliknij <strong>Dodaj dokument</strong> lub <strong>Generuj dokument</strong>, aby zacząć.</EmptyState>
       )}
 
-      {wizardOpen && (
-        <UploadWizard customerId={customerId} onClose={() => setWizardOpen(false)} />
-      )}
-
-      {previewUrl && (
-        <div
-          style={{ position: 'fixed', inset: 0, zIndex: 1200, background: 'rgba(26,23,20,0.6)', backdropFilter: 'blur(3px)', display: 'flex', flexDirection: 'column' }}
-          onClick={() => setPreviewUrl(null)}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 20px', background: 'white', flexShrink: 0 }} onClick={(e) => e.stopPropagation()}>
-            <span style={{ fontSize: 13, fontWeight: 700, color: '#1a1714' }}>Podgląd dokumentu</span>
-            <button onClick={() => setPreviewUrl(null)} style={{ background: 'none', border: '1px solid #e3e0db', borderRadius: 6, padding: '5px 12px', fontSize: 12, fontWeight: 600, cursor: 'pointer', color: '#6b6361' }}>✕ Zamknij</button>
-          </div>
-          <div style={{ flex: 1, overflow: 'hidden' }} onClick={(e) => e.stopPropagation()}>
-            <iframe src={previewUrl} style={{ width: '100%', height: '100%', border: 'none' }} title="Podgląd dokumentu" />
-          </div>
-        </div>
+      {previewDoc && user?.id && (
+        <PdfPreviewModal
+          key={previewDoc.id}
+          attachmentId={previewDoc.id}
+          title={previewDoc.title}
+          userId={user.id}
+          onClose={() => setPreviewDoc(null)}
+        />
       )}
     </div>
   )
@@ -323,8 +297,6 @@ function GenerationRow({ gen, busy, onAccept, onReject, onDownloadPdf, onDownloa
 }
 
 function AttachmentRow({ doc, onDownload, onPreview }: { doc: DocumentRead; onDownload: () => void; onPreview: () => void }) {
-  const ocrKey = doc.ocr_status ?? 'pending'
-  const ocr = OCR_META[ocrKey] ?? OCR_META['pending']
   const created = new Date(doc.created_at).toLocaleString('pl-PL', {
     day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit',
   })
@@ -352,9 +324,7 @@ function AttachmentRow({ doc, onDownload, onPreview }: { doc: DocumentRead; onDo
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 11.5, color: colors.textMuted }}>
           {created}
-          <span style={{ padding: '1px 6px', borderRadius: 10, fontSize: 10, fontWeight: 600, background: ocr.bg, color: ocr.fg }}>
-            {ocr.label}
-          </span>
+          <OcrStatusBadge status={doc.ocr_status as OcrStatus} />
         </div>
       </div>
 
@@ -372,12 +342,6 @@ function SectionLabel({ children, accent }: { children: React.ReactNode; accent?
 
 function EmptyState({ children }: { children: React.ReactNode }) {
   return <div style={{ background: '#fafaf9', borderRadius: 10, padding: 20, textAlign: 'center', color: colors.textMuted, fontSize: 13, border: `1px solid ${colors.border}` }}>{children}</div>
-}
-
-const btnPriStyle: React.CSSProperties = {
-  background: colors.orange, color: 'white', border: 'none', borderRadius: 8,
-  padding: '8px 16px', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
-  boxShadow: '0 2px 8px rgba(232,92,4,0.25)',
 }
 
 const btnSecStyle: React.CSSProperties = {

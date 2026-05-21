@@ -3,7 +3,7 @@
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import select, text
+from sqlalchemy import delete, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.document_chunk import DocumentChunk
@@ -47,7 +47,7 @@ class DocumentChunkRepository(BaseRepository[DocumentChunk]):
 
         keyword_boost = " + ".join(boost_clauses) if boost_clauses else "0"
 
-        stmt = text(f"""
+        query = """
             SELECT id, attachment_id, content, page_number, bbox, section_title, vec_score, kw_score
             FROM (
                 SELECT id, attachment_id, content, page_number, bbox, section_title,
@@ -59,16 +59,15 @@ class DocumentChunkRepository(BaseRepository[DocumentChunk]):
             ) sub
             ORDER BY (vec_score - kw_score) ASC
             LIMIT :top_k
-        """)
+        """
+        stmt = text(query.format(keyword_boost=keyword_boost))  # nosec B608
 
         result = await self.session.execute(stmt, params)
         rows = result.all()
         return [(row, float(row.vec_score) - float(row.kw_score)) for row in rows]
 
     async def delete_by_attachment(self, attachment_id: UUID) -> None:
-        chunks = await self.session.execute(
-            select(DocumentChunk).where(DocumentChunk.attachment_id == attachment_id)
+        await self.session.execute(
+            delete(DocumentChunk).where(DocumentChunk.attachment_id == attachment_id)
         )
-        for chunk in chunks.scalars().all():
-            await self.session.delete(chunk)
         await self.session.flush()

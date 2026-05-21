@@ -30,7 +30,7 @@ from app.models.service_group import ServiceGroup
 from app.models.user import User
 
 
-async def seed() -> None:
+async def seed() -> None:  # noqa: C901
     async with AsyncSessionLocal() as session:
         # 1. Idempotency check (Expand to check more CKKs)
         seed_ckks = {f"C{i:03d}" for i in range(1, 11)}
