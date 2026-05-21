@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useState } from 'react'
 
 import {
   type GenerationRecord,
@@ -10,11 +10,11 @@ import {
 import {
   useDocumentDownloadUrl,
   useDocumentsQuery,
-  useUploadDocument,
 } from '@/hooks/documents'
 import { useContracts } from '@/hooks/contracts'
 import { useAppSelector } from '@/hooks/store'
-import type { DocumentRead, DocumentType } from '@/types/models'
+import { UploadWizard } from '@/features/documents/UploadWizard'
+import type { DocumentRead } from '@/types/models'
 
 import { colors, fmtMoneyPL } from './wizardStyles'
 
@@ -91,16 +91,15 @@ export function DocumentsTab({ customerId, onGenerateClick }: Props) {
   const acceptMut = useAcceptGeneration()
   const rejectMut = useRejectGeneration()
   const downloadMut = useDocumentDownloadUrl()
-  const uploadMut = useUploadDocument()
   const [busyId, setBusyId] = useState<string | null>(null)
 
-  const [uploadOpen, setUploadOpen] = useState(false)
-  const [uploadFile, setUploadFile] = useState<File | null>(null)
-  const [uploadContractId, setUploadContractId] = useState('')
-  const [uploadDocType, setUploadDocType] = useState<DocumentType>('contract')
-  const fileInputRef = useRef<HTMLInputElement>(null)
+  const [wizardOpen, setWizardOpen] = useState(false)
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
 
   const isLoading = genLoading || attLoading
+  const clientDocs = attachments.filter((a) => !a.contract_id)
+  const contractDocs = attachments.filter((a) => !!a.contract_id)
+  const pendingGens = generations.filter((g) => g.status === 'preview' || g.status === 'draft')
 
   async function handleAccept(gen: GenerationRecord) {
     if (!user?.id) return
@@ -144,180 +143,36 @@ export function DocumentsTab({ customerId, onGenerateClick }: Props) {
     }
   }
 
-  async function handleUpload() {
-    if (!uploadFile || !user?.id) return
+  async function handlePreview(attachmentId: string | null) {
+    if (!attachmentId || !user?.id) return
     try {
-      await uploadMut.mutateAsync({
-        file: uploadFile,
-        document_type: uploadDocType,
-        customer_id: customerId,
-        contract_id: uploadContractId || undefined,
-        uploaded_by: user.id,
-      })
-      setUploadOpen(false)
-      setUploadFile(null)
-      setUploadContractId('')
+      const { url } = await downloadMut.mutateAsync({ id: attachmentId, userId: user.id })
+      setPreviewUrl(url)
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Nieznany błąd'
-      alert(`Nie udało się wgrać pliku.\n\n${msg}`)
+      alert(`Nie udało się wygenerować podglądu.\n\n${msg}`)
     }
   }
 
   return (
     <div>
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-        <div>
-          <h3 style={{ fontSize: 14, fontWeight: 800, color: colors.textPrimary, margin: 0 }}>
-            Dokumenty klienta
-          </h3>
-          <p style={{ fontSize: 11.5, color: colors.textMuted, margin: '2px 0 0' }}>
-            Wgrane pliki oraz aneksy generowane automatycznie.
-          </p>
-        </div>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+        <h3 style={{ fontSize: 14, fontWeight: 800, color: colors.textPrimary, margin: 0 }}>Dokumenty klienta</h3>
         <div style={{ display: 'flex', gap: 8 }}>
-          <button
-            onClick={() => setUploadOpen((v) => !v)}
-            style={{
-              background: 'white',
-              color: colors.textPrimary,
-              border: `1px solid ${colors.border}`,
-              borderRadius: 8,
-              padding: '8px 14px',
-              fontSize: 12.5,
-              fontWeight: 700,
-              cursor: 'pointer',
-              fontFamily: 'inherit',
-            }}
-          >
-            + Wgraj plik
-          </button>
-          <button
-            onClick={onGenerateClick}
-            style={{
-              background: colors.orange,
-              color: 'white',
-              border: 'none',
-              borderRadius: 8,
-              padding: '8px 16px',
-              fontSize: 12.5,
-              fontWeight: 700,
-              cursor: 'pointer',
-              fontFamily: 'inherit',
-              boxShadow: '0 2px 8px rgba(232,92,4,0.25)',
-            }}
-          >
-            ✦ Generuj aneks
-          </button>
+          <button onClick={() => setWizardOpen(true)} style={btnSecStyle}>+ Wgraj plik</button>
+          <button onClick={onGenerateClick} style={btnPriStyle}>✦ Generuj aneks</button>
         </div>
       </div>
 
-      {/* Upload panel */}
-      {uploadOpen && (
-        <div style={{
-          background: '#fafaf9',
-          border: `1px solid ${colors.border}`,
-          borderRadius: 10,
-          padding: 16,
-          marginBottom: 14,
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 10,
-        }}>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept=".pdf,.doc,.docx"
-            style={{ display: 'none' }}
-            onChange={(e) => setUploadFile(e.target.files?.[0] ?? null)}
-          />
-          <div
-            onClick={() => fileInputRef.current?.click()}
-            style={{
-              border: uploadFile ? '2px solid #38a169' : '2px dashed #e3e0db',
-              borderRadius: 8,
-              padding: '16px',
-              textAlign: 'center',
-              cursor: 'pointer',
-              fontSize: 12.5,
-              color: uploadFile ? '#276749' : colors.textMuted,
-            }}
-          >
-            {uploadFile ? `✓ ${uploadFile.name}` : 'Kliknij, aby wybrać plik (PDF, DOC)'}
-          </div>
-
-          <div style={{ display: 'flex', gap: 10 }}>
-            <select
-              value={uploadDocType}
-              onChange={(e) => setUploadDocType(e.target.value as DocumentType)}
-              style={{ flex: 1, padding: '8px', borderRadius: 6, border: `1px solid ${colors.border}`, fontSize: 12.5, background: 'white' }}
-            >
-              <option value="contract">Umowa</option>
-              <option value="amendment">Aneks</option>
-              <option value="power_of_attorney">Pełnomocnictwo</option>
-              <option value="service_order">Zamówienie</option>
-              <option value="other">Inny</option>
-            </select>
-
-            <select
-              value={uploadContractId}
-              onChange={(e) => setUploadContractId(e.target.value)}
-              style={{ flex: 1, padding: '8px', borderRadius: 6, border: `1px solid ${colors.border}`, fontSize: 12.5, background: 'white' }}
-            >
-              <option value="">Brak powiązanej umowy</option>
-              {contracts.map((c) => (
-                <option key={c.id} value={c.id}>{c.contract_number}</option>
-              ))}
-            </select>
-          </div>
-
-          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-            <button
-              onClick={() => { setUploadOpen(false); setUploadFile(null) }}
-              style={{ padding: '7px 14px', borderRadius: 6, border: `1px solid ${colors.border}`, background: 'white', fontSize: 12, cursor: 'pointer', fontFamily: 'inherit' }}
-            >
-              Anuluj
-            </button>
-            <button
-              onClick={handleUpload}
-              disabled={!uploadFile || uploadMut.isPending}
-              style={{
-                padding: '7px 14px', borderRadius: 6, border: 'none',
-                background: uploadFile ? colors.orange : '#e3e0db',
-                color: uploadFile ? 'white' : colors.textMuted,
-                fontSize: 12, fontWeight: 700, cursor: uploadFile ? 'pointer' : 'not-allowed',
-                fontFamily: 'inherit',
-              }}
-            >
-              {uploadMut.isPending ? 'Wgrywam…' : 'Wgraj'}
-            </button>
-          </div>
-        </div>
-      )}
-
       {isLoading && <p style={{ fontSize: 13, color: colors.textMuted }}>Ładowanie…</p>}
 
-      {!isLoading && generations.length === 0 && attachments.length === 0 && (
-        <div style={{
-          background: colors.cardBg,
-          borderRadius: 10,
-          padding: 24,
-          textAlign: 'center',
-          color: colors.textMuted,
-          fontSize: 13,
-        }}>
-          Brak dokumentów. Kliknij <strong>Wgraj plik</strong> lub <strong>Generuj aneks</strong>, aby zacząć.
-        </div>
-      )}
-
-      {/* Generated documents */}
-      {generations.length > 0 && (
-        <div style={{ marginBottom: 14 }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: colors.textMuted, letterSpacing: '0.07em', textTransform: 'uppercase', marginBottom: 6 }}>
-            Wygenerowane przez AI
-          </div>
+      {/* Dokumenty oczekujące na akceptację */}
+      {pendingGens.length > 0 && (
+        <section style={{ marginBottom: 20, background: '#fff8f4', border: '1px solid #fdd5b8', borderRadius: 10, padding: '14px 16px' }}>
+          <SectionLabel accent="#c94f02">Do akceptacji ({pendingGens.length})</SectionLabel>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {generations.map((g) => (
+            {pendingGens.map((g) => (
               <GenerationRow
                 key={g.id}
                 gen={g}
@@ -329,23 +184,61 @@ export function DocumentsTab({ customerId, onGenerateClick }: Props) {
               />
             ))}
           </div>
-        </div>
+        </section>
       )}
 
-      {/* Manual attachments */}
-      {attachments.length > 0 && (
-        <div>
-          <div style={{ fontSize: 11, fontWeight: 700, color: colors.textMuted, letterSpacing: '0.07em', textTransform: 'uppercase', marginBottom: 6 }}>
-            Wgrane pliki
-          </div>
+      {/* Dokumenty ogólne klienta */}
+      <section style={{ marginBottom: 20 }}>
+        <SectionLabel>Dokumenty ogólne</SectionLabel>
+        {clientDocs.length === 0 ? (
+          <EmptyState>Brak dokumentów ogólnych. Użyj <strong>Wgraj plik</strong>, aby dodać pełnomocnictwo lub inne dokumenty klienta.</EmptyState>
+        ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {attachments.map((doc) => (
-              <AttachmentRow
-                key={doc.id}
-                doc={doc}
-                onDownload={() => handleDownload(doc.id)}
-              />
-            ))}
+            {clientDocs.map((doc) => <AttachmentRow key={doc.id} doc={doc} onDownload={() => handleDownload(doc.id)} onPreview={() => handlePreview(doc.id)} />)}
+          </div>
+        )}
+      </section>
+
+      {/* Podgląd dokumentów umów */}
+      {contractDocs.length > 0 && (
+        <section style={{ marginBottom: 20 }}>
+          <SectionLabel>Dokumenty powiązane z umowami</SectionLabel>
+          <p style={{ fontSize: 11.5, color: colors.textMuted, margin: '0 0 8px' }}>Zarządzanie tymi plikami odbywa się z poziomu konkretnej umowy.</p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {contractDocs.map((doc) => {
+              const contract = contracts.find((c) => c.id === doc.contract_id)
+              return (
+                <div key={doc.id} style={{ background: 'white', border: `1px solid ${colors.border}`, borderRadius: 8, padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 10, opacity: 0.8 }}>
+                  {contract && <span style={{ fontSize: 10, fontWeight: 700, color: colors.textMuted, background: '#f2f0ed', border: `1px solid ${colors.border}`, borderRadius: 4, padding: '1px 6px', whiteSpace: 'nowrap' }}>{contract.contract_number}</span>}
+                  <span style={{ fontSize: 12.5, color: colors.textPrimary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>{doc.original_filename}</span>
+                  <button onClick={() => handlePreview(doc.id)} style={btnSecStyle}>Podgląd</button>
+                  <button onClick={() => handleDownload(doc.id)} style={btnSecStyle}>Pobierz</button>
+                </div>
+              )
+            })}
+          </div>
+        </section>
+      )}
+
+      {!isLoading && pendingGens.length === 0 && clientDocs.length === 0 && contractDocs.length === 0 && (
+        <EmptyState>Brak dokumentów. Kliknij <strong>Wgraj plik</strong> lub <strong>Generuj aneks</strong>, aby zacząć.</EmptyState>
+      )}
+
+      {wizardOpen && (
+        <UploadWizard customerId={customerId} onClose={() => setWizardOpen(false)} />
+      )}
+
+      {previewUrl && (
+        <div
+          style={{ position: 'fixed', inset: 0, zIndex: 1200, background: 'rgba(26,23,20,0.6)', backdropFilter: 'blur(3px)', display: 'flex', flexDirection: 'column' }}
+          onClick={() => setPreviewUrl(null)}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 20px', background: 'white', flexShrink: 0 }} onClick={(e) => e.stopPropagation()}>
+            <span style={{ fontSize: 13, fontWeight: 700, color: '#1a1714' }}>Podgląd dokumentu</span>
+            <button onClick={() => setPreviewUrl(null)} style={{ background: 'none', border: '1px solid #e3e0db', borderRadius: 6, padding: '5px 12px', fontSize: 12, fontWeight: 600, cursor: 'pointer', color: '#6b6361' }}>✕ Zamknij</button>
+          </div>
+          <div style={{ flex: 1, overflow: 'hidden' }} onClick={(e) => e.stopPropagation()}>
+            <iframe src={previewUrl} style={{ width: '100%', height: '100%', border: 'none' }} title="Podgląd dokumentu" />
           </div>
         </div>
       )}
@@ -429,7 +322,7 @@ function GenerationRow({ gen, busy, onAccept, onReject, onDownloadPdf, onDownloa
   )
 }
 
-function AttachmentRow({ doc, onDownload }: { doc: DocumentRead; onDownload: () => void }) {
+function AttachmentRow({ doc, onDownload, onPreview }: { doc: DocumentRead; onDownload: () => void; onPreview: () => void }) {
   const ocrKey = doc.ocr_status ?? 'pending'
   const ocr = OCR_META[ocrKey] ?? OCR_META['pending']
   const created = new Date(doc.created_at).toLocaleString('pl-PL', {
@@ -465,11 +358,31 @@ function AttachmentRow({ doc, onDownload }: { doc: DocumentRead; onDownload: () 
         </div>
       </div>
 
-      <button onClick={onDownload} style={btnLinkStyle}>
-        Pobierz
-      </button>
+      <div style={{ display: 'flex', gap: 6 }}>
+        <button onClick={onPreview} style={btnLinkStyle}>Podgląd</button>
+        <button onClick={onDownload} style={btnLinkStyle}>Pobierz</button>
+      </div>
     </div>
   )
+}
+
+function SectionLabel({ children, accent }: { children: React.ReactNode; accent?: string }) {
+  return <div style={{ fontSize: 10.5, fontWeight: 700, color: accent ?? colors.textMuted, textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 8 }}>{children}</div>
+}
+
+function EmptyState({ children }: { children: React.ReactNode }) {
+  return <div style={{ background: '#fafaf9', borderRadius: 10, padding: 20, textAlign: 'center', color: colors.textMuted, fontSize: 13, border: `1px solid ${colors.border}` }}>{children}</div>
+}
+
+const btnPriStyle: React.CSSProperties = {
+  background: colors.orange, color: 'white', border: 'none', borderRadius: 8,
+  padding: '8px 16px', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
+  boxShadow: '0 2px 8px rgba(232,92,4,0.25)',
+}
+
+const btnSecStyle: React.CSSProperties = {
+  background: 'white', color: colors.textPrimary, border: `1px solid ${colors.border}`,
+  borderRadius: 8, padding: '8px 14px', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
 }
 
 const btnLinkStyle: React.CSSProperties = {

@@ -176,6 +176,8 @@ export function useAcceptGeneration() {
     onSuccess: (data) => {
       qc.invalidateQueries({ queryKey: ['document-generations', 'list', data.customer_id] })
       qc.invalidateQueries({ queryKey: ['timeline', data.customer_id] })
+      qc.invalidateQueries({ queryKey: ['documents'] })
+      qc.invalidateQueries({ queryKey: ['contracts'] })
     },
   })
 }

@@ -67,7 +67,7 @@ Filtruje `ocr_status != 'skipped'`. Wyświetla status indeksowania:
 
 ### Zakładka Dokumenty (profil klienta / umowa)
 
-Bez filtrów — pokazuje wszystkie załączniki. Generacje w statusie `preview`/`draft` pokazują badge **WERSJA ROBOCZA** obok przycisków PDF.
+Bez filtrów — pokazuje wszystkie załączniki. Generacje w statusie `preview`/`draft` pokazują **sekcję "Do akceptacji" na górze** (pomarańczowe tło) z przyciskami Akceptuj/Odrzuć. Po akceptacji plik trafia do listy załączników danej umowy i jest tam wyświetlany normalnie — bez osobnej sekcji AI. Brak sekcji "Wygenerowane przez AI" / "Wersje robocze AI" na dole.
 
 ---
 

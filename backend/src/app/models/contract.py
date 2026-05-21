@@ -115,6 +115,12 @@ class Contract(Base, TimestampMixin, SoftDeleteMixin, AuditMixin):
         JSONB, server_default=text("'{}'::jsonb"), nullable=False
     )
 
+    primary_document_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("attachments.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+
     # Relationships
     customer: Mapped[Customer] = relationship("Customer", back_populates="contracts")
     account_manager: Mapped[User | None] = relationship("User", foreign_keys=[account_manager_id])
@@ -139,7 +145,12 @@ class Contract(Base, TimestampMixin, SoftDeleteMixin, AuditMixin):
         "Valorization", back_populates="contract"
     )
     notes_rel: Mapped[list[Note]] = relationship("Note", back_populates="contract")
-    attachments: Mapped[list[Attachment]] = relationship("Attachment", back_populates="contract")
+    primary_document: Mapped[Attachment | None] = relationship(
+        "Attachment", foreign_keys=[primary_document_id]
+    )
+    attachments: Mapped[list[Attachment]] = relationship(
+        "Attachment", back_populates="contract", foreign_keys="Attachment.contract_id"
+    )
     activity_logs: Mapped[list[ActivityLog]] = relationship(
         "ActivityLog", back_populates="contract"
     )

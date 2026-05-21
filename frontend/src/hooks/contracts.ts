@@ -56,9 +56,9 @@ export function useUpdateContract() {
       const { data } = await apiClient.patch<Contract>(`${BASE}/contracts/${id}`, payload)
       return data
     },
-    onSuccess: (_, { id }) => {
+    onSuccess: (data, { id }) => {
+      qc.setQueryData(['contracts', id], data)
       qc.invalidateQueries({ queryKey: ['contracts'] })
-      qc.invalidateQueries({ queryKey: ['contracts', id] })
     },
   })
 }

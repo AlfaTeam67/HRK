@@ -1087,6 +1087,8 @@ export interface components {
       additional_data: {
         [key: string]: unknown
       }
+      /** Primary Document Id */
+      primary_document_id: string | null
       /**
        * Created At
        * Format: date-time
@@ -1219,6 +1221,8 @@ export interface components {
       additional_data?: {
         [key: string]: unknown
       } | null
+      /** Primary Document Id */
+      primary_document_id?: string | null
     }
     /**
      * CustomerCreate

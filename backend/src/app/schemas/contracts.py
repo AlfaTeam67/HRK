@@ -45,6 +45,7 @@ class ContractUpdate(BaseModel):
     parent_contract_id: uuid.UUID | None = None
     notes: str | None = None
     additional_data: dict | None = None
+    primary_document_id: uuid.UUID | None = None
 
 
 class ContractRead(ORMBaseSchema):
@@ -65,6 +66,7 @@ class ContractRead(ORMBaseSchema):
     parent_contract_id: uuid.UUID | None
     notes: str | None
     additional_data: dict
+    primary_document_id: uuid.UUID | None = None
     created_at: datetime
     updated_at: datetime
     deleted_at: datetime | None
