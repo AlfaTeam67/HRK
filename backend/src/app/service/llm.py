@@ -79,8 +79,9 @@ class LLMService:
 
     async def stream_summarize(self, prompt: str) -> AsyncIterator[str]:
         headers: dict[str, str] = {"Authorization": f"Bearer {settings.openrouter_api_key}"}
-        async with httpx.AsyncClient(timeout=60.0) as client:
-            async with client.stream(
+        async with (
+            httpx.AsyncClient(timeout=60.0) as client,
+            client.stream(
                 "POST",
                 f"{settings.openrouter_base_url}/chat/completions",
                 headers=headers,
@@ -92,24 +93,25 @@ class LLMService:
                         {"role": "user", "content": prompt},
                     ],
                 },
-            ) as response:
-                if response.status_code == 429:
-                    yield "Model jest chwilowo przeciążony (rate limit). Spróbuj ponownie za chwilę."
-                    return
-                response.raise_for_status()
-                async for line in response.aiter_lines():
-                    if not line.startswith("data: "):
-                        continue
-                    data = line[6:]
-                    if data == "[DONE]":
-                        break
-                    try:
-                        chunk = json.loads(data)
-                        delta = chunk["choices"][0]["delta"].get("content", "")
-                        if delta:
-                            yield delta
-                    except (json.JSONDecodeError, KeyError, IndexError):
-                        continue
+            ) as response,
+        ):
+            if response.status_code == 429:
+                yield "Model jest chwilowo przeciążony (rate limit). Spróbuj ponownie za chwilę."
+                return
+            response.raise_for_status()
+            async for line in response.aiter_lines():
+                if not line.startswith("data: "):
+                    continue
+                data = line[6:]
+                if data == "[DONE]":
+                    break
+                try:
+                    chunk = json.loads(data)
+                    delta = chunk["choices"][0]["delta"].get("content", "")
+                    if delta:
+                        yield delta
+                except (json.JSONDecodeError, KeyError, IndexError):
+                    continue
 
     async def generate(self, query: str, context_chunks: list[str]) -> str:
         context = "\n\n".join(f"[{i + 1}] {chunk}" for i, chunk in enumerate(context_chunks))

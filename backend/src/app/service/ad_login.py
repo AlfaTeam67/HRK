@@ -64,7 +64,7 @@ class ADLoginService:
         return ADUserRead.model_validate(json.loads(response_body))
 
     def _read_json_response(self, request: Request) -> str:
-        with urlopen(request, timeout=settings.ad_request_timeout) as response:
+        with urlopen(request, timeout=settings.ad_request_timeout) as response:  # nosec B310
             body: bytes = response.read()
             return body.decode("utf-8")
 

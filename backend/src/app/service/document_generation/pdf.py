@@ -6,7 +6,7 @@ import asyncio
 import hashlib
 from typing import Any
 
-from weasyprint import HTML
+from weasyprint import HTML  # type: ignore[import-untyped]
 
 
 class PdfRenderer:

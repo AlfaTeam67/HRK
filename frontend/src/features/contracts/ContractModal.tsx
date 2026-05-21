@@ -6,6 +6,9 @@ import { useDocumentGenerations, useAcceptGeneration, useRejectGeneration } from
 import { useNotes, useCreateNote } from '@/hooks/notes'
 import { useAppSelector } from '@/hooks/store'
 import { UploadWizard } from '@/features/documents/UploadWizard'
+import { PdfPreviewModal } from '@/components/ui/PdfPreviewModal'
+import { OcrStatusBadge } from '@/components/ui/OcrStatusBadge'
+import type { OcrStatus } from '@/components/ui/OcrStatusBadge'
 import type { ContractStatus, ContractType, BillingCycle } from '@/types/models'
 
 /* ─── Palette ─────────────────────────────────────────────────── */
@@ -44,13 +47,6 @@ const DOC_TYPE_LABELS: Record<string, string> = {
 const STATUS_COLOR: Record<string, string> = {
   draft: '#6b6b6b', signed: '#4338ca', active: '#276749',
   terminated: '#c94f02', expiring: '#92400e',
-}
-const OCR_META: Record<string, { l: string; bg: string; fg: string }> = {
-  pending:    { l: 'Oczekuje',   bg: '#f2f0ed', fg: '#6b6b6b' },
-  processing: { l: 'Przetwarza', bg: '#eff6ff', fg: '#1d4ed8' },
-  done:       { l: 'RAG gotowy', bg: '#f0fff4', fg: '#276749' },
-  failed:     { l: 'Błąd OCR',   bg: '#fff5f0', fg: '#c94f02' },
-  skipped:    { l: 'Pominięto',  bg: '#fafaf9', fg: '#9e9389' },
 }
 const GEN_STATUS_META: Record<string, { l: string; bg: string; fg: string }> = {
   draft:      { l: 'Szkic',         bg: '#fff8f4', fg: '#c94f02' },
@@ -94,7 +90,7 @@ export function ContractModal({ contractId, customerId, onClose, autoEdit = fals
   const createNote = useCreateNote()
 
   const [uploadWizardOpen, setUploadWizardOpen] = useState(false)
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
+  const [previewDoc, setPreviewDoc] = useState<{ id: string; title: string } | null>(null)
 
   /* ─── Edit form state ───────────────────────────────────────── */
   const [editing, setEditing] = useState(false)
@@ -161,10 +157,8 @@ export function ContractModal({ contractId, customerId, onClose, autoEdit = fals
     window.open(url, '_blank', 'noopener,noreferrer')
   }
 
-  async function handlePreview(id: string) {
-    if (!user?.id) return
-    const { url } = await downloadMut.mutateAsync({ id, userId: user.id })
-    setPreviewUrl(url)
+  function handlePreview(id: string, title: string) {
+    setPreviewDoc({ id, title })
   }
 
   async function handleDeleteDoc(id: string) {
@@ -338,19 +332,14 @@ export function ContractModal({ contractId, customerId, onClose, autoEdit = fals
         />
       )}
 
-      {previewUrl && (
-        <div
-          style={{ position: 'fixed', inset: 0, zIndex: 1200, background: 'rgba(26,23,20,0.6)', backdropFilter: 'blur(3px)', display: 'flex', flexDirection: 'column' }}
-          onClick={() => setPreviewUrl(null)}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 20px', background: 'white', flexShrink: 0 }} onClick={(e) => e.stopPropagation()}>
-            <span style={{ fontSize: 13, fontWeight: 700, color: '#1a1714' }}>Podgląd dokumentu</span>
-            <button onClick={() => setPreviewUrl(null)} style={{ background: 'none', border: '1px solid #e3e0db', borderRadius: 6, padding: '5px 12px', fontSize: 12, fontWeight: 600, cursor: 'pointer', color: '#6b6361' }}>✕ Zamknij</button>
-          </div>
-          <div style={{ flex: 1, overflow: 'hidden' }} onClick={(e) => e.stopPropagation()}>
-            <iframe src={previewUrl} style={{ width: '100%', height: '100%', border: 'none' }} title="Podgląd dokumentu" />
-          </div>
-        </div>
+      {previewDoc && user?.id && (
+        <PdfPreviewModal
+          key={previewDoc.id}
+          attachmentId={previewDoc.id}
+          title={previewDoc.title}
+          userId={user.id}
+          onClose={() => setPreviewDoc(null)}
+        />
       )}
     </div>
   )
@@ -460,7 +449,7 @@ function DokumentyTab({ contract, attachments, generations, busyGenId, onOpenWiz
   onOpenWizard: () => void
   onSetPrimary: (id: string) => void
   onDownload: (id: string) => void
-  onPreview: (id: string) => void
+  onPreview: (id: string, title: string) => void
   onDelete: (id: string) => void
   onAccept: (id: string) => void
   onReject: (id: string, customerId: string) => void
@@ -469,14 +458,15 @@ function DokumentyTab({ contract, attachments, generations, busyGenId, onOpenWiz
   const primaryDoc = attachments.find((a) => a.id === primaryDocId)
   const otherDocs = attachments.filter((a) => a.id !== primaryDocId)
   const pendingGens = generations.filter((g) => g.status === 'preview' || g.status === 'draft')
+  const historyGens = generations.filter((g) => g.status !== 'preview' && g.status !== 'draft')
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
 
-      {/* Oczekujące na akceptację */}
+      {/* Sekcja 1: Do akceptacji */}
       {pendingGens.length > 0 && (
         <section style={{ background: '#fff8f4', border: '1px solid #fdd5b8', borderRadius: 10, padding: '14px 16px' }}>
-          <SectionHeader label={`Do akceptacji (${pendingGens.length})`} />
+          <SectionHeader label={`Do akceptacji (${pendingGens.length})`} accent={C.red} />
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             {pendingGens.map((g) => {
               const meta = GEN_STATUS_META[g.status] ?? GEN_STATUS_META['draft']
@@ -503,14 +493,14 @@ function DokumentyTab({ contract, attachments, generations, busyGenId, onOpenWiz
         </section>
       )}
 
-      {/* Główny dokument */}
+      {/* Sekcja 2: Główny dokument */}
       <section>
         <SectionHeader label="Główny dokument" />
         {primaryDoc ? (
           <DocRow
             doc={primaryDoc}
             isPrimary
-            onPreview={() => onPreview(primaryDoc.id)}
+            onPreview={() => onPreview(primaryDoc.id, primaryDoc.original_filename)}
             onDownload={() => onDownload(primaryDoc.id)}
             onDelete={() => onDelete(primaryDoc.id)}
           />
@@ -522,10 +512,10 @@ function DokumentyTab({ contract, attachments, generations, busyGenId, onOpenWiz
         )}
       </section>
 
-      {/* Załączniki */}
+      {/* Sekcja 3: Pozostałe załączniki */}
       <section>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-          <SectionHeader label="Załączniki" noMargin />
+          <SectionHeader label={`Załączniki (${otherDocs.length})`} noMargin />
           <button onClick={onOpenWizard} style={btnSecondary}>+ Dodaj</button>
         </div>
         {otherDocs.length === 0 ? (
@@ -536,7 +526,7 @@ function DokumentyTab({ contract, attachments, generations, busyGenId, onOpenWiz
               <DocRow
                 key={doc.id}
                 doc={doc}
-                onPreview={() => onPreview(doc.id)}
+                onPreview={() => onPreview(doc.id, doc.original_filename)}
                 onDownload={() => onDownload(doc.id)}
                 onDelete={() => onDelete(doc.id)}
                 onSetPrimary={() => onSetPrimary(doc.id)}
@@ -545,6 +535,34 @@ function DokumentyTab({ contract, attachments, generations, busyGenId, onOpenWiz
           </div>
         )}
       </section>
+
+      {/* Sekcja 4: Historia aneksów */}
+      {historyGens.length > 0 && (
+        <section>
+          <SectionHeader label={`Historia aneksów (${historyGens.length})`} />
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {historyGens.map((g) => {
+              const meta = GEN_STATUS_META[g.status] ?? GEN_STATUS_META['finalized']
+              const delta = (g.simulation as Record<string, unknown>)?.delta_annual_revenue as string | undefined
+              return (
+                <div key={g.id} style={{ ...rowStyle, borderLeft: `3px solid ${meta.fg}`, opacity: g.status === 'superseded' || g.status === 'rejected' ? 0.65 : 1 }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 3 }}>
+                      <span style={{ fontSize: 9.5, fontWeight: 700, padding: '2px 8px', borderRadius: 4, background: meta.bg, color: meta.fg, textTransform: 'uppercase' as const, letterSpacing: 0.3 }}>{meta.l}</span>
+                      <span style={{ fontSize: 12.5, fontWeight: 700, color: C.text }}>{g.template_key} v{g.template_version}</span>
+                    </div>
+                    <div style={{ fontSize: 11, color: C.muted }}>{fmtDate(g.created_at)}{delta && <> · Δ rok: <strong style={{ color: C.text }}>{delta}</strong></>}</div>
+                  </div>
+                  <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+                    {g.attachment_pdf_id && <button onClick={() => onDownload(g.attachment_pdf_id!)} style={btnSecondary}>Aneks PDF</button>}
+                    {g.cover_letter_attachment_id && <button onClick={() => onDownload(g.cover_letter_attachment_id!)} style={btnSecondary}>Pismo PDF</button>}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </section>
+      )}
 
     </div>
   )
@@ -558,19 +576,19 @@ function DocRow({ doc, isPrimary, onPreview, onDownload, onDelete, onSetPrimary 
   onDelete: () => void
   onSetPrimary?: () => void
 }) {
-  const ocrKey = doc.ocr_status ?? 'pending'
-  const ocr = OCR_META[ocrKey] ?? OCR_META['pending']
   return (
-    <div style={{ ...rowStyle, borderLeft: isPrimary ? `3px solid ${C.orange}` : `1px solid ${C.border}` }}>
+    <div style={{ ...rowStyle, borderLeft: isPrimary ? `3px solid ${C.orange}` : `3px solid #9e9389` }}>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: 13, fontWeight: 700, color: C.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-          {isPrimary && <span style={{ fontSize: 9, fontWeight: 700, color: C.orange, background: '#fff8f4', border: `1px solid #fdd5b8`, borderRadius: 4, padding: '1px 6px', marginRight: 6, textTransform: 'uppercase' as const }}>GŁÓWNY</span>}
-          {doc.original_filename}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+          {isPrimary && <span style={{ fontSize: 9, fontWeight: 700, color: C.orange, background: '#fff8f4', border: `1px solid #fdd5b8`, borderRadius: 4, padding: '1px 6px', textTransform: 'uppercase' as const }}>GŁÓWNY</span>}
+          <span style={{ fontSize: 13, fontWeight: 700, color: C.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {doc.original_filename}
+          </span>
+          <span style={{ ...tagStyle, flexShrink: 0 }}>{DOC_TYPE_LABELS[doc.document_type] ?? doc.document_type}</span>
         </div>
-        <div style={{ display: 'flex', gap: 8, marginTop: 3, alignItems: 'center' }}>
-          <span style={tagStyle}>{DOC_TYPE_LABELS[doc.document_type] ?? doc.document_type}</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <span style={{ fontSize: 11, color: C.muted }}>{fmtDate(doc.created_at)}</span>
-          <span style={{ fontSize: 10, fontWeight: 600, padding: '1px 7px', borderRadius: 10, background: ocr.bg, color: ocr.fg }}>{ocr.l}</span>
+          <OcrStatusBadge status={doc.ocr_status as OcrStatus} />
         </div>
       </div>
       <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
@@ -583,9 +601,9 @@ function DocRow({ doc, isPrimary, onPreview, onDownload, onDelete, onSetPrimary 
   )
 }
 
-function SectionHeader({ label, noMargin }: { label: string; noMargin?: boolean }) {
+function SectionHeader({ label, noMargin, accent }: { label: string; noMargin?: boolean; accent?: string }) {
   return (
-    <div style={{ fontSize: 10.5, fontWeight: 700, color: C.muted, textTransform: 'uppercase' as const, letterSpacing: '0.07em', marginBottom: noMargin ? 0 : 8 }}>
+    <div style={{ fontSize: 10.5, fontWeight: 700, color: accent ?? C.muted, textTransform: 'uppercase' as const, letterSpacing: '0.07em', marginBottom: noMargin ? 0 : 8 }}>
       {label}
     </div>
   )

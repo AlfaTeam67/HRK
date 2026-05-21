@@ -232,6 +232,7 @@ export function ClientsPageApi() {
   const [noteText, setNoteText] = useState('')
   const [noteType, setNoteType] = useState<NoteType>('internal')
   const [wizardOpen, setWizardOpen] = useState(false)
+  const [uploadWizardOpen, setUploadWizardOpen] = useState(false)
   const [contractModalId, setContractModalId] = useState<string | null>(null)
   const [newContractOpen, setNewContractOpen] = useState(false)
   const [postCreationWizard, setPostCreationWizard] = useState<{ contractId: string; customerId: string } | null>(null)
@@ -261,13 +262,14 @@ export function ClientsPageApi() {
   const createNote = useCreateNote()
   const createContract = useCreateContract()
   const aiSummary = useCustomerAiSummaryStream()
+  const { reset: resetAiSummary, trigger: triggerAiSummary } = aiSummary
 
   useEffect(() => {
     if (selectedId) {
-      aiSummary.reset()
-      aiSummary.trigger(selectedId)
+      resetAiSummary()
+      triggerAiSummary(selectedId)
     }
-  }, [selectedId, aiSummary.reset, aiSummary.trigger])
+  }, [selectedId, resetAiSummary, triggerAiSummary])
 
   const selected = useMemo(() => {
     const list = clients ?? []
@@ -625,13 +627,6 @@ export function ClientsPageApi() {
                       bg: '#faf5ff',
                     },
                     { label: 'Umowy', value: contracts.length, accent: '#2b6cb0', bg: '#ebf8ff' },
-                    {
-                      label: 'Segment',
-                      value: selected.segment || '—',
-                      accent: '#276749',
-                      bg: '#f0fff4',
-                    },
-                    { label: 'Notatki', value: notes.length, accent: '#e85c04', bg: '#fff8f4' },
                   ].map((k) => (
                     <div
                       key={k.label}
@@ -644,6 +639,72 @@ export function ClientsPageApi() {
                       <div className="cp-kpi-value">{k.value}</div>
                     </div>
                   ))}
+                  <div
+                    className="cp-kpi-card"
+                    style={{
+                      background: '#fff8f4',
+                      borderTopColor: '#e85c04',
+                      gridColumn: 'span 2',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: 8,
+                    }}
+                  >
+                    <button
+                      onClick={() => {
+                        setContractForm({ contract_number: '', contract_type: 'ramowa', status: 'draft', start_date: new Date().toISOString().split('T')[0], end_date: '', billing_cycle: null })
+                        setNewContractOpen(true)
+                      }}
+                      style={{
+                        background: 'white',
+                        color: '#1a1714',
+                        border: '1px solid #e3e0db',
+                        borderRadius: 8,
+                        padding: '7px 14px',
+                        fontSize: 12.5,
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                      }}
+                    >
+                      + Nowa umowa
+                    </button>
+                    <button
+                      onClick={() => {
+                        if (!selectedId) return
+                        setTab('documents')
+                        setUploadWizardOpen(true)
+                      }}
+                      style={{
+                        background: 'white',
+                        color: '#1a1714',
+                        border: '1px solid #e3e0db',
+                        borderRadius: 8,
+                        padding: '7px 14px',
+                        fontSize: 12.5,
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                      }}
+                    >
+                      + Dodaj dokument
+                    </button>
+                    <button
+                      onClick={() => { setTab('documents'); setWizardOpen(true) }}
+                      style={{
+                        background: 'linear-gradient(135deg, #e85c04, #c94f02)',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: 8,
+                        padding: '7px 14px',
+                        fontSize: 12.5,
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        boxShadow: '0 2px 8px rgba(232,92,4,0.25)',
+                      }}
+                    >
+                      ✦ Generuj dokument
+                    </button>
+                  </div>
                 </div>
 
                 <div className="cp-tabs" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -665,42 +726,6 @@ export function ClientsPageApi() {
                         {label}
                       </button>
                     ))}
-                  </div>
-                  <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
-                    <button
-                      onClick={() => {
-                        setContractForm({ contract_number: '', contract_type: 'ramowa', status: 'draft', start_date: new Date().toISOString().split('T')[0], end_date: '', billing_cycle: null })
-                        setNewContractOpen(true)
-                      }}
-                      style={{
-                        background: 'white',
-                        color: '#1a1714',
-                        border: '1px solid #e3e0db',
-                        borderRadius: 8,
-                        padding: '7px 14px',
-                        fontSize: 12.5,
-                        fontWeight: 600,
-                        cursor: 'pointer',
-                      }}
-                    >
-                      + Nowa umowa
-                    </button>
-                    <button
-                      onClick={() => { setTab('documents'); setWizardOpen(true) }}
-                      style={{
-                        background: 'linear-gradient(135deg, #e85c04, #c94f02)',
-                        color: 'white',
-                        border: 'none',
-                        borderRadius: 8,
-                        padding: '7px 14px',
-                        fontSize: 12.5,
-                        fontWeight: 700,
-                        cursor: 'pointer',
-                        boxShadow: '0 2px 8px rgba(232,92,4,0.25)',
-                      }}
-                    >
-                      ✦ Generuj dokument
-                    </button>
                   </div>
                 </div>
               </div>
@@ -850,7 +875,6 @@ export function ClientsPageApi() {
                 {tab === 'documents' && selectedId && (
                   <DocumentsTab
                     customerId={selectedId}
-                    onGenerateClick={() => setWizardOpen(true)}
                   />
                 )}
 
@@ -936,6 +960,13 @@ export function ClientsPageApi() {
             setWizardOpen(false)
             setTab('documents')
           }}
+        />
+      )}
+
+      {uploadWizardOpen && selectedId && (
+        <UploadWizard
+          customerId={selectedId}
+          onClose={() => setUploadWizardOpen(false)}
         />
       )}
 

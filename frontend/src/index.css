@@ -187,6 +187,12 @@
   }
 }
 
+@keyframes hrk-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 /* ─── Clients Page ─────────────────────────────────────────────── */
 .cp-layout {
   display: flex;

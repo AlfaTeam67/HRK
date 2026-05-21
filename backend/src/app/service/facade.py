@@ -182,7 +182,11 @@ class CRMService:
             await self.customer_service.get_customer(customer_id)
             return await self.activity_repo.get_by_customer(customer_id, limit, offset)
 
-        assert contract_id is not None
+        if contract_id is None:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="contract_id must be provided when customer_id is not set",
+            )
         await self.contract_service.get_contract(contract_id)
         return await self.activity_repo.get_by_contract(contract_id, limit, offset)
 

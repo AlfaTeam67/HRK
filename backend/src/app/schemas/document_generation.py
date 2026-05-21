@@ -12,7 +12,6 @@ from pydantic import BaseModel, ConfigDict, Field
 from app.models.enums import DocumentGenerationStatus, DocumentTone, IndexType
 from app.schemas.common import ORMBaseSchema
 
-
 # ── Template registry ────────────────────────────────────────────────────────
 
 

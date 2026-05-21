@@ -7,6 +7,7 @@ from this module exclusively (LLM never produces figures).
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from decimal import ROUND_HALF_UP, Decimal
 from uuid import UUID
 
@@ -18,6 +19,7 @@ from app.schemas.document_generation import (
     ServiceSimulation,
     SimulationSummary,
     ValorizationParams,
+    ValorizationServiceInput,
 )
 
 _TWO_PLACES = Decimal("0.01")
@@ -103,26 +105,25 @@ def simulate_valorization(
     )
 
 
-def _is_in_scope(cs: ContractService, overrides: dict[UUID, object]) -> bool:
+def _is_in_scope(
+    cs: ContractService,
+    overrides: Mapping[UUID, ValorizationServiceInput],
+) -> bool:
     if cs.id not in overrides:
         # Default: include every active contract service when user did not narrow scope.
         return True
-    entry = overrides[cs.id]
-    return bool(getattr(entry, "include", True))
+    return overrides[cs.id].include
 
 
 def _resolve_index(
     cs_id: UUID,
-    overrides: dict[UUID, object],
+    overrides: Mapping[UUID, ValorizationServiceInput],
     default_index: Decimal,
 ) -> Decimal:
     entry = overrides.get(cs_id)
     if entry is None:
         return default_index
-    custom = getattr(entry, "custom_index_pct", None)
-    if custom is None:
-        return default_index
-    return Decimal(custom)
+    return default_index if entry.custom_index_pct is None else Decimal(entry.custom_index_pct)
 
 
 def _build_row(

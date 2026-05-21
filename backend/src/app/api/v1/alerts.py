@@ -21,7 +21,7 @@ async def get_alerts(
 
 
 @router.websocket("/ws/{client_id}")
-async def websocket_endpoint(websocket: WebSocket, client_id: str):
+async def websocket_endpoint(websocket: WebSocket, client_id: str) -> None:
     await manager.connect(websocket)
     try:
         # Initial message to confirm connection
