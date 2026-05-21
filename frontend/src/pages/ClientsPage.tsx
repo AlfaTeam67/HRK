@@ -3,7 +3,7 @@ import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { Modal } from '@/components/ui/modal'
 
 import { useContactPersons } from '@/hooks/contactPersons'
-import { useContracts } from '@/hooks/contracts'
+import { useContracts, useCreateContract } from '@/hooks/contracts'
 import {
   useCreateCustomer,
   useCustomer,
@@ -18,6 +18,7 @@ import { useAppSelector } from '@/hooks/store'
 import { DocumentWizard } from '@/features/documentGeneration/DocumentWizard'
 import { DocumentsTab } from '@/features/documentGeneration/DocumentsTab'
 import { ContractModal } from '@/features/contracts/ContractModal'
+import { UploadWizard } from '@/features/documents/UploadWizard'
 import {
   CUSTOMER_STATUS_PL,
   NOTE_TYPE_LABELS,
@@ -27,6 +28,7 @@ import {
   type NoteType,
   type ValidationErrors,
 } from '@/lib/customerConstants'
+import type { BillingCycle, ContractCreate, ContractType } from '@/types/models'
 
 type TabKey = 'info' | 'contracts' | 'documents' | 'notes' | 'timeline'
 
@@ -231,6 +233,16 @@ export function ClientsPageApi() {
   const [noteType, setNoteType] = useState<NoteType>('internal')
   const [wizardOpen, setWizardOpen] = useState(false)
   const [contractModalId, setContractModalId] = useState<string | null>(null)
+  const [newContractOpen, setNewContractOpen] = useState(false)
+  const [postCreationWizard, setPostCreationWizard] = useState<{ contractId: string; customerId: string } | null>(null)
+  const [contractForm, setContractForm] = useState<Partial<ContractCreate>>({
+    contract_number: '',
+    contract_type: 'ramowa' as ContractType,
+    start_date: new Date().toISOString().split('T')[0],
+    end_date: '',
+    billing_cycle: null,
+    status: 'draft',
+  })
 
   const user = useAppSelector((s) => s.auth.user)
 
@@ -247,6 +259,7 @@ export function ClientsPageApi() {
   const updateCustomer = useUpdateCustomer()
   const deleteCustomer = useDeleteCustomer()
   const createNote = useCreateNote()
+  const createContract = useCreateContract()
   const aiSummary = useCustomerAiSummaryStream()
 
   useEffect(() => {
@@ -381,6 +394,34 @@ export function ClientsPageApi() {
       const msg = err instanceof Error ? err.message : 'Nieznany błąd'
       console.error('[ClientsPage] addNote failed:', err)
       alert(`Nie udało się dodać notatki.\n\nSzczegóły: ${msg}`)
+    }
+  }
+
+  async function saveNewContract() {
+    if (!selected || !contractForm.contract_number || !contractForm.start_date) {
+      alert('Proszę wypełnić wymagane pola (Numer umowy i Data rozpoczęcia).')
+      return
+    }
+
+    try {
+      const created = await createContract.mutateAsync({
+        ...contractForm,
+        customer_id: selected.id,
+        account_manager_id: user?.id,
+      } as ContractCreate)
+      setNewContractOpen(false)
+      setContractForm({
+        contract_number: '',
+        contract_type: 'ramowa' as ContractType,
+        start_date: new Date().toISOString().split('T')[0],
+        end_date: '',
+        billing_cycle: null,
+        status: 'draft',
+      })
+      setPostCreationWizard({ contractId: created.id, customerId: created.customer_id })
+    } catch (err: unknown) {
+      console.error('[ClientsPage] saveNewContract failed:', err)
+      alert('Nie udało się utworzyć umowy.')
     }
   }
 
@@ -537,20 +578,6 @@ export function ClientsPageApi() {
                       </div>
 
                       <div style={{ display: 'flex', gap: 8, flexShrink: 0, alignItems: 'center' }}>
-                        <button
-                          className="cp-btn-edit"
-                          onClick={() => {
-                            setTab('documents')
-                            setWizardOpen(true)
-                          }}
-                          style={{
-                            background: '#e85c04',
-                            color: 'white',
-                            borderColor: '#e85c04',
-                          }}
-                        >
-                          ✦ Generuj dokument
-                        </button>
                         <button className="cp-btn-edit" onClick={openEdit}>
                           Edytuj
                         </button>
@@ -619,24 +646,62 @@ export function ClientsPageApi() {
                   ))}
                 </div>
 
-                <div className="cp-tabs">
-                  {(
-                    [
-                      ['info', 'Informacje'],
-                      ['contracts', `Umowy (${contracts.length})`],
-                      ['documents', 'Dokumenty'],
-                      ['notes', `Notatki (${notes.length})`],
-                      ['timeline', 'Oś czasu'],
-                    ] as [TabKey, string][]
-                  ).map(([k, label]) => (
+                <div className="cp-tabs" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <div style={{ display: 'flex' }}>
+                    {(
+                      [
+                        ['info', 'Informacje'],
+                        ['contracts', `Umowy (${contracts.length})`],
+                        ['documents', 'Dokumenty'],
+                        ['notes', `Notatki (${notes.length})`],
+                        ['timeline', 'Oś czasu'],
+                      ] as [TabKey, string][]
+                    ).map(([k, label]) => (
+                      <button
+                        key={k}
+                        className={`cp-tab${tab === k ? ' active' : ''}`}
+                        onClick={() => setTab(k)}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                  <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
                     <button
-                      key={k}
-                      className={`cp-tab${tab === k ? ' active' : ''}`}
-                      onClick={() => setTab(k)}
+                      onClick={() => {
+                        setContractForm({ contract_number: '', contract_type: 'ramowa', status: 'draft', start_date: new Date().toISOString().split('T')[0], end_date: '', billing_cycle: null })
+                        setNewContractOpen(true)
+                      }}
+                      style={{
+                        background: 'white',
+                        color: '#1a1714',
+                        border: '1px solid #e3e0db',
+                        borderRadius: 8,
+                        padding: '7px 14px',
+                        fontSize: 12.5,
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                      }}
                     >
-                      {label}
+                      + Nowa umowa
                     </button>
-                  ))}
+                    <button
+                      onClick={() => { setTab('documents'); setWizardOpen(true) }}
+                      style={{
+                        background: 'linear-gradient(135deg, #e85c04, #c94f02)',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: 8,
+                        padding: '7px 14px',
+                        fontSize: 12.5,
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        boxShadow: '0 2px 8px rgba(232,92,4,0.25)',
+                      }}
+                    >
+                      ✦ Generuj dokument
+                    </button>
+                  </div>
                 </div>
               </div>
 
@@ -690,12 +755,12 @@ export function ClientsPageApi() {
                       </div>
 
                       {aiSummary.isPending && !aiSummary.text && (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
-                          {[100, 85, 60].map((w) => (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                          {[100, 88, 72, 90, 55].map((w) => (
                             <div
                               key={w}
                               style={{
-                                height: 12,
+                                height: 11,
                                 borderRadius: 6,
                                 background:
                                   'linear-gradient(90deg, #e9d8fd 25%, #d6bcfa 50%, #e9d8fd 75%)',
@@ -999,11 +1064,108 @@ export function ClientsPageApi() {
         </div>
       </Modal>
 
+      <Modal isOpen={newContractOpen} onClose={() => setNewContractOpen(false)} title="Utwórz nową umowę">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <label style={{ fontSize: 12, fontWeight: 700, color: '#1a1714' }}>Numer umowy *</label>
+            <input
+              type="text"
+              value={contractForm.contract_number ?? ''}
+              placeholder="np. HRK/2024/001"
+              onChange={(e) => setContractForm(prev => ({ ...prev, contract_number: e.target.value }))}
+              style={{ padding: '10px', borderRadius: 8, border: '1px solid #e3e0db', fontSize: 13, transition: 'border-color 0.2s' }}
+            />
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <label style={{ fontSize: 12, fontWeight: 700, color: '#1a1714' }}>Typ umowy</label>
+              <select
+                value={contractForm.contract_type ?? 'ramowa'}
+                onChange={(e) => setContractForm(prev => ({ ...prev, contract_type: e.target.value as ContractType }))}
+                style={{ padding: '10px', borderRadius: 8, border: '1px solid #e3e0db', fontSize: 13, background: 'white' }}
+              >
+                {(['ramowa', 'aneks', 'SLA', 'DPA', 'PPK', 'inne'] as ContractType[]).map(t => <option key={t} value={t}>{t}</option>)}
+              </select>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <label style={{ fontSize: 12, fontWeight: 700, color: '#1a1714' }}>Cykl rozliczeniowy</label>
+              <select
+                value={contractForm.billing_cycle ?? ''}
+                onChange={(e) => setContractForm(prev => ({ ...prev, billing_cycle: e.target.value as BillingCycle }))}
+                style={{ padding: '10px', borderRadius: 8, border: '1px solid #e3e0db', fontSize: 13, background: 'white' }}
+              >
+                <option value="">Wybierz...</option>
+                <option value="monthly">Miesięczny</option>
+                <option value="quarterly">Kwartalny</option>
+                <option value="annual">Roczny</option>
+                <option value="one_time">Jednorazowy</option>
+              </select>
+            </div>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <label style={{ fontSize: 12, fontWeight: 700, color: '#1a1714' }}>Data rozpoczęcia *</label>
+              <input
+                type="date"
+                value={contractForm.start_date ?? ''}
+                onChange={(e) => setContractForm(prev => ({ ...prev, start_date: e.target.value }))}
+                style={{ padding: '10px', borderRadius: 8, border: '1px solid #e3e0db', fontSize: 13 }}
+              />
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <label style={{ fontSize: 12, fontWeight: 700, color: '#1a1714' }}>Data zakończenia</label>
+              <input
+                type="date"
+                value={contractForm.end_date ?? ''}
+                onChange={(e) => setContractForm(prev => ({ ...prev, end_date: e.target.value }))}
+                style={{ padding: '10px', borderRadius: 8, border: '1px solid #e3e0db', fontSize: 13 }}
+              />
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', gap: 10, marginTop: 10 }}>
+            <button
+              onClick={() => setNewContractOpen(false)}
+              style={{ flex: 1, padding: '12px', borderRadius: 8, border: '1px solid #e3e0db', background: 'white', fontSize: 13, fontWeight: 600, cursor: 'pointer', transition: 'background 0.2s' }}
+              onMouseOver={(e) => e.currentTarget.style.background = '#fafaf9'}
+              onMouseOut={(e) => e.currentTarget.style.background = 'white'}
+            >
+              Anuluj
+            </button>
+            <button
+              onClick={saveNewContract}
+              disabled={createContract.isPending}
+              style={{
+                flex: 1, padding: '12px', borderRadius: 8, border: 'none',
+                background: createContract.isPending ? '#9e9389' : 'linear-gradient(135deg, #e85c04, #c94f02)',
+                color: 'white', fontSize: 13, fontWeight: 700, cursor: 'pointer',
+                boxShadow: '0 4px 12px rgba(232, 92, 4, 0.2)',
+              }}
+            >
+              {createContract.isPending ? 'Tworzenie...' : 'Utwórz umowę'}
+            </button>
+          </div>
+        </div>
+      </Modal>
+
       {contractModalId && selectedId && (
         <ContractModal
           contractId={contractModalId}
           customerId={selectedId}
           onClose={() => setContractModalId(null)}
+        />
+      )}
+
+      {postCreationWizard && (
+        <UploadWizard
+          customerId={postCreationWizard.customerId}
+          preselectedContractId={postCreationWizard.contractId}
+          allowSkip
+          onClose={() => setPostCreationWizard(null)}
         />
       )}
     </div>

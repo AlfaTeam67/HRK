@@ -41,7 +41,7 @@ const OCR_LABEL: Record<string, string> = {
 /* ─── Component ──────────────────────────────────────────────── */
 export function ContractsPage() {
   const navigate = useNavigate()
-  const [contractModalId, setContractModalId] = useState<{ contractId: string; customerId: string } | null>(null)
+  const [contractModalId, setContractModalId] = useState<{ contractId: string; customerId: string; autoEdit?: boolean } | null>(null)
   const [isContractModalOpen, setIsContractModalOpen] = useState(false)
   // After contract creation: show UploadWizard for the new contract
   const [postCreationWizard, setPostCreationWizard] = useState<{ contractId: string; customerId: string } | null>(null)
@@ -92,7 +92,7 @@ export function ContractsPage() {
 
   // Client-side filter by contract type
   const filteredContracts = useMemo(() => {
-    let list = filterContractType
+    const list = filterContractType
       ? realContracts.filter(c => c.contract_type === filterContractType)
       : [...realContracts]
 
@@ -453,14 +453,23 @@ export function ContractsPage() {
                     )}
                   </td>
                   <td style={{ padding: '14px 18px', textAlign: 'right' }}>
-                    <button
-                      onClick={(e) => { e.stopPropagation(); handleDelete(c.id) }}
-                      disabled={isDeleting}
-                      title="Usuń umowę"
-                      style={{ background: 'none', border: '1px solid #f2cfc8', borderRadius: 4, padding: '4px 8px', fontSize: 12, cursor: isDeleting ? 'not-allowed' : 'pointer', color: '#c94f02', lineHeight: 1 }}
-                    >
-                      ✕
-                    </button>
+                    <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); setContractModalId({ contractId: c.id, customerId: c.customer_id, autoEdit: true }) }}
+                        title="Edytuj umowę"
+                        style={{ background: 'none', border: '1px solid #e3e0db', borderRadius: 4, padding: '4px 8px', fontSize: 12, cursor: 'pointer', color: '#4b5563', lineHeight: 1 }}
+                      >
+                        ✎
+                      </button>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); handleDelete(c.id) }}
+                        disabled={isDeleting}
+                        title="Usuń umowę"
+                        style={{ background: 'none', border: '1px solid #f2cfc8', borderRadius: 4, padding: '4px 8px', fontSize: 12, cursor: isDeleting ? 'not-allowed' : 'pointer', color: '#c94f02', lineHeight: 1 }}
+                      >
+                        ✕
+                      </button>
+                    </div>
                   </td>
                 </tr>
               )
@@ -473,6 +482,7 @@ export function ContractsPage() {
         <ContractModal
           contractId={contractModalId.contractId}
           customerId={contractModalId.customerId}
+          autoEdit={contractModalId.autoEdit}
           onClose={() => setContractModalId(null)}
         />
       )}

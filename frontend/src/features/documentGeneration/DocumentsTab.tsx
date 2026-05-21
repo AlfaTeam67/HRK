@@ -94,10 +94,12 @@ export function DocumentsTab({ customerId, onGenerateClick }: Props) {
   const [busyId, setBusyId] = useState<string | null>(null)
 
   const [wizardOpen, setWizardOpen] = useState(false)
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
 
   const isLoading = genLoading || attLoading
   const clientDocs = attachments.filter((a) => !a.contract_id)
   const contractDocs = attachments.filter((a) => !!a.contract_id)
+  const pendingGens = generations.filter((g) => g.status === 'preview' || g.status === 'draft')
 
   async function handleAccept(gen: GenerationRecord) {
     if (!user?.id) return
@@ -141,6 +143,17 @@ export function DocumentsTab({ customerId, onGenerateClick }: Props) {
     }
   }
 
+  async function handlePreview(attachmentId: string | null) {
+    if (!attachmentId || !user?.id) return
+    try {
+      const { url } = await downloadMut.mutateAsync({ id: attachmentId, userId: user.id })
+      setPreviewUrl(url)
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Nieznany błąd'
+      alert(`Nie udało się wygenerować podglądu.\n\n${msg}`)
+    }
+  }
+
   return (
     <div>
       {/* Header */}
@@ -154,6 +167,26 @@ export function DocumentsTab({ customerId, onGenerateClick }: Props) {
 
       {isLoading && <p style={{ fontSize: 13, color: colors.textMuted }}>Ładowanie…</p>}
 
+      {/* Dokumenty oczekujące na akceptację */}
+      {pendingGens.length > 0 && (
+        <section style={{ marginBottom: 20, background: '#fff8f4', border: '1px solid #fdd5b8', borderRadius: 10, padding: '14px 16px' }}>
+          <SectionLabel accent="#c94f02">Do akceptacji ({pendingGens.length})</SectionLabel>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {pendingGens.map((g) => (
+              <GenerationRow
+                key={g.id}
+                gen={g}
+                busy={busyId === g.id}
+                onAccept={() => handleAccept(g)}
+                onReject={() => handleReject(g)}
+                onDownloadPdf={() => handleDownload(g.attachment_pdf_id)}
+                onDownloadCover={() => handleDownload(g.cover_letter_attachment_id)}
+              />
+            ))}
+          </div>
+        </section>
+      )}
+
       {/* Dokumenty ogólne klienta */}
       <section style={{ marginBottom: 20 }}>
         <SectionLabel>Dokumenty ogólne</SectionLabel>
@@ -161,7 +194,7 @@ export function DocumentsTab({ customerId, onGenerateClick }: Props) {
           <EmptyState>Brak dokumentów ogólnych. Użyj <strong>Wgraj plik</strong>, aby dodać pełnomocnictwo lub inne dokumenty klienta.</EmptyState>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {clientDocs.map((doc) => <AttachmentRow key={doc.id} doc={doc} onDownload={() => handleDownload(doc.id)} />)}
+            {clientDocs.map((doc) => <AttachmentRow key={doc.id} doc={doc} onDownload={() => handleDownload(doc.id)} onPreview={() => handlePreview(doc.id)} />)}
           </div>
         )}
       </section>
@@ -178,6 +211,7 @@ export function DocumentsTab({ customerId, onGenerateClick }: Props) {
                 <div key={doc.id} style={{ background: 'white', border: `1px solid ${colors.border}`, borderRadius: 8, padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 10, opacity: 0.8 }}>
                   {contract && <span style={{ fontSize: 10, fontWeight: 700, color: colors.textMuted, background: '#f2f0ed', border: `1px solid ${colors.border}`, borderRadius: 4, padding: '1px 6px', whiteSpace: 'nowrap' }}>{contract.contract_number}</span>}
                   <span style={{ fontSize: 12.5, color: colors.textPrimary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>{doc.original_filename}</span>
+                  <button onClick={() => handlePreview(doc.id)} style={btnSecStyle}>Podgląd</button>
                   <button onClick={() => handleDownload(doc.id)} style={btnSecStyle}>Pobierz</button>
                 </div>
               )
@@ -186,32 +220,27 @@ export function DocumentsTab({ customerId, onGenerateClick }: Props) {
         </section>
       )}
 
-      {/* Generacje AI */}
-      {generations.length > 0 && (
-        <section>
-          <SectionLabel>Wygenerowane przez AI</SectionLabel>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {generations.map((g) => (
-              <GenerationRow
-                key={g.id}
-                gen={g}
-                busy={busyId === g.id}
-                onAccept={() => handleAccept(g)}
-                onReject={() => handleReject(g)}
-                onDownloadPdf={() => handleDownload(g.attachment_pdf_id)}
-                onDownloadCover={() => handleDownload(g.cover_letter_attachment_id)}
-              />
-            ))}
-          </div>
-        </section>
-      )}
-
-      {!isLoading && generations.length === 0 && clientDocs.length === 0 && contractDocs.length === 0 && (
+      {!isLoading && pendingGens.length === 0 && clientDocs.length === 0 && contractDocs.length === 0 && (
         <EmptyState>Brak dokumentów. Kliknij <strong>Wgraj plik</strong> lub <strong>Generuj aneks</strong>, aby zacząć.</EmptyState>
       )}
 
       {wizardOpen && (
         <UploadWizard customerId={customerId} onClose={() => setWizardOpen(false)} />
+      )}
+
+      {previewUrl && (
+        <div
+          style={{ position: 'fixed', inset: 0, zIndex: 1200, background: 'rgba(26,23,20,0.6)', backdropFilter: 'blur(3px)', display: 'flex', flexDirection: 'column' }}
+          onClick={() => setPreviewUrl(null)}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 20px', background: 'white', flexShrink: 0 }} onClick={(e) => e.stopPropagation()}>
+            <span style={{ fontSize: 13, fontWeight: 700, color: '#1a1714' }}>Podgląd dokumentu</span>
+            <button onClick={() => setPreviewUrl(null)} style={{ background: 'none', border: '1px solid #e3e0db', borderRadius: 6, padding: '5px 12px', fontSize: 12, fontWeight: 600, cursor: 'pointer', color: '#6b6361' }}>✕ Zamknij</button>
+          </div>
+          <div style={{ flex: 1, overflow: 'hidden' }} onClick={(e) => e.stopPropagation()}>
+            <iframe src={previewUrl} style={{ width: '100%', height: '100%', border: 'none' }} title="Podgląd dokumentu" />
+          </div>
+        </div>
       )}
     </div>
   )
@@ -293,7 +322,7 @@ function GenerationRow({ gen, busy, onAccept, onReject, onDownloadPdf, onDownloa
   )
 }
 
-function AttachmentRow({ doc, onDownload }: { doc: DocumentRead; onDownload: () => void }) {
+function AttachmentRow({ doc, onDownload, onPreview }: { doc: DocumentRead; onDownload: () => void; onPreview: () => void }) {
   const ocrKey = doc.ocr_status ?? 'pending'
   const ocr = OCR_META[ocrKey] ?? OCR_META['pending']
   const created = new Date(doc.created_at).toLocaleString('pl-PL', {
@@ -329,15 +358,16 @@ function AttachmentRow({ doc, onDownload }: { doc: DocumentRead; onDownload: () 
         </div>
       </div>
 
-      <button onClick={onDownload} style={btnLinkStyle}>
-        Pobierz
-      </button>
+      <div style={{ display: 'flex', gap: 6 }}>
+        <button onClick={onPreview} style={btnLinkStyle}>Podgląd</button>
+        <button onClick={onDownload} style={btnLinkStyle}>Pobierz</button>
+      </div>
     </div>
   )
 }
 
-function SectionLabel({ children }: { children: React.ReactNode }) {
-  return <div style={{ fontSize: 10.5, fontWeight: 700, color: colors.textMuted, textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 8 }}>{children}</div>
+function SectionLabel({ children, accent }: { children: React.ReactNode; accent?: string }) {
+  return <div style={{ fontSize: 10.5, fontWeight: 700, color: accent ?? colors.textMuted, textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 8 }}>{children}</div>
 }
 
 function EmptyState({ children }: { children: React.ReactNode }) {

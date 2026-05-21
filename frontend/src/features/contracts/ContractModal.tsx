@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 
 import { useContract, useUpdateContract } from '@/hooks/contracts'
 import { useDocumentsQuery, useDocumentDownloadUrl, useDeleteDocument } from '@/hooks/documents'
@@ -73,9 +73,10 @@ interface Props {
   contractId: string
   customerId: string
   onClose: () => void
+  autoEdit?: boolean
 }
 
-export function ContractModal({ contractId, customerId, onClose }: Props) {
+export function ContractModal({ contractId, customerId, onClose, autoEdit = false }: Props) {
   const user = useAppSelector((s) => s.auth.user)
   const [activeTab, setActiveTab] = useState<Tab>('dane')
 
@@ -93,6 +94,7 @@ export function ContractModal({ contractId, customerId, onClose }: Props) {
   const createNote = useCreateNote()
 
   const [uploadWizardOpen, setUploadWizardOpen] = useState(false)
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
 
   /* ─── Edit form state ───────────────────────────────────────── */
   const [editing, setEditing] = useState(false)
@@ -105,6 +107,23 @@ export function ContractModal({ contractId, customerId, onClose }: Props) {
     billing_cycle: '' as BillingCycle | '',
     notes: '',
   })
+
+  const autoEditDone = useRef(false)
+  useEffect(() => {
+    if (autoEdit && contract && !autoEditDone.current) {
+      autoEditDone.current = true
+      setForm({
+        contract_number: contract.contract_number,
+        contract_type: contract.contract_type,
+        status: contract.status,
+        start_date: contract.start_date,
+        end_date: contract.end_date ?? '',
+        billing_cycle: contract.billing_cycle ?? '',
+        notes: contract.notes ?? '',
+      })
+      setEditing(true)
+    }
+  }, [autoEdit, contract])
 
   function startEdit() {
     if (!contract) return
@@ -140,6 +159,12 @@ export function ContractModal({ contractId, customerId, onClose }: Props) {
     if (!user?.id) return
     const { url } = await downloadMut.mutateAsync({ id, userId: user.id })
     window.open(url, '_blank', 'noopener,noreferrer')
+  }
+
+  async function handlePreview(id: string) {
+    if (!user?.id) return
+    const { url } = await downloadMut.mutateAsync({ id, userId: user.id })
+    setPreviewUrl(url)
   }
 
   async function handleDeleteDoc(id: string) {
@@ -286,6 +311,7 @@ export function ContractModal({ contractId, customerId, onClose }: Props) {
               onOpenWizard={() => setUploadWizardOpen(true)}
               onSetPrimary={(id) => updateContract.mutateAsync({ id: contractId, payload: { primary_document_id: id } })}
               onDownload={handleDownload}
+              onPreview={handlePreview}
               onDelete={handleDeleteDoc}
               onAccept={handleAccept}
               onReject={handleReject}
@@ -310,6 +336,21 @@ export function ContractModal({ contractId, customerId, onClose }: Props) {
           preselectedContractId={contractId}
           onClose={() => setUploadWizardOpen(false)}
         />
+      )}
+
+      {previewUrl && (
+        <div
+          style={{ position: 'fixed', inset: 0, zIndex: 1200, background: 'rgba(26,23,20,0.6)', backdropFilter: 'blur(3px)', display: 'flex', flexDirection: 'column' }}
+          onClick={() => setPreviewUrl(null)}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 20px', background: 'white', flexShrink: 0 }} onClick={(e) => e.stopPropagation()}>
+            <span style={{ fontSize: 13, fontWeight: 700, color: '#1a1714' }}>Podgląd dokumentu</span>
+            <button onClick={() => setPreviewUrl(null)} style={{ background: 'none', border: '1px solid #e3e0db', borderRadius: 6, padding: '5px 12px', fontSize: 12, fontWeight: 600, cursor: 'pointer', color: '#6b6361' }}>✕ Zamknij</button>
+          </div>
+          <div style={{ flex: 1, overflow: 'hidden' }} onClick={(e) => e.stopPropagation()}>
+            <iframe src={previewUrl} style={{ width: '100%', height: '100%', border: 'none' }} title="Podgląd dokumentu" />
+          </div>
+        </div>
       )}
     </div>
   )
@@ -411,7 +452,7 @@ function DaneTab({ contract, editing, form, saving, onStartEdit, onCancelEdit, o
 }
 
 /* ─── Tab: Dokumenty ──────────────────────────────────────────── */
-function DokumentyTab({ contract, attachments, generations, busyGenId, onOpenWizard, onSetPrimary, onDownload, onDelete, onAccept, onReject }: {
+function DokumentyTab({ contract, attachments, generations, busyGenId, onOpenWizard, onSetPrimary, onDownload, onPreview, onDelete, onAccept, onReject }: {
   contract: ReturnType<typeof useContract>['data']
   attachments: ReturnType<typeof useDocumentsQuery>['data'] & object[]
   generations: ReturnType<typeof useDocumentGenerations>['data'] & object[]
@@ -419,6 +460,7 @@ function DokumentyTab({ contract, attachments, generations, busyGenId, onOpenWiz
   onOpenWizard: () => void
   onSetPrimary: (id: string) => void
   onDownload: (id: string) => void
+  onPreview: (id: string) => void
   onDelete: (id: string) => void
   onAccept: (id: string) => void
   onReject: (id: string, customerId: string) => void
@@ -427,10 +469,39 @@ function DokumentyTab({ contract, attachments, generations, busyGenId, onOpenWiz
   const primaryDoc = attachments.find((a) => a.id === primaryDocId)
   const otherDocs = attachments.filter((a) => a.id !== primaryDocId)
   const pendingGens = generations.filter((g) => g.status === 'preview' || g.status === 'draft')
-  const pastGens = generations.filter((g) => g.status !== 'preview' && g.status !== 'draft')
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+
+      {/* Oczekujące na akceptację */}
+      {pendingGens.length > 0 && (
+        <section style={{ background: '#fff8f4', border: '1px solid #fdd5b8', borderRadius: 10, padding: '14px 16px' }}>
+          <SectionHeader label={`Do akceptacji (${pendingGens.length})`} />
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {pendingGens.map((g) => {
+              const meta = GEN_STATUS_META[g.status] ?? GEN_STATUS_META['draft']
+              const busy = busyGenId === g.id
+              const delta = (g.simulation as Record<string, unknown>)?.delta_annual_revenue as string | undefined
+              return (
+                <div key={g.id} style={{ ...rowStyle, borderLeft: `3px solid ${meta.fg}` }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 3 }}>
+                      <span style={{ fontSize: 9.5, fontWeight: 700, padding: '2px 8px', borderRadius: 4, background: meta.bg, color: meta.fg, textTransform: 'uppercase' as const, letterSpacing: 0.3 }}>{meta.l}</span>
+                      <span style={{ fontSize: 12.5, fontWeight: 700, color: C.text }}>{g.template_key} v{g.template_version}</span>
+                    </div>
+                    <div style={{ fontSize: 11, color: C.muted }}>{fmtDate(g.created_at)}{delta && <> · Δ rok: <strong style={{ color: C.text }}>{delta}</strong></>}</div>
+                  </div>
+                  <div style={{ display: 'flex', gap: 6, flexShrink: 0, alignItems: 'center' }}>
+                    {g.attachment_pdf_id && <button onClick={() => onDownload(g.attachment_pdf_id!)} style={btnSecondary}>PDF</button>}
+                    <button onClick={() => onReject(g.id, g.customer_id)} disabled={busy} style={btnDanger}>Odrzuć</button>
+                    <button onClick={() => onAccept(g.id)} disabled={busy} style={btnPrimary}>{busy ? 'Akceptuję…' : 'Akceptuj'}</button>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </section>
+      )}
 
       {/* Główny dokument */}
       <section>
@@ -439,6 +510,7 @@ function DokumentyTab({ contract, attachments, generations, busyGenId, onOpenWiz
           <DocRow
             doc={primaryDoc}
             isPrimary
+            onPreview={() => onPreview(primaryDoc.id)}
             onDownload={() => onDownload(primaryDoc.id)}
             onDelete={() => onDelete(primaryDoc.id)}
           />
@@ -464,6 +536,7 @@ function DokumentyTab({ contract, attachments, generations, busyGenId, onOpenWiz
               <DocRow
                 key={doc.id}
                 doc={doc}
+                onPreview={() => onPreview(doc.id)}
                 onDownload={() => onDownload(doc.id)}
                 onDelete={() => onDelete(doc.id)}
                 onSetPrimary={() => onSetPrimary(doc.id)}
@@ -473,47 +546,14 @@ function DokumentyTab({ contract, attachments, generations, busyGenId, onOpenWiz
         )}
       </section>
 
-      {/* Wersje robocze AI */}
-      {(pendingGens.length > 0 || pastGens.length > 0) && (
-        <section>
-          <SectionHeader label="Wersje robocze AI" />
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            {[...pendingGens, ...pastGens].map((g) => {
-              const meta = GEN_STATUS_META[g.status] ?? GEN_STATUS_META['draft']
-              const canAct = g.status === 'preview' || g.status === 'draft'
-              const busy = busyGenId === g.id
-              const delta = (g.simulation as Record<string, unknown>)?.delta_annual_revenue as string | undefined
-              return (
-                <div key={g.id} style={{ ...rowStyle, borderLeft: `3px solid ${meta.fg}` }}>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 3 }}>
-                      <span style={{ fontSize: 9.5, fontWeight: 700, padding: '2px 8px', borderRadius: 4, background: meta.bg, color: meta.fg, textTransform: 'uppercase' as const, letterSpacing: 0.3 }}>{meta.l}</span>
-                      <span style={{ fontSize: 12.5, fontWeight: 700, color: C.text }}>{g.template_key} v{g.template_version}</span>
-                    </div>
-                    <div style={{ fontSize: 11, color: C.muted }}>{fmtDate(g.created_at)}{delta && <> · Δ rok: <strong style={{ color: C.text }}>{delta}</strong></>}</div>
-                  </div>
-                  <div style={{ display: 'flex', gap: 6, flexShrink: 0, alignItems: 'center' }}>
-                    {g.attachment_pdf_id && <button onClick={() => onDownload(g.attachment_pdf_id!)} style={btnSecondary}>PDF</button>}
-                    {canAct && (
-                      <>
-                        <button onClick={() => onReject(g.id, g.customer_id)} disabled={busy} style={btnDanger}>Odrzuć</button>
-                        <button onClick={() => onAccept(g.id)} disabled={busy} style={btnPrimary}>{busy ? 'Akceptuję…' : 'Akceptuj'}</button>
-                      </>
-                    )}
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-        </section>
-      )}
     </div>
   )
 }
 
-function DocRow({ doc, isPrimary, onDownload, onDelete, onSetPrimary }: {
+function DocRow({ doc, isPrimary, onPreview, onDownload, onDelete, onSetPrimary }: {
   doc: { id: string; original_filename: string; document_type: string; ocr_status?: string | null; created_at: string }
   isPrimary?: boolean
+  onPreview: () => void
   onDownload: () => void
   onDelete: () => void
   onSetPrimary?: () => void
@@ -535,6 +575,7 @@ function DocRow({ doc, isPrimary, onDownload, onDelete, onSetPrimary }: {
       </div>
       <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
         {onSetPrimary && <button onClick={onSetPrimary} title="Ustaw jako główny" style={{ ...btnSecondary, fontSize: 11 }}>Ustaw główny</button>}
+        <button onClick={onPreview} style={btnSecondary}>Podgląd</button>
         <button onClick={onDownload} style={btnSecondary}>Pobierz</button>
         <button onClick={onDelete} style={btnDanger}>✕</button>
       </div>
