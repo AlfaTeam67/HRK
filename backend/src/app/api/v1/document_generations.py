@@ -104,6 +104,29 @@ async def reject_generation(
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
+@router.post(
+    "/{generation_id}/regenerate",
+    response_model=GenerationRead,
+    status_code=status.HTTP_201_CREATED,
+    summary=(
+        "Regenerate a draft/preview generation with updated parameters. "
+        "The old generation is marked as superseded and its draft PDF is deleted. "
+        "A new generation record with status 'preview' is returned."
+    ),
+)
+async def regenerate_generation(
+    generation_id: uuid.UUID,
+    request: GenerationRequest,
+    regenerated_by: Annotated[uuid.UUID, Query(description="UUID of the user performing the edit")],
+    service: Annotated[DocumentGenerationService, Depends(get_generation_service)],
+) -> Any:
+    return await service.regenerate(
+        generation_id,
+        request,
+        regenerated_by=regenerated_by,
+    )
+
+
 @router.get(
     "/{generation_id}/preview-html",
     summary="Re-render generation HTML (debug / iframe preview helper)",

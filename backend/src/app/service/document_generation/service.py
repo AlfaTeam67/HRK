@@ -146,128 +146,14 @@ class DocumentGenerationService:
         before the document can be sent. Acceptance removes the draft
         watermark and re-uploads the clean PDF.
         """
-        context, simulation = await self._build_context_and_simulation(request)
-        manifest = self._registry.get_manifest(request.template_key)
-        template_version = str(manifest["version"])
-        amendment_number = self._next_amendment_number(context["contract"])
-        amendment_date = date.today()
-
-        rationale_bullets: list[str] = []
-        cover_letter_text: str | None = None
-        facts = self._build_llm_facts(
-            customer=context["customer"],
-            contract=context["contract"],
-            simulation=simulation,
-            params=request.params,
+        gen = await self._create_generation_record(
+            request=request,
+            generated_by=generated_by,
         )
 
-        if request.include_ai_rationale:
-            try:
-                rationale_bullets = await self._llm.generate_rationale_bullets(
-                    facts=facts,
-                    tone=request.tone.value,
-                    user_instructions=request.user_instructions,
-                )
-            except Exception:  # noqa: BLE001
-                logger.exception("LLM rationale generation failed during finalize")
-
-        if request.include_cover_letter:
-            try:
-                cover_letter_text = await self._llm.generate_cover_letter(
-                    facts=facts,
-                    tone=request.tone.value,
-                    user_instructions=request.user_instructions,
-                )
-            except Exception:  # noqa: BLE001
-                logger.exception("LLM cover letter generation failed during finalize")
-
-        generation_id = uuid.uuid4()
-
-        # Render main amendment with DRAFT watermark first.
-        amendment_html = self._registry.render_main(
-            request.template_key,
-            self._build_template_context(
-                generation_id=generation_id,
-                request=request,
-                context=context,
-                simulation=simulation,
-                rationale_bullets=rationale_bullets,
-                draft=True,
-                amendment_number=amendment_number,
-                amendment_date=amendment_date,
-            ),
-        )
-        amendment_pdf = await self._renderer.render(amendment_html)
-        safe_amendment_no = self._safe_filename(amendment_number)
-        safe_contract_no = self._safe_filename(context["contract"].contract_number)
-        amendment_attachment = await self._upload_pdf(
-            pdf=amendment_pdf,
-            customer=context["customer"],
-            contract=context["contract"],
-            document_type=DocumentType.AMENDMENT,
-            filename=f"aneks_{safe_amendment_no}_{safe_contract_no}_DRAFT.pdf",
-            uploaded_by=generated_by,
-            ocr_status=OcrStatus.SKIPPED,
-        )
-
-        cover_letter_attachment = None
-        if cover_letter_text:
-            cover_html = self._registry.render_cover_letter(
-                request.template_key,
-                self._build_template_context(
-                    generation_id=generation_id,
-                    request=request,
-                    context=context,
-                    simulation=simulation,
-                    rationale_bullets=rationale_bullets,
-                    draft=True,
-                    amendment_number=amendment_number,
-                    amendment_date=amendment_date,
-                    extra={"cover_letter_text": cover_letter_text},
-                ),
-            )
-            cover_pdf = await self._renderer.render(cover_html)
-            cover_letter_attachment = await self._upload_pdf(
-                pdf=cover_pdf,
-                customer=context["customer"],
-                contract=context["contract"],
-                document_type=DocumentType.COVER_LETTER,
-                filename=f"pismo_przewodnie_{safe_amendment_no}_DRAFT.pdf",
-                uploaded_by=generated_by,
-                ocr_status=OcrStatus.SKIPPED,
-            )
-
-        gen = await self._gen_repo.create(
-            {
-                "id": generation_id,
-                "customer_id": request.customer_id,
-                "contract_id": request.contract_id,
-                "attachment_pdf_id": amendment_attachment.id,
-                "cover_letter_attachment_id": (
-                    cover_letter_attachment.id if cover_letter_attachment else None
-                ),
-                "template_key": request.template_key,
-                "template_version": template_version,
-                "status": DocumentGenerationStatus.PREVIEW,
-                "payload": _serializable(
-                    {
-                        "request": request.model_dump(mode="json"),
-                        "amendment_number": amendment_number,
-                        "amendment_date": amendment_date.isoformat(),
-                    }
-                ),
-                "simulation": _serializable(simulation.model_dump(mode="json")),
-                "ai_artifacts": {
-                    "rationale_bullets": rationale_bullets,
-                    "cover_letter_text": cover_letter_text,
-                    "model": settings.openrouter_model,
-                    "tone": request.tone.value,
-                    "prompt_hash": _hash_facts(facts, request.user_instructions),
-                },
-                "pdf_sha256": PdfRenderer.sha256(amendment_pdf),
-                "generated_by": generated_by,
-            }
-        )
+        # Derive amendment_number for activity log from the persisted payload.
+        amendment_number = gen.payload.get("amendment_number", "?")
+        simulation_delta = (gen.simulation or {}).get("delta_annual_revenue", "?")
 
         await self._activity_repo.create(
             {
@@ -277,7 +163,7 @@ class DocumentGenerationService:
                 "description": (
                     f"Wygenerowano draft aneksu {amendment_number}. "
                     f"Indeks {request.params.index_value}% · "
-                    f"Δ rok: {simulation.delta_annual_revenue} zł · "
+                    f"Δ rok: {simulation_delta} zł · "
                     f"do akceptacji opiekuna."
                 ),
             },
@@ -451,6 +337,246 @@ class DocumentGenerationService:
             performed_by=rejected_by,
         )
         await self._session.commit()
+
+    async def regenerate(
+        self,
+        generation_id: uuid.UUID,
+        new_request: GenerationRequest,
+        *,
+        regenerated_by: uuid.UUID,
+    ) -> DocumentGeneration:
+        """Replace a draft/preview generation with new parameters.
+
+        The old generation is marked as ``superseded`` (best-effort draft PDF
+        cleanup included).  A brand-new generation record is created and
+        returned with status ``preview`` — it follows the same lifecycle as a
+        freshly finalised document and must still be accepted before sending.
+        """
+        old_gen = await self.get(generation_id)
+        if old_gen.status not in (
+            DocumentGenerationStatus.PREVIEW,
+            DocumentGenerationStatus.DRAFT,
+        ):
+            raise HTTPException(
+                status.HTTP_409_CONFLICT,
+                detail=(
+                    f"Generation cannot be edited from status '{old_gen.status.value}'. "
+                    "Only draft or preview generations can be regenerated."
+                ),
+            )
+
+        # Capture draft S3/attachment references before mutating anything.
+        old_refs = await self._capture_draft_refs(old_gen)
+
+        # Preserve amendment number/date from the original so numbering stays consistent.
+        amendment_number = (
+            old_gen.payload.get("amendment_number") if old_gen.payload else None
+        )
+        amendment_date_str = (
+            old_gen.payload.get("amendment_date") if old_gen.payload else None
+        )
+
+        # Mark old generation as superseded (non-destructive status change).
+        await self._gen_repo.update(old_gen, {"status": DocumentGenerationStatus.SUPERSEDED})
+
+        # Build and persist new generation.
+        new_gen = await self._create_generation_record(
+            request=new_request,
+            generated_by=regenerated_by,
+            override_amendment_number=amendment_number,
+            override_amendment_date_str=amendment_date_str,
+            extra_payload={"regenerated_from": str(generation_id)},
+        )
+
+        await self._activity_repo.create(
+            {
+                "customer_id": new_request.customer_id,
+                "contract_id": new_request.contract_id,
+                "activity_type": ActivityType.DOCUMENT,
+                "description": (
+                    f"Zmodyfikowano parametry aneksu "
+                    f"{new_gen.payload.get('amendment_number', '?')} "
+                    f"(edycja draftu {generation_id}). "
+                    f"Nowy indeks: {new_request.params.index_value}%."
+                ),
+            },
+            performed_by=regenerated_by,
+        )
+        await self._session.commit()
+
+        # Best-effort cleanup of superseded draft artifacts.
+        await self._delete_draft_attachment(
+            s3_key=old_refs["amendment_s3_key"],
+            attachment_id=old_refs["amendment_att_id"],
+        )
+        await self._delete_draft_attachment(
+            s3_key=old_refs["cover_s3_key"],
+            attachment_id=old_refs["cover_att_id"],
+        )
+
+        return new_gen
+
+    async def _capture_draft_refs(self, gen: DocumentGeneration) -> dict:
+        """Return S3 key + attachment ID for the draft PDF(s) of *gen*."""
+        refs: dict = {
+            "amendment_s3_key": None,
+            "amendment_att_id": None,
+            "cover_s3_key": None,
+            "cover_att_id": None,
+        }
+        if gen.attachment_pdf_id:
+            att = await self._attachment_repo.get(gen.attachment_pdf_id)
+            if att:
+                refs["amendment_s3_key"] = att.s3_key
+                refs["amendment_att_id"] = att.id
+        if gen.cover_letter_attachment_id:
+            cl = await self._attachment_repo.get(gen.cover_letter_attachment_id)
+            if cl:
+                refs["cover_s3_key"] = cl.s3_key
+                refs["cover_att_id"] = cl.id
+        return refs
+
+    async def _create_generation_record(
+        self,
+        *,
+        request: GenerationRequest,
+        generated_by: uuid.UUID,
+        override_amendment_number: str | None = None,
+        override_amendment_date_str: str | None = None,
+        extra_payload: dict | None = None,
+    ) -> DocumentGeneration:
+        """Shared logic for finalize() and regenerate(): render PDF + persist."""
+        context, simulation = await self._build_context_and_simulation(request)
+        manifest = self._registry.get_manifest(request.template_key)
+        template_version = str(manifest["version"])
+
+        amendment_number = override_amendment_number or self._next_amendment_number(
+            context["contract"]
+        )
+        amendment_date = (
+            date.fromisoformat(override_amendment_date_str)
+            if override_amendment_date_str
+            else date.today()
+        )
+
+        rationale_bullets: list[str] = []
+        cover_letter_text: str | None = None
+        facts = self._build_llm_facts(
+            customer=context["customer"],
+            contract=context["contract"],
+            simulation=simulation,
+            params=request.params,
+        )
+
+        if request.include_ai_rationale:
+            try:
+                rationale_bullets = await self._llm.generate_rationale_bullets(
+                    facts=facts,
+                    tone=request.tone.value,
+                    user_instructions=request.user_instructions,
+                )
+            except Exception:  # noqa: BLE001
+                logger.exception("LLM rationale generation failed")
+
+        if request.include_cover_letter:
+            try:
+                cover_letter_text = await self._llm.generate_cover_letter(
+                    facts=facts,
+                    tone=request.tone.value,
+                    user_instructions=request.user_instructions,
+                )
+            except Exception:  # noqa: BLE001
+                logger.exception("LLM cover letter generation failed")
+
+        generation_id = uuid.uuid4()
+        safe_amendment_no = self._safe_filename(amendment_number)
+        safe_contract_no = self._safe_filename(context["contract"].contract_number)
+
+        amendment_html = self._registry.render_main(
+            request.template_key,
+            self._build_template_context(
+                generation_id=generation_id,
+                request=request,
+                context=context,
+                simulation=simulation,
+                rationale_bullets=rationale_bullets,
+                draft=True,
+                amendment_number=amendment_number,
+                amendment_date=amendment_date,
+            ),
+        )
+        amendment_pdf = await self._renderer.render(amendment_html)
+        amendment_attachment = await self._upload_pdf(
+            pdf=amendment_pdf,
+            customer=context["customer"],
+            contract=context["contract"],
+            document_type=DocumentType.AMENDMENT,
+            filename=f"aneks_{safe_amendment_no}_{safe_contract_no}_DRAFT.pdf",
+            uploaded_by=generated_by,
+            ocr_status=OcrStatus.SKIPPED,
+        )
+
+        cover_letter_attachment = None
+        if cover_letter_text:
+            cover_html = self._registry.render_cover_letter(
+                request.template_key,
+                self._build_template_context(
+                    generation_id=generation_id,
+                    request=request,
+                    context=context,
+                    simulation=simulation,
+                    rationale_bullets=rationale_bullets,
+                    draft=True,
+                    amendment_number=amendment_number,
+                    amendment_date=amendment_date,
+                    extra={"cover_letter_text": cover_letter_text},
+                ),
+            )
+            cover_pdf = await self._renderer.render(cover_html)
+            cover_letter_attachment = await self._upload_pdf(
+                pdf=cover_pdf,
+                customer=context["customer"],
+                contract=context["contract"],
+                document_type=DocumentType.COVER_LETTER,
+                filename=f"pismo_przewodnie_{safe_amendment_no}_DRAFT.pdf",
+                uploaded_by=generated_by,
+                ocr_status=OcrStatus.SKIPPED,
+            )
+
+        payload = _serializable(
+            {
+                "request": request.model_dump(mode="json"),
+                "amendment_number": amendment_number,
+                "amendment_date": amendment_date.isoformat(),
+                **(extra_payload or {}),
+            }
+        )
+
+        return await self._gen_repo.create(
+            {
+                "id": generation_id,
+                "customer_id": request.customer_id,
+                "contract_id": request.contract_id,
+                "attachment_pdf_id": amendment_attachment.id,
+                "cover_letter_attachment_id": (
+                    cover_letter_attachment.id if cover_letter_attachment else None
+                ),
+                "template_key": request.template_key,
+                "template_version": template_version,
+                "status": DocumentGenerationStatus.PREVIEW,
+                "payload": payload,
+                "simulation": _serializable(simulation.model_dump(mode="json")),
+                "ai_artifacts": {
+                    "rationale_bullets": rationale_bullets,
+                    "cover_letter_text": cover_letter_text,
+                    "model": settings.openrouter_model,
+                    "tone": request.tone.value,
+                    "prompt_hash": _hash_facts(facts, request.user_instructions),
+                },
+                "pdf_sha256": PdfRenderer.sha256(amendment_pdf),
+                "generated_by": generated_by,
+            }
+        )
 
     # ── Internal helpers ─────────────────────────────────────────────────────
 

@@ -202,3 +202,29 @@ export function useRejectGeneration() {
     },
   })
 }
+
+export function useRegenerateGeneration() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async ({
+      id,
+      request,
+      regenerated_by,
+    }: {
+      id: string
+      request: GenerationRequest
+      regenerated_by: string
+    }) => {
+      const { data } = await apiClient.post<GenerationRecord>(
+        `${BASE}/${id}/regenerate`,
+        request,
+        { params: { regenerated_by } },
+      )
+      return data
+    },
+    onSuccess: (data) => {
+      qc.invalidateQueries({ queryKey: ['document-generations', 'list', data.customer_id] })
+      qc.invalidateQueries({ queryKey: ['timeline', data.customer_id] })
+    },
+  })
+}
