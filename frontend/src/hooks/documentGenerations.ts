@@ -203,28 +203,35 @@ export function useRejectGeneration() {
   })
 }
 
-export function useRegenerateGeneration() {
+export interface DraftDataUpdate {
+  cover_letter_text?: string | null
+  rationale_bullets?: string[] | null
+  user_note?: string | null
+}
+
+export function useUpdateDraftData() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: async ({
       id,
-      request,
-      regenerated_by,
+      updated_by,
+      data,
     }: {
       id: string
-      request: GenerationRequest
-      regenerated_by: string
+      updated_by: string
+      data: DraftDataUpdate
     }) => {
-      const { data } = await apiClient.post<GenerationRecord>(
-        `${BASE}/${id}/regenerate`,
-        request,
-        { params: { regenerated_by } },
+      const { data: result } = await apiClient.patch<GenerationRecord>(
+        `${BASE}/${id}/draft-data`,
+        data,
+        { params: { updated_by } }
       )
-      return data
+      return result
     },
-    onSuccess: (data) => {
-      qc.invalidateQueries({ queryKey: ['document-generations', 'list', data.customer_id] })
-      qc.invalidateQueries({ queryKey: ['timeline', data.customer_id] })
+    onSuccess: (record) => {
+      qc.invalidateQueries({
+        queryKey: ['document-generations', 'list', record.customer_id],
+      })
     },
   })
 }

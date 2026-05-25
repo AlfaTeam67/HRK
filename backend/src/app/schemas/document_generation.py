@@ -137,3 +137,27 @@ class GenerationAccept(BaseModel):
     """User confirms the previewed PDF is OK to use / send."""
 
     accepted_by: uuid.UUID
+
+
+class GenerationDraftDataUpdate(BaseModel):
+    """Editable narrative fields on a generation that is still in PREVIEW status.
+
+    Only the AI-generated text parts are editable here — numbers and financial
+    figures are derived from the simulator and cannot be changed through this
+    endpoint. At most one field is required per request.
+    """
+
+    cover_letter_text: str | None = Field(
+        default=None,
+        max_length=10000,
+        description="Treść pisma przewodniego. Podaj null, aby usunąć.",
+    )
+    rationale_bullets: list[str] | None = Field(
+        default=None,
+        description="Lista punktów uzasadnienia (maks. 10). Podaj null, aby zachować obecne.",
+    )
+    user_note: str | None = Field(
+        default=None,
+        max_length=2000,
+        description="Opcjonalna notatka pracownika widoczna w payloadzie dokumentu.",
+    )
