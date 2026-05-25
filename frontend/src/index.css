@@ -170,6 +170,11 @@
   }
 }
 
+@keyframes cp-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
 /* Typing dots animation for AI chat */
 @keyframes dot-bounce {
   0%,
@@ -179,6 +184,12 @@
   }
   40% {
     transform: translateY(-6px);
+  }
+}
+
+@keyframes hrk-spin {
+  to {
+    transform: rotate(360deg);
   }
 }
 

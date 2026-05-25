@@ -12,7 +12,9 @@ import { useDocumentsQuery } from '@/hooks/documents'
 import { useCustomers } from '@/hooks/customers'
 import { useRagSearch } from '@/hooks/rag'
 import { useAppSelector } from '@/hooks/store'
+import { OcrStatusBadge } from '@/components/ui/OcrStatusBadge'
 import type { DocumentRead } from '@/types/models'
+import type { OcrStatus } from '@/components/ui/OcrStatusBadge'
 
 pdfjs.GlobalWorkerOptions.workerSrc = new URL(
   'pdfjs-dist/build/pdf.worker.min.mjs',
@@ -30,11 +32,19 @@ interface MessageSource {
   highlight?: string | null
 }
 
+interface MessageFragment {
+  index: number
+  text: string
+  similarity: number
+  source: MessageSource
+}
+
 interface ChatMessage {
   id: number
   role: MessageRole
   content: string
   sources?: MessageSource[]
+  fragments?: MessageFragment[]
   ts: string
 }
 
@@ -138,13 +148,14 @@ function DocumentList({
             <div style={{ fontSize: 13, fontWeight: 700, color: '#1a1714', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginBottom: 3 }}>
               {doc.original_filename}
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
               <span style={{ fontSize: 10, fontWeight: 600, color: '#c94f02', background: '#fff5f0', border: '1px solid #fdd5b8', borderRadius: 4, padding: '1px 6px', letterSpacing: '0.02em' }}>
                 {doc.document_type}
               </span>
               {doc.file_size_bytes ? (
                 <span style={{ fontSize: 10, color: '#b5afa8' }}>{fmtBytes(doc.file_size_bytes)}</span>
               ) : null}
+              <OcrStatusBadge status={doc.ocr_status as OcrStatus} />
             </div>
           </div>
 
@@ -204,7 +215,9 @@ export function AdvisorPage() {
   const [selectedCustomerId, setSelectedCustomerId] = useState<string>('')
 
   const { data: customerDocs = [], isLoading: docsLoading } = useDocumentsQuery(
-    selectedCustomerId ? { customer_id: selectedCustomerId } : undefined,
+    selectedCustomerId
+      ? { customer_id: selectedCustomerId, exclude_draft: true }
+      : undefined,
   )
   const [isAiMode, setIsAiMode] = useState(false)
   const [isInfoModalOpen, setIsInfoModalOpen] = useState(false)
@@ -333,24 +346,39 @@ export function AdvisorPage() {
         top_k: 5,
       })
 
+      const hasChunks = response.chunks.length > 0
+      const sortedChunks = response.chunks
+        .slice()
+        .sort((a, b) => b.similarity - a.similarity)
       const assistantMsg: ChatMessage = {
         id: nextIdRef.current++,
         role: 'assistant',
         ts: new Date().toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' }),
-        content:
-          response.ai_answer ||
-          (response.chunks.length > 0
-            ? response.chunks
-                .map((c, i) => `**Fragment ${i + 1}:**\n"${c.highlight || c.content.substring(0, 300) + '...'}"`)
-                .join('\n\n')
-            : 'Niestety nie znalazłem informacji na ten temat w dostępnych dokumentach tego klienta.'),
-        sources: response.chunks.map((chunk) => ({
-          title: chunk.section_title || 'Dokument',
-          page: chunk.page_number ? `str. ${chunk.page_number}` : 'fragment',
-          attachment_id: chunk.attachment_id,
-          page_number: chunk.page_number,
-          highlight: chunk.highlight || chunk.content.substring(0, 300),
-        })),
+        content: response.ai_answer
+          ?? (hasChunks ? '' : 'Niestety nie znalazłem informacji na ten temat w dostępnych dokumentach tego klienta.'),
+        fragments: !response.ai_answer && hasChunks
+          ? sortedChunks.map((c, i) => ({
+              index: i + 1,
+              text: c.highlight || c.content.substring(0, 300) + '...',
+              similarity: c.similarity,
+              source: {
+                title: c.section_title || 'Dokument',
+                page: c.page_number ? `str. ${c.page_number}` : 'fragment',
+                attachment_id: c.attachment_id,
+                page_number: c.page_number,
+                highlight: c.highlight || c.content.substring(0, 300),
+              },
+            }))
+          : undefined,
+        sources: response.ai_answer
+          ? response.chunks.map((chunk) => ({
+              title: chunk.section_title || 'Dokument',
+              page: chunk.page_number ? `str. ${chunk.page_number}` : 'fragment',
+              attachment_id: chunk.attachment_id,
+              page_number: chunk.page_number,
+              highlight: chunk.highlight || chunk.content.substring(0, 300),
+            }))
+          : undefined,
       }
 
       setMessages((prev) => [...prev, assistantMsg])
@@ -658,14 +686,61 @@ export function AdvisorPage() {
                     border: msg.role === 'assistant' ? '1px solid #f2f0ed' : 'none',
                   }}
                 >
-                  {msg.content.split('\n').map((line, i) => {
-                    const parts = line.split(/\*\*(.*?)\*\*/g)
-                    return (
-                      <p key={i} style={{ margin: i === 0 ? 0 : '4px 0 0 0' }}>
-                        {parts.map((part, j) => (j % 2 === 1 ? <strong key={j}>{part}</strong> : part))}
-                      </p>
-                    )
-                  })}
+                  {/* Non-AI mode: structured fragments with inline source button */}
+                  {msg.fragments && msg.fragments.length > 0 ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                      {msg.fragments.map((frag) => (
+                        <div key={frag.index}>
+                          <button
+                            onClick={() => handleSourceClick(frag.source.attachment_id, frag.source.title, frag.source.page_number, frag.source.highlight)}
+                            style={{
+                              display: 'inline-flex', alignItems: 'center', gap: 5,
+                              padding: '3px 10px 3px 7px', borderRadius: 20, marginBottom: 6,
+                              border: '1px solid #fdd5b8', background: '#fff8f4',
+                              color: '#c94f02', fontSize: 11, fontWeight: 600,
+                              cursor: 'pointer', fontFamily: 'inherit',
+                              transition: 'all 0.15s',
+                            }}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.background = '#fff0e6'
+                              e.currentTarget.style.borderColor = '#e85c04'
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.background = '#fff8f4'
+                              e.currentTarget.style.borderColor = '#fdd5b8'
+                            }}
+                          >
+                            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/>
+                            </svg>
+                            <span>{frag.source.title}</span>
+                            <span style={{ opacity: 0.5 }}>·</span>
+                            <span>{frag.source.page}</span>
+                          </button>
+                          <div style={{ fontSize: 12.5, lineHeight: 1.6, color: '#3d3530' }}>
+                            <span style={{ fontWeight: 700 }}>Fragment {frag.index}</span>
+                            <span style={{ fontSize: 11, color: '#9e9389', marginLeft: 4 }}>
+                              ({Math.round(frag.similarity * 100)}% zgodności)
+                            </span>
+                            <br />
+                            <span style={{ fontStyle: 'italic' }}>&ldquo;{frag.text}&rdquo;</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    /* AI mode / plain text messages */
+                    msg.content.split('\n').map((line, i) => {
+                      const parts = line.split(/\*\*(.*?)\*\*/g)
+                      return (
+                        <p key={i} style={{ margin: i === 0 ? 0 : '4px 0 0 0' }}>
+                          {parts.map((part, j) => (j % 2 === 1 ? <strong key={j}>{part}</strong> : part))}
+                        </p>
+                      )
+                    })
+                  )}
+
+                  {/* Bottom sources — only for AI mode */}
                   {msg.sources && msg.sources.length > 0 && (
                     <div style={{ marginTop: 10, paddingTop: 8, borderTop: '1px solid #fdd5b8' }}>
                       <div style={{ fontSize: 10, fontWeight: 700, color: '#c94f02', marginBottom: 4 }}>
@@ -685,9 +760,7 @@ export function AdvisorPage() {
                             onMouseLeave={(e) => (e.currentTarget.style.opacity = '1')}
                           >
                             <span>→</span>
-                            <span>
-                              <strong>{src.title}</strong> · {src.page}
-                            </span>
+                            <span><strong>{src.title}</strong> · {src.page}</span>
                           </button>
                         ))}
                       </div>
@@ -733,115 +806,102 @@ export function AdvisorPage() {
           {/* Input */}
           <div
             style={{
-              padding: '16px 20px', borderTop: '1px solid #f2f0ed',
-              display: 'flex', gap: 10, alignItems: 'center',
+              padding: '12px 20px 16px', borderTop: '1px solid #f2f0ed',
+              display: 'flex', flexDirection: 'column', gap: 10,
               background: 'white', flexShrink: 0,
             }}
           >
-            <input
-              name="assistant-question"
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && sendMessage(input)}
-              placeholder="Zadaj pytanie o klienta, umowę lub waloryzację…"
-              style={{
-                flex: 1, border: '1px solid #e3e0db', borderRadius: 12,
-                padding: '12px 16px', fontSize: 14, outline: 'none', color: '#1a1714',
-                transition: 'all 0.2s', background: '#fafaf9',
-                boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.02)',
-              }}
-              onFocus={(e) => {
-                e.currentTarget.style.borderColor = '#e85c04'
-                e.currentTarget.style.background = 'white'
-                e.currentTarget.style.boxShadow = '0 0 0 3px rgba(232, 92, 4, 0.1)'
-              }}
-              onBlur={(e) => {
-                e.currentTarget.style.borderColor = '#e3e0db'
-                e.currentTarget.style.background = '#fafaf9'
-                e.currentTarget.style.boxShadow = 'inset 0 1px 2px rgba(0,0,0,0.02)'
-              }}
-            />
-
-            {/* Mode toggle */}
-            <div
-              style={{
-                display: 'flex', alignItems: 'center', gap: 8,
-                background: '#f5f2ef', padding: '4px', borderRadius: 14, border: '1px solid #e3e0db',
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                <button
-                  onClick={() => setIsAiMode(false)}
-                  style={{
-                    padding: '8px 14px', borderRadius: 10, border: 'none',
-                    background: !isAiMode ? 'white' : 'transparent',
-                    color: !isAiMode ? '#1a1714' : '#9e9389',
-                    fontSize: 10, fontWeight: 800, cursor: 'pointer',
-                    transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
-                    boxShadow: !isAiMode ? '0 2px 8px rgba(0,0,0,0.08)' : 'none',
-                    letterSpacing: '0.02em',
-                  }}
-                >
-                  WYSZUKIWANIE
-                </button>
-                <button
-                  onClick={() => setIsAiMode(true)}
-                  style={{
-                    padding: '8px 14px', borderRadius: 10, border: 'none',
-                    background: isAiMode ? '#e85c04' : 'transparent',
-                    color: isAiMode ? 'white' : '#9e9389',
-                    fontSize: 10, fontWeight: 800, cursor: 'pointer',
-                    transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
-                    boxShadow: isAiMode ? '0 4px 12px rgba(232, 92, 4, 0.25)' : 'none',
-                    letterSpacing: '0.02em',
-                  }}
-                >
-                  ROZUMOWANIE AI
-                </button>
-              </div>
-              <div style={{ width: 1, height: 16, background: '#e3e0db', margin: '0 2px' }} />
+            {/* Controls row */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <button
+                onClick={() => setIsAiMode(!isAiMode)}
+                title={isAiMode ? 'Wyłącz rozumowanie AI' : 'Włącz rozumowanie AI'}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 7,
+                  padding: '6px 14px', borderRadius: 20, flexShrink: 0,
+                  border: `1px solid ${isAiMode ? '#fdd5b8' : '#e3e0db'}`,
+                  background: isAiMode ? 'linear-gradient(135deg, #e85c04, #c94f02)' : '#fafaf9',
+                  color: isAiMode ? 'white' : '#9e9389',
+                  fontSize: 11, fontWeight: 700, cursor: 'pointer',
+                  transition: 'all 0.2s',
+                  boxShadow: isAiMode ? '0 3px 10px rgba(232,92,4,0.25)' : 'none',
+                }}
+              >
+                <span style={{ fontSize: 13 }}>🧠</span>
+                Rozumowanie AI
+                <div style={{ width: 24, height: 12, borderRadius: 6, background: isAiMode ? 'rgba(255,255,255,0.3)' : '#e3e0db', position: 'relative', flexShrink: 0 }}>
+                  <div style={{ position: 'absolute', top: 2, left: isAiMode ? 12 : 2, width: 8, height: 8, borderRadius: '50%', background: isAiMode ? 'white' : '#9e9389', transition: 'left 0.2s' }} />
+                </div>
+              </button>
               <button
                 onClick={() => setIsInfoModalOpen(true)}
+                title="Informacje o trybach"
                 style={{
-                  background: 'white', border: '1px solid #e3e0db', color: '#9e9389',
+                  background: '#f5f2ef', border: '1px solid #e3e0db', color: '#9e9389',
                   cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  width: 28, height: 28, borderRadius: 8, transition: 'all 0.2s',
+                  width: 28, height: 28, borderRadius: 8, transition: 'all 0.2s', flexShrink: 0,
                 }}
                 onMouseEnter={(e) => { e.currentTarget.style.color = '#e85c04'; e.currentTarget.style.borderColor = '#fdd5b8' }}
                 onMouseLeave={(e) => { e.currentTarget.style.color = '#9e9389'; e.currentTarget.style.borderColor = '#e3e0db' }}
               >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                   <circle cx="12" cy="12" r="10" /><line x1="12" y1="16" x2="12" y2="12" /><line x1="12" y1="8" x2="12.01" y2="8" />
                 </svg>
               </button>
             </div>
 
-            <button
-              onClick={() => sendMessage(input)}
-              disabled={!input.trim() || isTyping}
-              style={{
-                background: 'linear-gradient(135deg, #e85c04, #c94f02)', border: 'none', borderRadius: 12,
-                padding: '12px 20px', cursor: !input.trim() || isTyping ? 'not-allowed' : 'pointer',
-                color: 'white', fontSize: 14, fontWeight: 700,
-                display: 'flex', alignItems: 'center', gap: 8, transition: 'all 0.2s',
-                opacity: !input.trim() || isTyping ? 0.7 : 1,
-                boxShadow: '0 4px 12px rgba(232, 92, 4, 0.2)',
-              }}
-              onMouseEnter={(e) => {
-                if (!input.trim() || isTyping) return
-                e.currentTarget.style.transform = 'translateY(-1px)'
-                e.currentTarget.style.boxShadow = '0 6px 16px rgba(232, 92, 4, 0.3)'
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.transform = 'translateY(0)'
-                e.currentTarget.style.boxShadow = '0 4px 12px rgba(232, 92, 4, 0.2)'
-              }}
-            >
-              Wyślij
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <line x1="22" y1="2" x2="11" y2="13" /><polygon points="22 2 15 22 11 13 2 9 22 2" />
-              </svg>
-            </button>
+            {/* Input row */}
+            <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+              <input
+                name="assistant-question"
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && sendMessage(input)}
+                placeholder="Zadaj pytanie o klienta, umowę lub waloryzację…"
+                style={{
+                  flex: 1, border: '1px solid #e3e0db', borderRadius: 12,
+                  padding: '12px 16px', fontSize: 14, outline: 'none', color: '#1a1714',
+                  transition: 'all 0.2s', background: '#fafaf9',
+                  boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.02)',
+                }}
+                onFocus={(e) => {
+                  e.currentTarget.style.borderColor = '#e85c04'
+                  e.currentTarget.style.background = 'white'
+                  e.currentTarget.style.boxShadow = '0 0 0 3px rgba(232, 92, 4, 0.1)'
+                }}
+                onBlur={(e) => {
+                  e.currentTarget.style.borderColor = '#e3e0db'
+                  e.currentTarget.style.background = '#fafaf9'
+                  e.currentTarget.style.boxShadow = 'inset 0 1px 2px rgba(0,0,0,0.02)'
+                }}
+              />
+              <button
+                onClick={() => sendMessage(input)}
+                disabled={!input.trim() || isTyping}
+                style={{
+                  background: 'linear-gradient(135deg, #e85c04, #c94f02)', border: 'none', borderRadius: 12,
+                  padding: '12px 20px', cursor: !input.trim() || isTyping ? 'not-allowed' : 'pointer',
+                  color: 'white', fontSize: 14, fontWeight: 700,
+                  display: 'flex', alignItems: 'center', gap: 8, transition: 'all 0.2s',
+                  opacity: !input.trim() || isTyping ? 0.7 : 1,
+                  boxShadow: '0 4px 12px rgba(232, 92, 4, 0.2)', flexShrink: 0,
+                }}
+                onMouseEnter={(e) => {
+                  if (!input.trim() || isTyping) return
+                  e.currentTarget.style.transform = 'translateY(-1px)'
+                  e.currentTarget.style.boxShadow = '0 6px 16px rgba(232, 92, 4, 0.3)'
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = 'translateY(0)'
+                  e.currentTarget.style.boxShadow = '0 4px 12px rgba(232, 92, 4, 0.2)'
+                }}
+              >
+                Wyślij
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="22" y1="2" x2="11" y2="13" /><polygon points="22 2 15 22 11 13 2 9 22 2" />
+                </svg>
+              </button>
+            </div>
           </div>
         </div>
       </div>

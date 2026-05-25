@@ -21,6 +21,7 @@ class ChunkResult(BaseModel):
     bbox: dict | None
     section_title: str | None
     score: float
+    similarity: float  # cosine similarity [0, 1] derived from vec_score at retrieval time
 
     model_config = {"from_attributes": True}
 
@@ -28,3 +29,4 @@ class ChunkResult(BaseModel):
 class RagSearchResponse(BaseModel):
     chunks: list[ChunkResult]
     ai_answer: str | None = None
+    no_results_found: bool = False

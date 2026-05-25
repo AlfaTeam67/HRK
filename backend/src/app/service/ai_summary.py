@@ -8,8 +8,8 @@ from collections.abc import AsyncIterator
 from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import select
-from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from app.models.contract import Contract
 from app.models.customer import Customer

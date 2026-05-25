@@ -40,12 +40,24 @@ export function useUploadDocument() {
   })
 }
 
-export function useDocumentsQuery(params?: { customer_id?: string; contract_id?: string }) {
+export function useDocumentsQuery(params?: {
+  customer_id?: string
+  contract_id?: string
+  exclude_draft?: boolean
+}) {
   return useQuery({
     queryKey: ['documents', params],
     queryFn: async () => {
       const { data } = await apiClient.get<DocumentRead[]>(`${BASE}/`, { params })
       return data
+    },
+    refetchInterval: (query) => {
+      const docs = query.state.data
+      if (!Array.isArray(docs)) return false
+      const hasActive = docs.some(
+        (d) => d.ocr_status === 'pending' || d.ocr_status === 'processing' || !d.ocr_status,
+      )
+      return hasActive ? 3000 : false
     },
   })
 }

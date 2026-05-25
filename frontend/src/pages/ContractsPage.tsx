@@ -1,12 +1,15 @@
-import { useRef, useState, useMemo } from 'react'
+import { useState, useMemo } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { cardStyle as card } from '@/lib/styles'
+import { ContractModal } from '@/features/contracts/ContractModal'
+import { UploadWizard } from '@/features/documents/UploadWizard'
 import { useAppSelector } from '@/hooks/store'
 import { useAlerts, useDashboardKpi } from '@/hooks/alerts'
 import { Modal } from '@/components/ui/modal'
 import { useCustomers } from '@/hooks/customers'
-import { useUploadDocument, useDocumentsQuery, useDocumentDownloadUrl, useDeleteDocument } from '@/hooks/documents'
+
 import { useContracts, useDeleteContract, useCreateContract } from '@/hooks/contracts'
-import type { DocumentType, ContractType, ContractStatus, BillingCycle, ContractCreate } from '@/types/models'
+import type { ContractType, ContractStatus, BillingCycle, ContractCreate } from '@/types/models'
 
 /* ─── Style helpers ──────────────────────────────────────────── */
 const STATUS_S: Record<string, { bg: string; color: string }> = {
@@ -19,42 +22,20 @@ const STATUS_S: Record<string, { bg: string; color: string }> = {
 
 const CONTRACT_TYPES = ['ramowa', 'aneks', 'SLA', 'DPA', 'PPK', 'inne'] as const
 
-const OCR_S: Record<string, { bg: string; color: string }> = {
-  pending:    { bg: '#f2f0ed', color: '#6b6b6b' },
-  processing: { bg: '#eff6ff', color: '#1d4ed8' },
-  done:       { bg: '#f0fff4', color: '#276749' },
-  failed:     { bg: '#fff5f0', color: '#c94f02' },
-  skipped:    { bg: '#fafaf9', color: '#9e9389' },
-}
-
-const OCR_LABEL: Record<string, string> = {
-  pending:    'Oczekuje',
-  processing: 'Przetwarza…',
-  done:       'RAG gotowy',
-  failed:     'Błąd OCR',
-  skipped:    'Pominięto',
-}
-
 /* ─── Component ──────────────────────────────────────────────── */
 export function ContractsPage() {
-  const [isModalOpen, setIsModalOpen] = useState(false)
+  const navigate = useNavigate()
+  const [contractModalId, setContractModalId] = useState<{ contractId: string; customerId: string; autoEdit?: boolean } | null>(null)
   const [isContractModalOpen, setIsContractModalOpen] = useState(false)
+  // After contract creation: show UploadWizard for the new contract
+  const [postCreationWizard, setPostCreationWizard] = useState<{ contractId: string; customerId: string } | null>(null)
   const user = useAppSelector((s) => s.auth.user)
 
   // Page-level filters
   const [filterCustomerId, setFilterCustomerId] = useState('')
   const [filterContractType, setFilterContractType] = useState('')
 
-  // Upload modal state
-  const [uploadCustomerId, setUploadCustomerId] = useState('')
-  const [uploadContractId, setUploadContractId] = useState('')
-  const [selectedDocType, setSelectedDocType] = useState<DocumentType>('contract')
-  const [selectedFile, setSelectedFile] = useState<File | null>(null)
-  const fileInputRef = useRef<HTMLInputElement>(null)
-
-  // Preview / delete state
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
-  const [isPreviewOpen, setIsPreviewOpen] = useState(false)
+  // Delete state
   const [deletingId, setDeletingId] = useState<string | null>(null)
 
   // New Contract state
@@ -73,36 +54,48 @@ export function ContractsPage() {
   const { data: realContracts = [], isLoading: contractsLoading } = useContracts(
     filterCustomerId ? { customer_id: filterCustomerId } : undefined
   )
-  const { data: allDocuments = [] } = useDocumentsQuery()
-  // Contracts for upload modal dropdown — fetched by selected customer
-  const { data: uploadModalContracts = [] } = useContracts(
-    uploadCustomerId ? { customer_id: uploadCustomerId } : undefined
-  )
   const { data: realAlerts, isLoading: alertsLoading } = useAlerts(user?.id)
   const { data: kpiData, isLoading: kpiLoading } = useDashboardKpi(user?.id)
 
-  const uploadDoc = useUploadDocument()
-  const deleteDoc = useDeleteDocument()
   const deleteContract = useDeleteContract()
   const createContract = useCreateContract()
-  const getDownloadUrl = useDocumentDownloadUrl()
+
+  type SortCol = 'client' | 'number' | 'type' | 'status' | 'end_date'
+  const [sortCol, setSortCol] = useState<SortCol | null>(null)
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
+
+  function handleSort(col: SortCol) {
+    if (sortCol === col) setSortDir(d => d === 'asc' ? 'desc' : 'asc')
+    else { setSortCol(col); setSortDir('asc') }
+  }
 
   // Client-side filter by contract type
   const filteredContracts = useMemo(() => {
-    if (!filterContractType) return realContracts
-    return realContracts.filter(c => c.contract_type === filterContractType)
-  }, [realContracts, filterContractType])
+    const list = filterContractType
+      ? realContracts.filter(c => c.contract_type === filterContractType)
+      : [...realContracts]
 
-  // Map: contract_id → first linked document (for preview lookup)
-  const docsMap = useMemo(() => {
-    const map = new Map<string, typeof allDocuments[0]>()
-    for (const doc of allDocuments) {
-      if (doc.contract_id && !map.has(doc.contract_id)) {
-        map.set(doc.contract_id, doc)
-      }
+    if (sortCol) {
+      list.sort((a, b) => {
+        let va = '', vb = ''
+        if (sortCol === 'client') {
+          va = customers.find(c => c.id === a.customer_id)?.company_name ?? ''
+          vb = customers.find(c => c.id === b.customer_id)?.company_name ?? ''
+        } else if (sortCol === 'number') {
+          va = a.contract_number; vb = b.contract_number
+        } else if (sortCol === 'type') {
+          va = a.contract_type; vb = b.contract_type
+        } else if (sortCol === 'status') {
+          va = a.status; vb = b.status
+        } else if (sortCol === 'end_date') {
+          va = a.end_date ?? '9999'; vb = b.end_date ?? '9999'
+        }
+        const cmp = va.localeCompare(vb, 'pl')
+        return sortDir === 'asc' ? cmp : -cmp
+      })
     }
-    return map
-  }, [allDocuments])
+    return list
+  }, [realContracts, filterContractType, sortCol, sortDir, customers])
 
   // KPIs
   const exp30 = alertsLoading ? null : (realAlerts?.filter(a => a.type === 'contract_expiry_30').length ?? 0)
@@ -117,52 +110,10 @@ export function ContractsPage() {
     { label: 'AKTYWNYCH UMÓW', value: activeContractsCount === null ? '—' : String(activeContractsCount), sub: 'Łącznie w systemie', color: '#38a169' },
   ]
 
-  const handleUpload = async () => {
-    if (!selectedFile || !user?.id) return
-    try {
-      await uploadDoc.mutateAsync({
-        file: selectedFile,
-        document_type: selectedDocType,
-        customer_id: uploadCustomerId || undefined,
-        contract_id: uploadContractId || undefined,
-        uploaded_by: user.id,
-      })
-      setIsModalOpen(false)
-      setSelectedFile(null)
-      setUploadCustomerId('')
-      setUploadContractId('')
-      alert('Dokument przesłany pomyślnie. Proces OCR i RAG został uruchomiony.')
-    } catch (err) {
-      console.error('Upload failed:', err)
-      alert('Nie udało się przesłać dokumentu.')
-    }
-  }
-
-  const handlePreview = async (contractId: string) => {
-    if (!user?.id) return
-    const doc = docsMap.get(contractId)
-    if (!doc) {
-      alert('Brak powiązanego dokumentu dla tej umowy.')
-      return
-    }
-    try {
-      const { url } = await getDownloadUrl.mutateAsync({ id: doc.id, userId: user.id })
-      setPreviewUrl(url)
-      setIsPreviewOpen(true)
-    } catch (err) {
-      console.error('Failed to get preview URL:', err)
-      alert('Nie udało się wygenerować podglądu dokumentu.')
-    }
-  }
-
   const handleDelete = async (contractId: string) => {
     if (!window.confirm('Czy na pewno chcesz usunąć tę umowę?')) return
     setDeletingId(contractId)
     try {
-      const doc = docsMap.get(contractId)
-      if (doc && user?.id) {
-        await deleteDoc.mutateAsync({ id: doc.id, userId: user.id })
-      }
       await deleteContract.mutateAsync(contractId)
     } catch {
       alert('Nie udało się usunąć umowy. Spróbuj ponownie.')
@@ -176,9 +127,8 @@ export function ContractsPage() {
       alert('Proszę wypełnić wymagane pola (Klient i Numer umowy).')
       return
     }
-
     try {
-      await createContract.mutateAsync({
+      const created = await createContract.mutateAsync({
         ...contractForm,
         account_manager_id: user?.id,
       } as ContractCreate)
@@ -192,7 +142,7 @@ export function ContractsPage() {
         billing_cycle: '' as BillingCycle,
         status: 'draft' as ContractStatus,
       })
-      alert('Umowa została utworzona pomyślnie.')
+      setPostCreationWizard({ contractId: created.id, customerId: created.customer_id })
     } catch (err) {
       console.error('Failed to create contract:', err)
       alert('Nie udało się utworzyć umowy.')
@@ -207,96 +157,13 @@ export function ContractsPage() {
           <h1 style={{ fontSize: 22, fontWeight: 700, color: '#1a1714', margin: 0, marginBottom: 2 }}>Umowy i Dokumenty</h1>
           <p style={{ fontSize: 12.5, color: '#9e9389', margin: 0 }}>Zarządzanie cyklem życia kontraktów i repozytorium dokumentów RAG.</p>
         </div>
-        <div style={{ display: 'flex', gap: 10 }}>
-          <button
-            onClick={() => setIsContractModalOpen(true)}
-            style={{ background: 'white', color: '#e85c04', border: '1px solid #e85c04', borderRadius: 8, padding: '10px 18px', fontSize: 13, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8 }}
-          >
-            <span>+</span> Nowa Umowa
-          </button>
-          <button
-            onClick={() => setIsModalOpen(true)}
-            style={{ background: 'linear-gradient(135deg, #e85c04, #c94f02)', color: 'white', border: 'none', borderRadius: 8, padding: '10px 18px', fontSize: 13, fontWeight: 700, cursor: 'pointer', boxShadow: '0 4px 12px rgba(232, 92, 4, 0.25)', display: 'flex', alignItems: 'center', gap: 8 }}
-          >
-            <span>+</span> Nowy Dokument
-          </button>
-        </div>
+        <button
+          onClick={() => setIsContractModalOpen(true)}
+          style={{ background: 'linear-gradient(135deg, #e85c04, #c94f02)', color: 'white', border: 'none', borderRadius: 8, padding: '10px 18px', fontSize: 13, fontWeight: 700, cursor: 'pointer', boxShadow: '0 4px 12px rgba(232, 92, 4, 0.25)', display: 'flex', alignItems: 'center', gap: 8 }}
+        >
+          <span>+</span> Nowa Umowa
+        </button>
       </div>
-
-      {/* Upload Modal */}
-      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Prześlij nowy dokument">
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <label style={{ fontSize: 12, fontWeight: 700, color: '#1a1714' }}>Klient</label>
-            <select
-              value={uploadCustomerId}
-              onChange={(e) => { setUploadCustomerId(e.target.value); setUploadContractId('') }}
-              style={{ padding: '10px', borderRadius: 6, border: '1px solid #e3e0db', fontSize: 13, background: 'white' }}
-            >
-              <option value="">Wybierz klienta (opcjonalnie)...</option>
-              {customers.map(c => <option key={c.id} value={c.id}>{c.company_name || c.ckk}</option>)}
-            </select>
-          </div>
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <label style={{ fontSize: 12, fontWeight: 700, color: '#1a1714' }}>Umowa (opcjonalnie)</label>
-            <select
-              value={uploadContractId}
-              onChange={(e) => setUploadContractId(e.target.value)}
-              disabled={!uploadCustomerId}
-              style={{ padding: '10px', borderRadius: 6, border: '1px solid #e3e0db', fontSize: 13, background: uploadCustomerId ? 'white' : '#fafaf9', color: uploadCustomerId ? '#1a1714' : '#9e9389' }}
-            >
-              <option value="">{uploadCustomerId ? 'Wybierz umowę...' : 'Wybierz najpierw klienta'}</option>
-              {uploadModalContracts.map(c => <option key={c.id} value={c.id}>{c.contract_number}</option>)}
-            </select>
-          </div>
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <label style={{ fontSize: 12, fontWeight: 700, color: '#1a1714' }}>Typ dokumentu</label>
-            <select
-              value={selectedDocType}
-              onChange={(e) => setSelectedDocType(e.target.value as DocumentType)}
-              style={{ padding: '10px', borderRadius: 6, border: '1px solid #e3e0db', fontSize: 13, background: 'white' }}
-            >
-              <option value="contract">Umowa</option>
-              <option value="amendment">Aneks</option>
-              <option value="service_order">Zamówienie</option>
-              <option value="other">Inny</option>
-            </select>
-          </div>
-
-          <input
-            type="file"
-            ref={fileInputRef}
-            style={{ display: 'none' }}
-            accept=".pdf,.doc,.docx"
-            onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
-          />
-
-          <div
-            onClick={() => fileInputRef.current?.click()}
-            style={{
-              border: selectedFile ? '2px solid #38a169' : '2px dashed #e3e0db',
-              borderRadius: 8, padding: '32px 20px', textAlign: 'center', background: selectedFile ? '#f0fff4' : '#fafaf9', cursor: 'pointer',
-            }}
-          >
-            <div style={{ fontSize: 24, marginBottom: 8 }}>{selectedFile ? '✅' : '📄'}</div>
-            <div style={{ fontSize: 13, fontWeight: 700, color: '#1a1714' }}>{selectedFile ? selectedFile.name : 'Kliknij, aby wybrać plik'}</div>
-            <div style={{ fontSize: 11, color: '#9e9389' }}>PDF, DOCX, TXT (max 15MB)</div>
-          </div>
-
-          <div style={{ display: 'flex', gap: 10, marginTop: 10 }}>
-            <button onClick={() => setIsModalOpen(false)} style={{ flex: 1, padding: '10px', borderRadius: 6, border: '1px solid #e3e0db', background: 'white', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Anuluj</button>
-            <button
-              onClick={handleUpload}
-              disabled={!selectedFile || uploadDoc.isPending}
-              style={{ flex: 1, padding: '10px', borderRadius: 6, border: 'none', background: (!selectedFile || uploadDoc.isPending) ? '#9e9389' : '#e85c04', color: 'white', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
-            >
-              {uploadDoc.isPending ? 'Przesyłanie...' : 'Utwórz i prześlij'}
-            </button>
-          </div>
-        </div>
-      </Modal>
 
       {/* New Contract Modal */}
       <Modal isOpen={isContractModalOpen} onClose={() => setIsContractModalOpen(false)} title="Utwórz nową umowę">
@@ -399,24 +266,6 @@ export function ContractsPage() {
         </div>
       </Modal>
 
-      {/* Preview Modal */}
-      <Modal
-        isOpen={isPreviewOpen}
-        onClose={() => { setIsPreviewOpen(false); setPreviewUrl(null) }}
-        title="Podgląd dokumentu"
-        maxWidth="1200px"
-      >
-        <div style={{ height: '80vh', background: '#f5f2ef', borderRadius: 8, overflow: 'hidden' }}>
-          {previewUrl ? (
-            <iframe src={previewUrl} style={{ width: '100%', height: '100%', border: 'none' }} title="Document Preview" />
-          ) : (
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#9e9389' }}>
-              Ładowanie podglądu...
-            </div>
-          )}
-        </div>
-      </Modal>
-
       {/* KPI cards */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 14, marginBottom: 20 }}>
         {kpis.map((kpi) => (
@@ -454,12 +303,24 @@ export function ContractsPage() {
         <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
           <thead>
             <tr style={{ borderBottom: '1px solid #f2f0ed', background: '#fafaf9' }}>
-              <th style={{ padding: '12px 18px', fontSize: 11, fontWeight: 700, color: '#9e9389' }}>NR UMOWY / KLIENT</th>
-              <th style={{ padding: '12px 18px', fontSize: 11, fontWeight: 700, color: '#9e9389' }}>TYP</th>
-              <th style={{ padding: '12px 18px', fontSize: 11, fontWeight: 700, color: '#9e9389' }}>STATUS</th>
-              <th style={{ padding: '12px 18px', fontSize: 11, fontWeight: 700, color: '#9e9389' }}>TERMIN</th>
-              <th style={{ padding: '12px 18px', fontSize: 11, fontWeight: 700, color: '#9e9389' }}>DOKUMENT</th>
-              <th style={{ padding: '12px 18px', fontSize: 11, fontWeight: 700, color: '#9e9389' }}></th>
+              {(['client','number','type','status','end_date'] as SortCol[]).map((col) => {
+                const labels: Record<SortCol, string> = { client: 'KLIENT', number: 'NR UMOWY', type: 'TYP', status: 'STATUS', end_date: 'TERMIN' }
+                const active = sortCol === col
+                return (
+                  <th key={col} style={{ padding: '12px 18px', fontSize: 11, fontWeight: 700, color: active ? '#e85c04' : '#9e9389', userSelect: 'none' }}>
+                    <button
+                      onClick={() => handleSort(col)}
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: 11, fontWeight: 700, color: 'inherit', display: 'flex', alignItems: 'center', gap: 4, padding: 0 }}
+                    >
+                      {labels[col]}
+                      <span style={{ fontSize: 9, opacity: active ? 1 : 0.4 }}>
+                        {active ? (sortDir === 'asc' ? '▲' : '▼') : '⇅'}
+                      </span>
+                    </button>
+                  </th>
+                )
+              })}
+              <th style={{ padding: '12px 18px' }}></th>
             </tr>
           </thead>
           <tbody>
@@ -470,14 +331,22 @@ export function ContractsPage() {
             ) : filteredContracts.map((c) => {
               const client = customers.find(cust => cust.id === c.customer_id)
               const statusStyles = STATUS_S[c.status] || STATUS_S['draft']
-              const linkedDoc = docsMap.get(c.id)
               const isDeleting = deletingId === c.id
               return (
-                <tr key={c.id} style={{ borderBottom: '1px solid #f2f0ed', fontSize: 12.5, opacity: isDeleting ? 0.5 : 1 }}>
+                <tr
+                  key={c.id}
+                  style={{ borderBottom: '1px solid #f2f0ed', fontSize: 12.5, opacity: isDeleting ? 0.5 : 1, cursor: 'pointer' }}
+                  onClick={() => setContractModalId({ contractId: c.id, customerId: c.customer_id })}
+                >
                   <td style={{ padding: '14px 18px' }}>
-                    <div style={{ fontWeight: 700, color: '#1a1714' }}>{c.contract_number}</div>
-                    <div style={{ fontSize: 11, color: '#9e9389' }}>{client?.company_name || 'Nieznany klient'}</div>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); navigate(`/clients/${c.customer_id}`) }}
+                      style={{ background: 'none', border: 'none', padding: 0, fontSize: 13.5, fontWeight: 800, color: '#1a1714', cursor: 'pointer', fontFamily: 'inherit' }}
+                    >
+                      {client?.company_name || 'Nieznany klient'}
+                    </button>
                   </td>
+                  <td style={{ padding: '14px 18px', color: '#4b5563', fontWeight: 500 }}>{c.contract_number}</td>
                   <td style={{ padding: '14px 18px', color: '#4b5563' }}>{c.contract_type}</td>
                   <td style={{ padding: '14px 18px' }}>
                     <span style={{ padding: '3px 10px', borderRadius: 20, fontSize: 11, fontWeight: 600, background: statusStyles.bg, color: statusStyles.color }}>
@@ -487,38 +356,24 @@ export function ContractsPage() {
                   <td style={{ padding: '14px 18px', color: '#4b5563' }}>
                     {c.end_date || 'Bezterminowa'}
                   </td>
-                  <td style={{ padding: '14px 18px' }}>
-                    {linkedDoc ? (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                        <button
-                          onClick={() => handlePreview(c.id)}
-                          style={{ background: 'none', border: '1px solid #e3e0db', borderRadius: 4, padding: '4px 8px', fontSize: 10, fontWeight: 700, cursor: 'pointer', color: '#e85c04', whiteSpace: 'nowrap' }}
-                        >
-                          PODGLĄD
-                        </button>
-                        {(() => {
-                          const status = linkedDoc.ocr_status ?? 'pending'
-                          const s = OCR_S[status] ?? OCR_S['pending']
-                          return (
-                            <span style={{ padding: '2px 8px', borderRadius: 20, fontSize: 10, fontWeight: 600, background: s.bg, color: s.color, whiteSpace: 'nowrap' }}>
-                              {OCR_LABEL[status] ?? status}
-                            </span>
-                          )
-                        })()}
-                      </div>
-                    ) : (
-                      <span style={{ fontSize: 11, color: '#c8c2ba' }}>Brak pliku</span>
-                    )}
-                  </td>
                   <td style={{ padding: '14px 18px', textAlign: 'right' }}>
-                    <button
-                      onClick={() => handleDelete(c.id)}
-                      disabled={isDeleting}
-                      title="Usuń umowę"
-                      style={{ background: 'none', border: '1px solid #f2cfc8', borderRadius: 4, padding: '4px 8px', fontSize: 12, cursor: isDeleting ? 'not-allowed' : 'pointer', color: '#c94f02', lineHeight: 1 }}
-                    >
-                      ✕
-                    </button>
+                    <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); setContractModalId({ contractId: c.id, customerId: c.customer_id, autoEdit: true }) }}
+                        title="Edytuj umowę"
+                        style={{ background: 'none', border: '1px solid #e3e0db', borderRadius: 4, padding: '4px 8px', fontSize: 12, cursor: 'pointer', color: '#4b5563', lineHeight: 1 }}
+                      >
+                        ✎
+                      </button>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); handleDelete(c.id) }}
+                        disabled={isDeleting}
+                        title="Usuń umowę"
+                        style={{ background: 'none', border: '1px solid #f2cfc8', borderRadius: 4, padding: '4px 8px', fontSize: 12, cursor: isDeleting ? 'not-allowed' : 'pointer', color: '#c94f02', lineHeight: 1 }}
+                      >
+                        ✕
+                      </button>
+                    </div>
                   </td>
                 </tr>
               )
@@ -526,6 +381,24 @@ export function ContractsPage() {
           </tbody>
         </table>
       </div>
+
+      {contractModalId && (
+        <ContractModal
+          contractId={contractModalId.contractId}
+          customerId={contractModalId.customerId}
+          autoEdit={contractModalId.autoEdit}
+          onClose={() => setContractModalId(null)}
+        />
+      )}
+
+      {postCreationWizard && (
+        <UploadWizard
+          customerId={postCreationWizard.customerId}
+          preselectedContractId={postCreationWizard.contractId}
+          allowSkip
+          onClose={() => setPostCreationWizard(null)}
+        />
+      )}
     </div>
   )
 }

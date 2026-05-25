@@ -182,22 +182,22 @@ class DocumentProcessingService:
                     await session.commit()
                     return
 
-                chunk_rows = []
-                for i, chunk in enumerate(raw_chunks):
-                    embedding = await self._embed.embed(chunk["content"])
-                    chunk_rows.append(
-                        {
-                            "attachment_id": attachment_id,
-                            "customer_id": customer_id,
-                            "chunk_index": i,
-                            "content": chunk["content"],
-                            "token_count": len(chunk["content"].split()),
-                            "page_number": chunk["page_number"],
-                            "bbox": None,
-                            "section_title": None,
-                            "embedding": embedding,
-                        }
-                    )
+                contents = [chunk["content"] for chunk in raw_chunks]
+                embeddings = await self._embed.embed_batch(contents)
+                chunk_rows = [
+                    {
+                        "attachment_id": attachment_id,
+                        "customer_id": customer_id,
+                        "chunk_index": i,
+                        "content": chunk["content"],
+                        "token_count": len(chunk["content"]) // 4,
+                        "page_number": chunk["page_number"],
+                        "bbox": None,
+                        "section_title": None,
+                        "embedding": embedding,
+                    }
+                    for i, (chunk, embedding) in enumerate(zip(raw_chunks, embeddings, strict=True))
+                ]
 
                 await chunks_repo.bulk_insert(chunk_rows)
                 attachment.ocr_status = OcrStatus.DONE

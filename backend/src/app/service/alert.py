@@ -18,11 +18,20 @@ class AlertService:
         self.db = db
 
     async def get_alerts(self, account_manager_id: uuid.UUID | None = None) -> list[AlertRead]:
-        alerts: list[AlertRead] = []
         today = date.today()
         now = datetime.now(UTC)
+        alerts: list[AlertRead] = []
+        alerts.extend(await self._contract_expiry_alerts(account_manager_id, today, now))
+        alerts.extend(await self._valorization_alerts(account_manager_id, today, now))
+        alerts.extend(await self._no_contact_alerts(account_manager_id, today, now))
+        return alerts
 
-        # 1. Contract expiry 30/60/90
+    async def _contract_expiry_alerts(
+        self,
+        account_manager_id: uuid.UUID | None,
+        today: date,
+        now: datetime,
+    ) -> list[AlertRead]:
         contract_query = (
             select(Contract)
             .join(Customer)
@@ -38,53 +47,68 @@ class AlertService:
             contract_query = contract_query.where(Customer.account_manager_id == account_manager_id)
 
         contracts = (await self.db.execute(contract_query)).scalars().all()
+        alerts: list[AlertRead] = []
         for contract in contracts:
-            if contract.end_date:
-                days_left = (contract.end_date - today).days
-                if 0 <= days_left <= 30:
-                    alerts.append(
-                        AlertRead(
-                            id=uuid.uuid4(),
-                            type="contract_expiry_30",
-                            severity="urgent",
-                            title="Wygasająca umowa (30 dni)",
-                            detail=f"Umowa {contract.contract_number} wygasa za {days_left} dni.",
-                            contract_id=contract.id,
-                            customer_id=contract.customer_id,
-                            due_date=contract.end_date,
-                            created_at=now,
-                        )
-                    )
-                elif 30 < days_left <= 60:
-                    alerts.append(
-                        AlertRead(
-                            id=uuid.uuid4(),
-                            type="contract_expiry_60",
-                            severity="high",
-                            title="Wygasająca umowa (60 dni)",
-                            detail=f"Umowa {contract.contract_number} wygasa za {days_left} dni.",
-                            contract_id=contract.id,
-                            customer_id=contract.customer_id,
-                            due_date=contract.end_date,
-                            created_at=now,
-                        )
-                    )
-                elif 60 < days_left <= 90:
-                    alerts.append(
-                        AlertRead(
-                            id=uuid.uuid4(),
-                            type="contract_expiry_90",
-                            severity="medium",
-                            title="Wygasająca umowa (90 dni)",
-                            detail=f"Umowa {contract.contract_number} wygasa za {days_left} dni.",
-                            contract_id=contract.id,
-                            customer_id=contract.customer_id,
-                            due_date=contract.end_date,
-                            created_at=now,
-                        )
-                    )
+            end_date = contract.end_date
+            if not end_date:
+                continue
+            alert = self._build_contract_expiry_alert(contract, end_date, today, now)
+            if alert:
+                alerts.append(alert)
+        return alerts
 
-        # 2. Valorization overdue / pending
+    @staticmethod
+    def _build_contract_expiry_alert(
+        contract: Contract,
+        end_date: date,
+        today: date,
+        now: datetime,
+    ) -> AlertRead | None:
+        days_left = (end_date - today).days
+        if 0 <= days_left <= 30:
+            return AlertRead(
+                id=uuid.uuid4(),
+                type="contract_expiry_30",
+                severity="urgent",
+                title="Wygasająca umowa (30 dni)",
+                detail=f"Umowa {contract.contract_number} wygasa za {days_left} dni.",
+                contract_id=contract.id,
+                customer_id=contract.customer_id,
+                due_date=end_date,
+                created_at=now,
+            )
+        if 30 < days_left <= 60:
+            return AlertRead(
+                id=uuid.uuid4(),
+                type="contract_expiry_60",
+                severity="high",
+                title="Wygasająca umowa (60 dni)",
+                detail=f"Umowa {contract.contract_number} wygasa za {days_left} dni.",
+                contract_id=contract.id,
+                customer_id=contract.customer_id,
+                due_date=end_date,
+                created_at=now,
+            )
+        if 60 < days_left <= 90:
+            return AlertRead(
+                id=uuid.uuid4(),
+                type="contract_expiry_90",
+                severity="medium",
+                title="Wygasająca umowa (90 dni)",
+                detail=f"Umowa {contract.contract_number} wygasa za {days_left} dni.",
+                contract_id=contract.id,
+                customer_id=contract.customer_id,
+                due_date=end_date,
+                created_at=now,
+            )
+        return None
+
+    async def _valorization_alerts(
+        self,
+        account_manager_id: uuid.UUID | None,
+        today: date,
+        now: datetime,
+    ) -> list[AlertRead]:
         val_query = (
             select(Valorization)
             .join(Contract)
@@ -100,72 +124,64 @@ class AlertService:
             val_query = val_query.where(Customer.account_manager_id == account_manager_id)
 
         valorizations = (await self.db.execute(val_query)).scalars().all()
+        alerts: list[AlertRead] = []
         for val in valorizations:
-            if val.planned_date < today:
-                alerts.append(
-                    AlertRead(
-                        id=uuid.uuid4(),
-                        type="valorization_overdue",
-                        severity="urgent",
-                        title="Zaległa waloryzacja",
-                        detail=f"Waloryzacja zaplanowana na {val.planned_date} jest opóźniona.",
-                        contract_id=val.contract_id,
-                        customer_id=None,
-                        due_date=val.planned_date,
-                        created_at=now,
-                    )
-                )
-            elif 0 <= (val.planned_date - today).days <= 30 and val.status == ValorizationStatus.PENDING:
-                alerts.append(
-                    AlertRead(
-                        id=uuid.uuid4(),
-                        type="valorization_pending",
-                        severity="high",
-                        title="Zbliżająca się waloryzacja",
-                        detail=f"Waloryzacja zaplanowana na {val.planned_date}.",
-                        contract_id=val.contract_id,
-                        customer_id=None,
-                        due_date=val.planned_date,
-                        created_at=now,
-                    )
-                )
+            alert = self._build_valorization_alert(val, today, now)
+            if alert:
+                alerts.append(alert)
+        return alerts
 
-        # 3. No contact (> 90 days)
+    @staticmethod
+    def _build_valorization_alert(
+        val: Valorization,
+        today: date,
+        now: datetime,
+    ) -> AlertRead | None:
+        if val.planned_date < today:
+            return AlertRead(
+                id=uuid.uuid4(),
+                type="valorization_overdue",
+                severity="urgent",
+                title="Zaległa waloryzacja",
+                detail=f"Waloryzacja zaplanowana na {val.planned_date} jest opóźniona.",
+                contract_id=val.contract_id,
+                customer_id=None,
+                due_date=val.planned_date,
+                created_at=now,
+            )
+        if 0 <= (val.planned_date - today).days <= 30 and val.status == ValorizationStatus.PENDING:
+            return AlertRead(
+                id=uuid.uuid4(),
+                type="valorization_pending",
+                severity="high",
+                title="Zbliżająca się waloryzacja",
+                detail=f"Waloryzacja zaplanowana na {val.planned_date}.",
+                contract_id=val.contract_id,
+                customer_id=None,
+                due_date=val.planned_date,
+                created_at=now,
+            )
+        return None
+
+    async def _no_contact_alerts(
+        self,
+        account_manager_id: uuid.UUID | None,
+        today: date,
+        now: datetime,
+    ) -> list[AlertRead]:
         cust_query = select(Customer).where(
             Customer.status == CustomerStatus.ACTIVE,
-            Customer.deleted_at.is_(None)
+            Customer.deleted_at.is_(None),
         )
         if account_manager_id:
             cust_query = cust_query.where(Customer.account_manager_id == account_manager_id)
 
         customers = (await self.db.execute(cust_query)).scalars().all()
-        customer_ids = [cust.id for cust in customers]
+        latest_activity_by_customer_id = await self._latest_activity_by_customer_id([cust.id for cust in customers])
 
-        latest_activity_by_customer_id: dict[uuid.UUID, datetime] = {}
-        if customer_ids:
-            latest_activity_query = (
-                select(ActivityLog.customer_id, func.max(ActivityLog.activity_date))
-                .where(ActivityLog.customer_id.in_(customer_ids))
-                .group_by(ActivityLog.customer_id)
-            )
-            latest_activity_rows = (await self.db.execute(latest_activity_query)).all()
-            latest_activity_by_customer_id = {
-                row[0]: row[1]
-                for row in latest_activity_rows
-                if row[1] is not None
-            }
-
+        alerts: list[AlertRead] = []
         for cust in customers:
-            latest_act_dt = latest_activity_by_customer_id.get(cust.id)
-
-            days_no_contact = 0
-            if latest_act_dt:
-                last_date = latest_act_dt.date() if isinstance(latest_act_dt, datetime) else latest_act_dt
-                days_no_contact = (today - last_date).days
-            else:
-                created_at_date = cust.created_at.date() if isinstance(cust.created_at, datetime) else cust.created_at
-                days_no_contact = (today - created_at_date).days if created_at_date else 91
-
+            days_no_contact = self._days_since_last_contact(cust, latest_activity_by_customer_id, today)
             if days_no_contact > 90:
                 alerts.append(
                     AlertRead(
@@ -180,8 +196,39 @@ class AlertService:
                         created_at=now,
                     )
                 )
-
         return alerts
+
+    async def _latest_activity_by_customer_id(
+        self,
+        customer_ids: list[uuid.UUID],
+    ) -> dict[uuid.UUID, datetime]:
+        if not customer_ids:
+            return {}
+        latest_activity_query = (
+            select(ActivityLog.customer_id, func.max(ActivityLog.activity_date))
+            .where(ActivityLog.customer_id.in_(customer_ids))
+            .group_by(ActivityLog.customer_id)
+        )
+        latest_activity_rows = (await self.db.execute(latest_activity_query)).all()
+        return {
+            row[0]: row[1]
+            for row in latest_activity_rows
+            if row[1] is not None
+        }
+
+    @staticmethod
+    def _days_since_last_contact(
+        cust: Customer,
+        latest_activity_by_customer_id: dict[uuid.UUID, datetime],
+        today: date,
+    ) -> int:
+        latest_act_dt = latest_activity_by_customer_id.get(cust.id)
+        if latest_act_dt:
+            last_date = latest_act_dt.date() if isinstance(latest_act_dt, datetime) else latest_act_dt
+            return (today - last_date).days
+
+        created_at_date = cust.created_at.date() if isinstance(cust.created_at, datetime) else cust.created_at
+        return (today - created_at_date).days if created_at_date else 91
 
     async def get_dashboard_kpi(self, account_manager_id: uuid.UUID | None = None) -> DashboardKpi:
         today = date.today()
