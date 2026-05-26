@@ -6,7 +6,7 @@ import { useDocumentGenerations, useAcceptGeneration, useRejectGeneration } from
 import { useNotes, useCreateNote } from '@/hooks/notes'
 import { useAppSelector } from '@/hooks/store'
 import { UploadWizard } from '@/features/documents/UploadWizard'
-import { EditGenerationModal } from '@/features/documentGeneration/EditGenerationModal'
+import { DraftDataEditModal } from '@/features/documentGeneration/DraftDataEditModal'
 import { PdfPreviewModal } from '@/components/ui/PdfPreviewModal'
 import { OcrStatusBadge } from '@/components/ui/OcrStatusBadge'
 import type { OcrStatus } from '@/components/ui/OcrStatusBadge'
@@ -347,11 +347,12 @@ export function ContractModal({ contractId, customerId, onClose, autoEdit = fals
       )}
 
       {editGeneration && (
-        <EditGenerationModal
-          generation={editGeneration}
+        <DraftDataEditModal
+          key={editGeneration.id}
+          gen={editGeneration}
           isOpen={!!editGeneration}
           onClose={() => setEditGeneration(null)}
-          onRegenerated={() => setEditGeneration(null)}
+          onSaved={() => setEditGeneration(null)}
         />
       )}
     </div>
@@ -497,7 +498,7 @@ function DokumentyTab({ contract, attachments, generations, busyGenId, onOpenWiz
                   </div>
                   <div style={{ display: 'flex', gap: 6, flexShrink: 0, alignItems: 'center' }}>
                     {g.attachment_pdf_id && <button onClick={() => onDownload(g.attachment_pdf_id!)} style={btnSecondary}>PDF</button>}
-                    <button onClick={() => onEdit(g as GenerationRecord)} style={btnSecondary} title="Zmień parametry i regeneruj draft">✏️ Edytuj</button>
+                    <button onClick={() => onEdit(g as GenerationRecord)} style={btnSecondary} title="Edytuj treść pisma i uzasadnienia">✏️ Edytuj</button>
                     <button onClick={() => onReject(g.id, g.customer_id)} disabled={busy} style={btnDanger}>Odrzuć</button>
                     <button onClick={() => onAccept(g.id)} disabled={busy} style={btnPrimary}>{busy ? 'Akceptuję…' : 'Akceptuj'}</button>
                   </div>
