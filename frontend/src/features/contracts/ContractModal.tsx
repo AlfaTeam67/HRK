@@ -6,9 +6,11 @@ import { useDocumentGenerations, useAcceptGeneration, useRejectGeneration } from
 import { useNotes, useCreateNote } from '@/hooks/notes'
 import { useAppSelector } from '@/hooks/store'
 import { UploadWizard } from '@/features/documents/UploadWizard'
+import { EditGenerationModal } from '@/features/documentGeneration/EditGenerationModal'
 import { PdfPreviewModal } from '@/components/ui/PdfPreviewModal'
 import { OcrStatusBadge } from '@/components/ui/OcrStatusBadge'
 import type { OcrStatus } from '@/components/ui/OcrStatusBadge'
+import type { GenerationRecord } from '@/hooks/documentGenerations'
 import type { ContractStatus, ContractType, BillingCycle } from '@/types/models'
 
 /* ─── Palette ─────────────────────────────────────────────────── */
@@ -91,6 +93,7 @@ export function ContractModal({ contractId, customerId, onClose, autoEdit = fals
 
   const [uploadWizardOpen, setUploadWizardOpen] = useState(false)
   const [previewDoc, setPreviewDoc] = useState<{ id: string; title: string } | null>(null)
+  const [editGeneration, setEditGeneration] = useState<GenerationRecord | null>(null)
 
   /* ─── Edit form state ───────────────────────────────────────── */
   const [editing, setEditing] = useState(false)
@@ -309,6 +312,7 @@ export function ContractModal({ contractId, customerId, onClose, autoEdit = fals
               onDelete={handleDeleteDoc}
               onAccept={handleAccept}
               onReject={handleReject}
+              onEdit={(gen) => setEditGeneration(gen)}
             />
           )}
 
@@ -339,6 +343,15 @@ export function ContractModal({ contractId, customerId, onClose, autoEdit = fals
           title={previewDoc.title}
           userId={user.id}
           onClose={() => setPreviewDoc(null)}
+        />
+      )}
+
+      {editGeneration && (
+        <EditGenerationModal
+          generation={editGeneration}
+          isOpen={!!editGeneration}
+          onClose={() => setEditGeneration(null)}
+          onRegenerated={() => setEditGeneration(null)}
         />
       )}
     </div>
@@ -441,7 +454,7 @@ function DaneTab({ contract, editing, form, saving, onStartEdit, onCancelEdit, o
 }
 
 /* ─── Tab: Dokumenty ──────────────────────────────────────────── */
-function DokumentyTab({ contract, attachments, generations, busyGenId, onOpenWizard, onSetPrimary, onDownload, onPreview, onDelete, onAccept, onReject }: {
+function DokumentyTab({ contract, attachments, generations, busyGenId, onOpenWizard, onSetPrimary, onDownload, onPreview, onDelete, onAccept, onReject, onEdit }: {
   contract: ReturnType<typeof useContract>['data']
   attachments: ReturnType<typeof useDocumentsQuery>['data'] & object[]
   generations: ReturnType<typeof useDocumentGenerations>['data'] & object[]
@@ -453,6 +466,7 @@ function DokumentyTab({ contract, attachments, generations, busyGenId, onOpenWiz
   onDelete: (id: string) => void
   onAccept: (id: string) => void
   onReject: (id: string, customerId: string) => void
+  onEdit: (gen: GenerationRecord) => void
 }) {
   const primaryDocId = contract?.primary_document_id
   const primaryDoc = attachments.find((a) => a.id === primaryDocId)
@@ -483,6 +497,7 @@ function DokumentyTab({ contract, attachments, generations, busyGenId, onOpenWiz
                   </div>
                   <div style={{ display: 'flex', gap: 6, flexShrink: 0, alignItems: 'center' }}>
                     {g.attachment_pdf_id && <button onClick={() => onDownload(g.attachment_pdf_id!)} style={btnSecondary}>PDF</button>}
+                    <button onClick={() => onEdit(g as GenerationRecord)} style={btnSecondary} title="Zmień parametry i regeneruj draft">✏️ Edytuj</button>
                     <button onClick={() => onReject(g.id, g.customer_id)} disabled={busy} style={btnDanger}>Odrzuć</button>
                     <button onClick={() => onAccept(g.id)} disabled={busy} style={btnPrimary}>{busy ? 'Akceptuję…' : 'Akceptuj'}</button>
                   </div>

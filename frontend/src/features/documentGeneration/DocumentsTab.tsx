@@ -18,6 +18,7 @@ import { PdfPreviewModal } from '@/components/ui/PdfPreviewModal'
 import type { DocumentRead } from '@/types/models'
 import type { OcrStatus } from '@/components/ui/OcrStatusBadge'
 
+import { DraftDataEditModal } from './DraftDataEditModal'
 import { colors, fmtMoneyPL } from './wizardStyles'
 
 interface Props {
@@ -88,6 +89,7 @@ export function DocumentsTab({ customerId }: Props) {
   const [busyId, setBusyId] = useState<string | null>(null)
 
   const [previewDoc, setPreviewDoc] = useState<{ id: string; title: string } | null>(null)
+  const [editingGen, setEditingGen] = useState<GenerationRecord | null>(null)
 
   const isLoading = genLoading || attLoading
   const clientDocs = attachments.filter((a) => !a.contract_id)
@@ -164,6 +166,7 @@ export function DocumentsTab({ customerId }: Props) {
                 onReject={() => handleReject(g)}
                 onDownloadPdf={() => handleDownload(g.attachment_pdf_id)}
                 onDownloadCover={() => handleDownload(g.cover_letter_attachment_id)}
+                onEdit={() => setEditingGen(g)}
               />
             ))}
           </div>
@@ -216,6 +219,16 @@ export function DocumentsTab({ customerId }: Props) {
           onClose={() => setPreviewDoc(null)}
         />
       )}
+
+      {editingGen && (
+        <DraftDataEditModal
+          key={editingGen.id}
+          gen={editingGen}
+          isOpen={!!editingGen}
+          onClose={() => setEditingGen(null)}
+          onSaved={() => setEditingGen(null)}
+        />
+      )}
     </div>
   )
 }
@@ -227,9 +240,10 @@ interface RowProps {
   onReject: () => void
   onDownloadPdf: () => void
   onDownloadCover: () => void
+  onEdit: () => void
 }
 
-function GenerationRow({ gen, busy, onAccept, onReject, onDownloadPdf, onDownloadCover }: RowProps) {
+function GenerationRow({ gen, busy, onAccept, onReject, onDownloadPdf, onDownloadCover, onEdit }: RowProps) {
   const meta = STATUS_META[gen.status]
   const sim = (gen.simulation as Record<string, unknown>) ?? {}
   const deltaYear = sim.delta_annual_revenue as string | undefined
@@ -286,6 +300,7 @@ function GenerationRow({ gen, busy, onAccept, onReject, onDownloadPdf, onDownloa
         {canAccept && (
           <>
             <button onClick={onReject} disabled={busy} style={btnRejectStyle}>Odrzuć</button>
+            <button onClick={onEdit} disabled={busy} style={btnEditStyle}>Edytuj dane</button>
             <button onClick={onAccept} disabled={busy} style={btnAcceptStyle}>
               {busy ? 'Akceptuję…' : 'Akceptuj'}
             </button>
@@ -377,6 +392,18 @@ const btnRejectStyle: React.CSSProperties = {
   background: 'white',
   color: colors.negative,
   border: `1px solid ${colors.rejectedBorder}`,
+  borderRadius: 6,
+  padding: '5px 10px',
+  fontSize: 11.5,
+  fontWeight: 600,
+  cursor: 'pointer',
+  fontFamily: 'inherit',
+}
+
+const btnEditStyle: React.CSSProperties = {
+  background: 'white',
+  color: colors.textSubtle,
+  border: `1px solid ${colors.border}`,
   borderRadius: 6,
   padding: '5px 10px',
   fontSize: 11.5,

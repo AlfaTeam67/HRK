@@ -12,6 +12,7 @@ from app.core.database import get_db
 from app.schemas.document_generation import (
     DocumentTemplateRead,
     GenerationAccept,
+    GenerationDraftDataUpdate,
     GenerationPreviewResponse,
     GenerationRead,
     GenerationRequest,
@@ -102,6 +103,33 @@ async def reject_generation(
 ) -> Response:
     await service.reject(generation_id, rejected_by=rejected_by)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.patch(
+    "/{generation_id}/draft-data",
+    response_model=GenerationRead,
+    summary="Edit AI-generated narrative before acceptance (cover letter, rationale, note)",
+)
+async def update_draft_data(
+    generation_id: uuid.UUID,
+    payload: GenerationDraftDataUpdate,
+    updated_by: Annotated[uuid.UUID, Query(description="UUID of the user making the edit")],
+    service: Annotated[DocumentGenerationService, Depends(get_generation_service)],
+) -> Any:
+    """Update editable narrative fields on a PREVIEW/DRAFT generation.
+
+    This endpoint lets an operator correct the AI-generated cover letter text
+    and/or rationale bullets before accepting the document. It does **not**
+    touch financial figures, simulation data, or PDF bytes — those are
+    recalculated from the unchanged ``payload`` at acceptance time.
+
+    Returns the updated GenerationRead record.
+    """
+    return await service.update_draft_data(
+        generation_id,
+        patch=payload,
+        updated_by=updated_by,
+    )
 
 
 @router.get(

@@ -47,6 +47,7 @@ from app.repo.document_generation import (
     ValorizationContextRepository,
 )
 from app.schemas.document_generation import (
+    GenerationDraftDataUpdate,
     GenerationPreviewResponse,
     GenerationRequest,
     SimulationSummary,
@@ -451,6 +452,167 @@ class DocumentGenerationService:
             performed_by=rejected_by,
         )
         await self._session.commit()
+
+    async def update_draft_data(
+        self,
+        generation_id: uuid.UUID,
+        *,
+        patch: GenerationDraftDataUpdate,
+        updated_by: uuid.UUID,
+    ) -> DocumentGeneration:
+        """Edit AI narrative, then immediately re-render DRAFT PDFs in S3.
+
+        Only works while status is ``preview`` or ``draft``.
+        Financial figures and legal clauses are never touched — only the
+        narrative parts (cover letter, rationale bullets) and an optional
+        internal operator note are updated.
+
+        After saving the updated artifacts the method re-renders and
+        re-uploads both the amendment PDF and (if present) the cover letter
+        PDF so that the download buttons in DocumentsTab reflect the edits
+        right away, without waiting for acceptance.
+        """
+        gen = await self.get(generation_id)
+        if gen.status not in (
+            DocumentGenerationStatus.PREVIEW,
+            DocumentGenerationStatus.DRAFT,
+        ):
+            raise HTTPException(
+                status.HTTP_409_CONFLICT,
+                detail=(
+                    f"Dane robocze można edytować tylko gdy status to 'preview' lub 'draft'. "
+                    f"Obecny status: '{gen.status.value}'."
+                ),
+            )
+
+        # ── 1. Merge patch into ai_artifacts ────────────────────────────
+        updated_artifacts = dict(gen.ai_artifacts)
+        if patch.cover_letter_text is not None:
+            updated_artifacts["cover_letter_text"] = patch.cover_letter_text
+        if patch.rationale_bullets is not None:
+            updated_artifacts["rationale_bullets"] = patch.rationale_bullets[:10]
+
+        updated_payload = dict(gen.payload)
+        if patch.user_note is not None:
+            updated_payload["operator_note"] = patch.user_note.strip() or None
+
+        # ── 2. Re-render DRAFT PDFs with updated narrative ───────────────
+        request = GenerationRequest(**gen.payload["request"])
+        context, simulation = await self._build_context_and_simulation(request)
+        amendment_number = gen.payload["amendment_number"]
+        amendment_date = date.fromisoformat(gen.payload["amendment_date"])
+        safe_amendment_no = self._safe_filename(amendment_number)
+        safe_contract_no = self._safe_filename(context["contract"].contract_number)
+
+        rationale_bullets: list[str] = updated_artifacts.get("rationale_bullets") or []
+        cover_letter_text: str | None = updated_artifacts.get("cover_letter_text")
+
+        # Capture old attachment references for cleanup after commit.
+        old_amendment_s3_key: str | None = None
+        old_amendment_att_id: uuid.UUID | None = None
+        old_cover_letter_s3_key: str | None = None
+        old_cover_letter_att_id: uuid.UUID | None = None
+
+        if gen.attachment_pdf_id:
+            old_att = await self._attachment_repo.get(gen.attachment_pdf_id)
+            if old_att:
+                old_amendment_s3_key = old_att.s3_key
+                old_amendment_att_id = old_att.id
+
+        if gen.cover_letter_attachment_id:
+            old_cl = await self._attachment_repo.get(gen.cover_letter_attachment_id)
+            if old_cl:
+                old_cover_letter_s3_key = old_cl.s3_key
+                old_cover_letter_att_id = old_cl.id
+
+        # Re-render amendment with DRAFT watermark.
+        amendment_html = self._registry.render_main(
+            request.template_key,
+            self._build_template_context(
+                generation_id=gen.id,
+                request=request,
+                context=context,
+                simulation=simulation,
+                rationale_bullets=rationale_bullets,
+                draft=True,
+                amendment_number=amendment_number,
+                amendment_date=amendment_date,
+            ),
+        )
+        amendment_pdf = await self._renderer.render(amendment_html)
+        new_amendment_att = await self._upload_pdf(
+            pdf=amendment_pdf,
+            customer=context["customer"],
+            contract=context["contract"],
+            document_type=DocumentType.AMENDMENT,
+            filename=f"aneks_{safe_amendment_no}_{safe_contract_no}_DRAFT.pdf",
+            uploaded_by=updated_by,
+            ocr_status=OcrStatus.SKIPPED,
+        )
+
+        new_cover_letter_att_id: uuid.UUID | None = None
+        if cover_letter_text and gen.cover_letter_attachment_id:
+            cover_html = self._registry.render_cover_letter(
+                request.template_key,
+                self._build_template_context(
+                    generation_id=gen.id,
+                    request=request,
+                    context=context,
+                    simulation=simulation,
+                    rationale_bullets=rationale_bullets,
+                    draft=True,
+                    amendment_number=amendment_number,
+                    amendment_date=amendment_date,
+                    extra={"cover_letter_text": cover_letter_text},
+                ),
+            )
+            cover_pdf = await self._renderer.render(cover_html)
+            new_cover_letter_att = await self._upload_pdf(
+                pdf=cover_pdf,
+                customer=context["customer"],
+                contract=context["contract"],
+                document_type=DocumentType.COVER_LETTER,
+                filename=f"pismo_przewodnie_{safe_amendment_no}_DRAFT.pdf",
+                uploaded_by=updated_by,
+                ocr_status=OcrStatus.SKIPPED,
+            )
+            new_cover_letter_att_id = new_cover_letter_att.id
+
+        # ── 3. Persist updated artifacts + new attachment pointers ───────
+        update_fields: dict[str, object] = {
+            "ai_artifacts": updated_artifacts,
+            "payload": updated_payload,
+            "attachment_pdf_id": new_amendment_att.id,
+            "pdf_sha256": PdfRenderer.sha256(amendment_pdf),
+        }
+        if new_cover_letter_att_id is not None:
+            update_fields["cover_letter_attachment_id"] = new_cover_letter_att_id
+
+        gen = await self._gen_repo.update(gen, update_fields)
+
+        await self._activity_repo.create(
+            {
+                "customer_id": gen.customer_id,
+                "contract_id": gen.contract_id,
+                "activity_type": ActivityType.DOCUMENT,
+                "description": (
+                    f"Pracownik edytował treści aneksu {amendment_number} "
+                    "i wygenerowano nowe pliki DRAFT do podglądu."
+                ),
+            },
+            performed_by=updated_by,
+        )
+        await self._session.commit()
+
+        # Best-effort cleanup of old draft files after commit.
+        await self._delete_draft_attachment(
+            s3_key=old_amendment_s3_key, attachment_id=old_amendment_att_id
+        )
+        await self._delete_draft_attachment(
+            s3_key=old_cover_letter_s3_key, attachment_id=old_cover_letter_att_id
+        )
+
+        return gen
 
     # ── Internal helpers ─────────────────────────────────────────────────────
 
