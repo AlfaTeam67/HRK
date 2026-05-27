@@ -257,17 +257,37 @@ class DocumentService:
             raise DocumentNotFoundError("Document not found.")
         await self._get_requesting_user(requester_user_id)
 
+        return await self._toggle_ai_for_attachment(
+            attachment=attachment,
+            enabled=enabled,
+            requester_user_id=requester_user_id,
+            background_tasks=background_tasks,
+        )
+
+    async def _toggle_ai_for_attachment(
+        self,
+        *,
+        attachment: Attachment,
+        enabled: bool,
+        requester_user_id: UUID,
+        background_tasks: BackgroundTasks,
+    ) -> tuple[Attachment, bool]:
+        """Core toggle logic operating on an already-fetched attachment."""
         unsupported = False
         previous_enabled = bool(attachment.include_in_ai_assistant)
         if enabled == previous_enabled:
-            # Idempotent — no state change, no audit trail entry.
             return attachment, not is_processable_mime(attachment.mime_type) and enabled
 
         if enabled:
             attachment.include_in_ai_assistant = True
             if is_processable_mime(attachment.mime_type):
-                # Schedule reindexing: fetch bytes from S3, kick off background.
                 attachment.ocr_status = OcrStatus.PENDING
+                await self._record_ai_toggle_activity(
+                    attachment=attachment,
+                    performed_by=requester_user_id,
+                    enabled=enabled,
+                    unsupported=False,
+                )
                 await self._session.commit()
                 await self._session.refresh(attachment)
                 content, content_type = await self._fetch_object_for_processing(attachment)
@@ -280,23 +300,27 @@ class DocumentService:
                 )
             else:
                 attachment.ocr_status = OcrStatus.SKIPPED
+                unsupported = True
+                await self._record_ai_toggle_activity(
+                    attachment=attachment,
+                    performed_by=requester_user_id,
+                    enabled=enabled,
+                    unsupported=unsupported,
+                )
                 await self._session.commit()
                 await self._session.refresh(attachment)
-                unsupported = True
         else:
-            # Remove chunks first, then flip the flag.
             await self._chunks.delete_by_attachment(attachment.id)
             attachment.include_in_ai_assistant = False
+            await self._record_ai_toggle_activity(
+                attachment=attachment,
+                performed_by=requester_user_id,
+                enabled=enabled,
+                unsupported=False,
+            )
             await self._session.commit()
             await self._session.refresh(attachment)
 
-        await self._record_ai_toggle_activity(
-            attachment=attachment,
-            performed_by=requester_user_id,
-            enabled=enabled,
-            unsupported=unsupported,
-        )
-        await self._session.commit()
         return attachment, unsupported
 
     async def bulk_set_ai_assistant_enabled(
@@ -309,14 +333,25 @@ class DocumentService:
     ) -> list[AiAssistantBulkItemResult]:
         """Apply ``set_ai_assistant_enabled`` to many documents.
 
+        Pre-fetches all attachments in a single query to avoid N+1.
         Errors per id are returned in the result list rather than raising.
         """
         await self._get_requesting_user(requester_user_id)
+
+        attachments = await self._attachments.get_by_ids(document_ids)
+        attachment_map = {a.id: a for a in attachments}
+
         results: list[AiAssistantBulkItemResult] = []
         for doc_id in document_ids:
+            attachment = attachment_map.get(doc_id)
+            if attachment is None:
+                results.append(
+                    AiAssistantBulkItemResult(id=doc_id, ok=False, error="not_found")
+                )
+                continue
             try:
-                attachment, unsupported = await self.set_ai_assistant_enabled(
-                    document_id=doc_id,
+                attachment, unsupported = await self._toggle_ai_for_attachment(
+                    attachment=attachment,
                     enabled=enabled,
                     requester_user_id=requester_user_id,
                     background_tasks=background_tasks,
@@ -330,14 +365,11 @@ class DocumentService:
                         unsupported_format=unsupported,
                     )
                 )
-            except DocumentNotFoundError:
-                results.append(
-                    AiAssistantBulkItemResult(id=doc_id, ok=False, error="not_found")
-                )
             except DocumentValidationError as exc:
                 results.append(AiAssistantBulkItemResult(id=doc_id, ok=False, error=str(exc)))
             except DocumentStorageError as exc:
                 results.append(AiAssistantBulkItemResult(id=doc_id, ok=False, error=str(exc)))
+        return results
         return results
 
     async def reindex_document(

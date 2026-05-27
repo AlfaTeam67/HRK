@@ -1,7 +1,7 @@
 from datetime import datetime
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 from app.models.enums import DocumentType, OcrStatus
 
@@ -44,7 +44,7 @@ class AiAssistantToggleResult(BaseModel):
 
 
 class AiAssistantBulkRequest(BaseModel):
-    ids: list[UUID]
+    ids: list[UUID] = Field(..., max_length=100)
     enabled: bool
 
 

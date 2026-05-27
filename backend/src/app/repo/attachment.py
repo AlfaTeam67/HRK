@@ -13,6 +13,15 @@ class AttachmentRepository(BaseRepository[Attachment]):
     def __init__(self, session: AsyncSession) -> None:
         super().__init__(Attachment, session)
 
+    async def get_by_ids(self, ids: list[UUID]) -> Sequence[Attachment]:
+        if not ids:
+            return []
+        query = select(Attachment).where(
+            Attachment.id.in_(ids), Attachment.deleted_at.is_(None)
+        )
+        result = await self.session.execute(query)
+        return result.scalars().all()
+
     async def list_excluding_status(
         self,
         *,

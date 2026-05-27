@@ -1,24 +1,5 @@
-import type { CSSProperties } from 'react'
-
+import { cn } from '@/lib/utils'
 import type { AiToggleState } from '@/components/ui/aiAssistantToggleHelpers'
-
-const C = {
-  orangeOn: '#e85c04',
-  orangeOff: '#e3e0db',
-  green: '#276749',
-  greenBg: '#f0fff4',
-  greenBorder: '#9ae6b4',
-  red: '#c94f02',
-  redBg: '#fff5f0',
-  redBorder: '#fdd5b8',
-  amber: '#c94f02',
-  amberBg: '#fff5f0',
-  amberBorder: '#fdd5b8',
-  grey: '#9e9389',
-  greyBg: '#f5f2ef',
-  greyBorder: '#e3e0db',
-  text: '#1a1714',
-}
 
 interface Props {
   state: AiToggleState
@@ -26,70 +7,6 @@ interface Props {
   onChange: (next: boolean) => void
   onRetry?: () => void
   onUnsupportedClick?: () => void
-}
-
-const switchTrack = (active: boolean, disabled: boolean): CSSProperties => ({
-  position: 'relative',
-  display: 'inline-block',
-  width: 36,
-  height: 20,
-  borderRadius: 10,
-  background: active ? C.orangeOn : C.orangeOff,
-  transition: 'background 0.15s',
-  cursor: disabled ? 'not-allowed' : 'pointer',
-  opacity: disabled ? 0.6 : 1,
-  flexShrink: 0,
-  border: 'none',
-  padding: 0,
-})
-
-const switchThumb = (active: boolean): CSSProperties => ({
-  position: 'absolute',
-  top: 2,
-  left: active ? 18 : 2,
-  width: 16,
-  height: 16,
-  borderRadius: '50%',
-  background: 'white',
-  boxShadow: '0 1px 2px rgba(0,0,0,0.2)',
-  transition: 'left 0.15s',
-})
-
-const badgeStyle = (fg: string, bg: string, border: string): CSSProperties => ({
-  display: 'inline-flex',
-  alignItems: 'center',
-  gap: 5,
-  fontSize: 9.5,
-  fontWeight: 600,
-  padding: '2px 7px',
-  borderRadius: 10,
-  background: bg,
-  color: fg,
-  border: `1px solid ${border}`,
-  whiteSpace: 'nowrap',
-})
-
-const spinnerStyle: CSSProperties = {
-  display: 'inline-block',
-  width: 8,
-  height: 8,
-  borderRadius: '50%',
-  border: '1.5px solid transparent',
-  borderTopColor: C.amber,
-  animation: 'hrk-spin 0.75s linear infinite',
-  flexShrink: 0,
-}
-
-const retryBtn: CSSProperties = {
-  background: 'white',
-  color: C.red,
-  border: `1px solid ${C.redBorder}`,
-  borderRadius: 6,
-  padding: '3px 8px',
-  fontSize: 10.5,
-  fontWeight: 600,
-  cursor: 'pointer',
-  fontFamily: 'inherit',
 }
 
 export function AiAssistantToggle({
@@ -113,45 +30,68 @@ export function AiAssistantToggle({
   const active = state === 'on' || state === 'indexing' || state === 'failed'
 
   return (
-    <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+    <div className="inline-flex items-center gap-2">
       <button
         type="button"
         aria-label="Załącz dla asystenta AI"
         aria-pressed={active}
         onClick={handleSwitchClick}
-        style={switchTrack(active, interactiveDisabled && state !== 'unsupported')}
+        className={cn(
+          'relative inline-block h-5 w-9 shrink-0 rounded-full border-0 p-0 transition-colors duration-150',
+          active ? 'bg-[var(--hrk-orange)]' : 'bg-[#e3e0db]',
+          interactiveDisabled && state !== 'unsupported'
+            ? 'cursor-not-allowed opacity-60'
+            : 'cursor-pointer opacity-100',
+        )}
       >
-        <span style={switchThumb(active)} />
+        <span
+          className={cn(
+            'absolute top-0.5 h-4 w-4 rounded-full bg-white shadow-sm transition-[left] duration-150',
+            active ? 'left-[18px]' : 'left-0.5',
+          )}
+        />
       </button>
 
-      {state === 'on' && (
-        <span style={badgeStyle(C.green, C.greenBg, C.greenBorder)}>
-          <span style={{ fontSize: 9 }}>✓</span> W asystencie AI
-        </span>
-      )}
-      {state === 'off' && (
-        <span style={badgeStyle(C.grey, C.greyBg, C.greyBorder)}>Wyłączony</span>
-      )}
-      {state === 'indexing' && (
-        <span style={badgeStyle(C.amber, C.amberBg, C.amberBorder)}>
-          <span style={spinnerStyle} /> Indeksowanie…
-        </span>
-      )}
-      {state === 'failed' && (
-        <>
-          <span style={badgeStyle(C.red, C.redBg, C.redBorder)}>
-            <span style={{ fontSize: 9 }}>✕</span> Błąd indeksacji
+      <div aria-live="polite" className="inline-flex items-center gap-1.5">
+        {state === 'on' && (
+          <span className="inline-flex items-center gap-1 rounded-full border border-green-300 bg-green-50 px-2 py-0.5 text-[9.5px] font-semibold text-green-800 whitespace-nowrap">
+            <span className="text-[9px]">✓</span> W asystencie AI
           </span>
-          {onRetry && (
-            <button type="button" onClick={onRetry} disabled={busy} style={retryBtn}>
-              Spróbuj ponownie
-            </button>
-          )}
-        </>
-      )}
-      {state === 'unsupported' && (
-        <span style={badgeStyle(C.grey, C.greyBg, C.greyBorder)}>Format niewspierany</span>
-      )}
+        )}
+        {state === 'off' && (
+          <span className="inline-flex items-center gap-1 rounded-full border border-[#e3e0db] bg-[#f5f2ef] px-2 py-0.5 text-[9.5px] font-semibold text-[#9e9389] whitespace-nowrap">
+            Wyłączony
+          </span>
+        )}
+        {state === 'indexing' && (
+          <span className="inline-flex items-center gap-1 rounded-full border border-[#fdd5b8] bg-[#fff5f0] px-2 py-0.5 text-[9.5px] font-semibold text-[#c94f02] whitespace-nowrap">
+            <span className="inline-block h-2 w-2 shrink-0 animate-spin rounded-full border-[1.5px] border-transparent border-t-[#c94f02]" />
+            Indeksowanie…
+          </span>
+        )}
+        {state === 'failed' && (
+          <>
+            <span className="inline-flex items-center gap-1 rounded-full border border-[#fdd5b8] bg-[#fff5f0] px-2 py-0.5 text-[9.5px] font-semibold text-[#c94f02] whitespace-nowrap">
+              <span className="text-[9px]">✕</span> Błąd indeksacji
+            </span>
+            {onRetry && (
+              <button
+                type="button"
+                onClick={onRetry}
+                disabled={busy}
+                className="rounded-md border border-[#fdd5b8] bg-white px-2 py-0.5 font-inherit text-[10.5px] font-semibold text-[#c94f02] cursor-pointer disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                Spróbuj ponownie
+              </button>
+            )}
+          </>
+        )}
+        {state === 'unsupported' && (
+          <span className="inline-flex items-center gap-1 rounded-full border border-[#e3e0db] bg-[#f5f2ef] px-2 py-0.5 text-[9.5px] font-semibold text-[#9e9389] whitespace-nowrap">
+            Format niewspierany
+          </span>
+        )}
+      </div>
     </div>
   )
 }
@@ -170,53 +110,26 @@ export function AiAssistantOffConfirm({ isOpen, count, onConfirm, onCancel, busy
   return (
     <div
       onClick={onCancel}
-      style={{
-        position: 'fixed',
-        inset: 0,
-        zIndex: 1200,
-        background: 'rgba(26,23,20,0.5)',
-        backdropFilter: 'blur(2px)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: 24,
-      }}
+      className="fixed inset-0 z-[1200] flex items-center justify-center bg-black/50 backdrop-blur-sm p-6"
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        style={{
-          background: 'white',
-          borderRadius: 12,
-          maxWidth: 440,
-          width: '100%',
-          boxShadow: '0 24px 64px rgba(0,0,0,0.22)',
-          padding: 24,
-        }}
+        className="w-full max-w-[440px] rounded-xl bg-white p-6 shadow-2xl"
       >
-        <h3 style={{ fontSize: 15, fontWeight: 800, color: C.text, margin: '0 0 8px' }}>
+        <h3 className="mb-2 text-[15px] font-extrabold text-[#1a1714]">
           {isBulk
             ? `Wyłączyć ${count} dokumentów z asystenta AI?`
             : 'Wyłączyć dokument z asystenta AI?'}
         </h3>
-        <p style={{ fontSize: 13, color: C.grey, margin: '0 0 16px', lineHeight: 1.5 }}>
+        <p className="mb-4 text-[13px] leading-relaxed text-[#9e9389]">
           Wszystkie chunki zostaną skasowane. Plik pozostanie w S3 i można włączyć ponownie później.
         </p>
-        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+        <div className="flex justify-end gap-2">
           <button
             type="button"
             onClick={onCancel}
             disabled={busy}
-            style={{
-              padding: '9px 16px',
-              borderRadius: 7,
-              border: `1px solid ${C.greyBorder}`,
-              background: 'white',
-              fontSize: 13,
-              fontWeight: 600,
-              cursor: 'pointer',
-              fontFamily: 'inherit',
-              color: C.text,
-            }}
+            className="rounded-lg border border-[#e3e0db] bg-white px-4 py-2 font-inherit text-[13px] font-semibold text-[#1a1714] cursor-pointer disabled:cursor-not-allowed"
           >
             Anuluj
           </button>
@@ -224,17 +137,12 @@ export function AiAssistantOffConfirm({ isOpen, count, onConfirm, onCancel, busy
             type="button"
             onClick={onConfirm}
             disabled={busy}
-            style={{
-              padding: '9px 16px',
-              borderRadius: 7,
-              border: 'none',
-              background: busy ? C.greyBorder : C.red,
-              color: 'white',
-              fontSize: 13,
-              fontWeight: 700,
-              cursor: busy ? 'not-allowed' : 'pointer',
-              fontFamily: 'inherit',
-            }}
+            className={cn(
+              'rounded-lg border-0 px-4 py-2 font-inherit text-[13px] font-bold text-white',
+              busy
+                ? 'cursor-not-allowed bg-[#e3e0db]'
+                : 'cursor-pointer bg-[var(--hrk-orange-hover)]',
+            )}
           >
             {busy ? 'Wyłączam…' : 'Wyłącz i usuń chunki'}
           </button>

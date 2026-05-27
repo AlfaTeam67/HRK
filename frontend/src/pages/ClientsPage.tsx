@@ -15,9 +15,11 @@ import {
 import { useCustomerTimeline } from '@/hooks/timeline'
 import { useCreateNote, useNotes } from '@/hooks/notes'
 import { useAppSelector } from '@/hooks/store'
+import { useDocumentsQuery } from '@/hooks/documents'
 import { DocumentWizard } from '@/features/documentGeneration/DocumentWizard'
 import { DocumentsTab } from '@/features/documentGeneration/DocumentsTab'
 import { ContractModal } from '@/features/contracts/ContractModal'
+import { ContractTreeList } from '@/features/contracts/ContractTreeList'
 import { UploadWizard } from '@/features/documents/UploadWizard'
 import {
   CUSTOMER_STATUS_PL,
@@ -250,6 +252,7 @@ export function ClientsPageApi() {
   const { data: clients = [], isLoading } = useCustomers({ q: search })
   const { data: detailCustomer } = useCustomer(selectedId ?? undefined)
   const { data: contracts = [] } = useContracts({ customer_id: selectedId ?? undefined })
+  const { data: attachments = [] } = useDocumentsQuery({ customer_id: selectedId ?? undefined })
   const { data: notes = [] } = useNotes({ customer_id: selectedId ?? undefined })
   const { data: timeline = [], isLoading: timelineLoading } = useCustomerTimeline({
     customerId: selectedId ?? undefined,
@@ -849,32 +852,17 @@ export function ClientsPageApi() {
                 )}
 
                 {tab === 'contracts' && (
-                  <div>
-                    {contracts.length === 0 && (
-                      <p style={{ color: '#9e9389', fontSize: 13 }}>Brak umów dla tego klienta.</p>
-                    )}
-                    {contracts.map((c) => (
-                      <div
-                        key={c.id}
-                        className="cp-contract-row"
-                        style={{ cursor: 'pointer' }}
-                        onClick={() => setContractModalId(c.id)}
-                      >
-                        <div>
-                          <div className="cp-contract-num">{c.contract_number}</div>
-                          <div className="cp-contract-sub">
-                            {c.contract_type} · {fmtDate(c.start_date)} → {fmtDate(c.end_date)}
-                          </div>
-                        </div>
-                        <span className="cp-contract-status">{c.status}</span>
-                      </div>
-                    ))}
-                  </div>
+                  <ContractTreeList
+                    contracts={contracts}
+                    attachments={attachments}
+                    onContractClick={(id) => setContractModalId(id)}
+                  />
                 )}
 
                 {tab === 'documents' && selectedId && (
                   <DocumentsTab
                     customerId={selectedId}
+                    onOpenContract={(id) => { setTab('contracts'); setContractModalId(id) }}
                   />
                 )}
 

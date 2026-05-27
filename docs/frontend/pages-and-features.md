@@ -54,17 +54,22 @@ gdy szukasz „gdzie jest formularz X" albo „skąd wziąć logikę Y".
 - Lewa kolumna: lista klientów (filtry: `q`, `manager_id`, `statuses`,
   `created_from/to`).
 - Prawa kolumna: detal klienta — zakładki:
-  - **Profil** — dane firmy, opiekun, segment.
-  - **Osoby kontaktowe** — `GET/POST/PATCH/DELETE
-    /api/v1/customers/{id}/contacts`.
-  - **Umowy** — lista umów klienta (link do `ContractsPage`).
+  - **Informacje** — dane firmy, opiekun, segment, AI summary (SSE stream).
+  - **Umowy** — drzewo umów (`ContractTreeList`): macierzyste z
+    zagnieżdżonymi aneksami i powiązanymi (SLA/DPA/PPK). Klik → `ContractModal`.
+  - **Dokumenty** — `DocumentsTab` z quick filters
+    (`Wszystkie | Klient | Umowy | Wymaga akcji`), dropdown typu,
+    kolumna „Pochodzenie" (klikalna), akcja „Otwórz umowę →".
   - **Notatki** — `GET /api/v1/notes?customer_id=...`, edycja inline.
-  - **Aktywność** — timeline (`GET .../timeline`).
-  - **Dokumenty** — feature `DocumentsTab` (drafts AI + załączniki).
-  - **AI Summary** — przycisk → SSE stream do
-    `GET /customers/{id}/ai-summary/stream`. Tokeny dopisywane na żywo.
+  - **Oś czasu** — timeline (`GET .../timeline`).
 - Hook'i: `useCustomers`, `useCustomer`, `useCustomerTimeline`,
-  `useCustomerNotes`, `useContactPersons`, `useCreateNote`, ...
+  `useContracts`, `useDocumentsQuery`, `useContactPersons`, `useCreateNote`, ...
+- Komponenty wydzielone:
+  - `features/contracts/ContractTreeList.tsx` — drzewo umów.
+  - `features/documentGeneration/DocumentsTab.tsx` — zakładka dokumentów.
+  - `features/documentGeneration/originHelpers.ts` — helpery `groupContractsByParent`, `buildOrigin`.
+
+Szczegółowy opis zakładek: [`clients-page-tabs.md`](clients-page-tabs.md).
 
 ---
 
