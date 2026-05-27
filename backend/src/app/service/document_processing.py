@@ -28,6 +28,13 @@ _IMAGE_MIMES = {"image/jpeg", "image/png", "image/tiff", "image/bmp", "image/web
 _PROCESSABLE = {_PDF_MIME, _TEXT_MIME} | _IMAGE_MIMES
 
 
+def is_processable_mime(mime_type: str | None) -> bool:
+    """Return True if the chunker/embedding pipeline supports this MIME type."""
+    if not mime_type:
+        return False
+    return mime_type in _PROCESSABLE
+
+
 def _split_long(text: str, page: int | None) -> list[tuple[str, int | None]]:
     if len(text) <= CHUNK_SIZE:
         return [(text, page)]

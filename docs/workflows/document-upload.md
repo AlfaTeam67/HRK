@@ -15,15 +15,21 @@ Pełny przepływ: **wybór pliku w UI → S3 → wpis w DB → background OCR/ch
 POST /api/v1/documents (multipart)
    → walidacja MIME / rozmiaru
    → upload do MinIO (private bucket, SSE)
-   → INSERT attachments (ocr_status='pending')
+   → INSERT attachments (ocr_status='pending', include_in_ai_assistant=<form>)
    → 201 Created (FE dostaje attachment.id)
-   → BackgroundTask (po wysłaniu odpowiedzi):
+   → BackgroundTask (TYLKO gdy include_in_ai_assistant=true i MIME wspierany):
         pdfplumber.extract_text  (OCR fallback dla skanów)
         chunker (~400 tok / overlap 80)
         EmbeddingService.embed_batch  → Ollama nomic-embed-text
         DocumentChunkRepository.bulk_insert
         UPDATE attachments SET ocr_status='done'
 ```
+
+> Gdy opiekun w `UploadWizard` odznaczy checkbox „Załącz dla asystenta AI",
+> attachment zostaje zapisany z `include_in_ai_assistant=false` i
+> `ocr_status='skipped'` — żaden background task nie startuje. Można go
+> włączyć później przełącznikiem na karcie dokumentu (zob.
+> [`../ai/ai-assistant-toggle.md`](../ai/ai-assistant-toggle.md)).
 
 ---
 
@@ -41,6 +47,7 @@ async def upload_document(
     customer_id: str | None = Form(None),
     contract_id: str | None = Form(None),
     uploaded_by: str = Form(...),
+    include_in_ai_assistant: bool = Form(True),
     service: DocumentService = Depends(get_document_service),
 ):
     return await service.upload_document(
@@ -51,6 +58,7 @@ async def upload_document(
         contract_id=parse_uuid(contract_id),
         uploaded_by=parse_uuid(uploaded_by),
         background_tasks=background_tasks,
+        include_in_ai_assistant=include_in_ai_assistant,
     )
 ```
 
@@ -248,6 +256,7 @@ formData.append('file', file)
 formData.append('document_type', documentType)
 formData.append('customer_id', customerId)
 formData.append('uploaded_by', user.id)
+formData.append('include_in_ai_assistant', String(includeInAiAssistant))
 
 const { data } = await apiClient.post(
   '/api/v1/documents',
@@ -258,12 +267,14 @@ queryClient.invalidateQueries({ queryKey: ['documents'] })
 toast.success('Plik wgrany — indeksowanie w toku')
 ```
 
-Po sukcesie UI pokazuje wiersz z `OcrStatusBadge` (`pending` →
-`processing` → `done`). Polling? **Nie** — TanStack Query refetchuje przy
-fokus / re-mount, a użytkownik widzi spinner w badge.
+W kroku „Wgraj" UploadWizard pokazuje checkbox **„Załącz dla asystenta AI
+(zalecane)"** (domyślnie zaznaczony). Po sukcesie UI pokazuje wiersz z
+`OcrStatusBadge` (`pending` → `processing` → `done`) oraz `AiAssistantToggle`
+do zmiany stanu w dowolnej chwili. Polling? Tak — TanStack Query
+`refetchInterval=3000` gdy są wiersze w `pending|processing`.
 
-> Mikropush przez WebSocket gdy `ocr_status=done` — TODO. Dziś trzeba
-> kliknąć ponownie listę albo poczekać aż TanStack Query refetchuje.
+> Mikropush przez WebSocket gdy `ocr_status=done` — TODO. Dziś polling
+> 3-sekundowy załatwia sprawę dla zwykłych PDF (5-10s indeksacja).
 
 ---
 

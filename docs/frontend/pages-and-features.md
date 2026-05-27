@@ -94,8 +94,9 @@ gdy szukasz „gdzie jest formularz X" albo „skąd wziąć logikę Y".
 
 - Plik: `src/pages/AdvisorPage.tsx` — największa strona aplikacji
   (~44 KB).
-- **Lewa kolumna**: lista klientów + ich dokumentów (z `?exclude_draft=true`,
-  bo drafty AI nie są w RAG).
+- **Lewa kolumna**: lista klientów + ich dokumentów (z
+  `?exclude_draft=true&include_in_ai_assistant_only=true` — pomija drafty AI
+  oraz dokumenty wyłączone przełącznikiem przez opiekuna).
 - **Środek**: chat — pytanie wpisane przez użytkownika trafia do
   `POST /api/v1/rag/search` z `customer_id` i `ai_mode` (switch).
 - **Prawa kolumna**: PDF preview (`PdfPreviewModal`) z podświetlonym
@@ -159,13 +160,19 @@ Flow:
 1. Wybór pliku (`<input type="file">`) — walidacja MIME / rozmiaru
    (10 MB).
 2. Wybór typu (`DocumentType`), customer/contract/company.
-3. `POST /api/v1/documents` (multipart) z `uploaded_by={user.id}`.
-4. Po sukcesie: invalidate `['documents', ...]`, toast.
-5. Background na backendzie: chunking + embedding (zob.
+3. Checkbox **„Załącz dla asystenta AI (zalecane)"** — domyślnie ON.
+   Odznaczenie powoduje, że plik trafia do S3 i DB, ale `ocr_status='skipped'`
+   i background indeksacja nie startuje. Można włączyć później przełącznikiem
+   na karcie dokumentu.
+4. `POST /api/v1/documents` (multipart) z `uploaded_by={user.id}` i
+   `include_in_ai_assistant=<bool>`.
+5. Po sukcesie: invalidate `['documents', ...]`, toast.
+6. Background na backendzie: chunking + embedding (zob.
    [`../workflows/document-upload.md`](../workflows/document-upload.md)).
 
 UI dba, by **nie blokować** użytkownika — odpowiedź wraca natychmiast.
-Status indeksowania widać w `OcrStatusBadge`.
+Status indeksowania widać w `OcrStatusBadge` + `AiAssistantToggle`
+(zob. [`../ai/ai-assistant-toggle.md`](../ai/ai-assistant-toggle.md)).
 
 ---
 

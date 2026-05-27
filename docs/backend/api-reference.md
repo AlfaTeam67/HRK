@@ -219,29 +219,55 @@ POST   /api/v1/activity-log
 ## 📄 Documents (attachments + S3)
 
 ```
-GET    /api/v1/documents?company_id=...&customer_id=...&contract_id=...&exclude_draft=false
+GET    /api/v1/documents?company_id=...&customer_id=...&contract_id=...&exclude_draft=false&include_in_ai_assistant_only=false
 POST   /api/v1/documents                                        ← multipart/form-data
 GET    /api/v1/documents/{id}?requester_user_id=...
 GET    /api/v1/documents/{id}/download-url?requester_user_id=...   ← presigned URL
 GET    /api/v1/documents/{id}/stream?requester_user_id=...         ← bajty bezpośrednio
 DELETE /api/v1/documents/{id}?requester_user_id=...
+PATCH  /api/v1/documents/{id}/ai-assistant?requester_user_id=...   ← toggle (202)
+POST   /api/v1/documents/bulk/ai-assistant?requester_user_id=...   ← bulk toggle (202)
+POST   /api/v1/documents/{id}/reindex?requester_user_id=...        ← retry indeksacji (202)
 ```
 
 **POST** (multipart):
-| Pole              | Typ        | Wymagane | Uwagi                              |
-|-------------------|------------|----------|------------------------------------|
-| `file`            | file       | tak      | PDF/DOCX/JPG/PNG/TXT, ≤10 MB       |
-| `document_type`   | enum       | nie      | domyślnie `OTHER`                  |
-| `company_id`      | UUID       | nie      | jeśli pusty, brany z customer.company |
-| `customer_id`     | UUID       | nie\*    | \* jeden z `customer_id`/`contract_id` musi być |
-| `contract_id`     | UUID       | nie\*    |                                    |
-| `uploaded_by`     | UUID       | tak      | id użytkownika z `users`           |
+| Pole                       | Typ        | Wymagane | Uwagi                              |
+|----------------------------|------------|----------|------------------------------------|
+| `file`                     | file       | tak      | PDF/DOCX/JPG/PNG/TXT, ≤10 MB       |
+| `document_type`            | enum       | nie      | domyślnie `OTHER`                  |
+| `company_id`               | UUID       | nie      | jeśli pusty, brany z customer.company |
+| `customer_id`              | UUID       | nie\*    | \* jeden z `customer_id`/`contract_id` musi być |
+| `contract_id`              | UUID       | nie\*    |                                    |
+| `uploaded_by`              | UUID       | tak      | id użytkownika z `users`           |
+| `include_in_ai_assistant`  | bool       | nie      | domyślnie `true`. `false` → `ocr_status='skipped'`, brak background task. |
 
 Po uploadzie startuje **BackgroundTask**: `DocumentProcessingService.process(...)`
 → chunking + embedding + `INSERT document_chunks` → `ocr_status = done`.
+Background task **nie startuje** gdy `include_in_ai_assistant=false` lub
+MIME jest poza `_PROCESSABLE` (np. DOCX).
 
 `exclude_draft=true` → filtruje `ocr_status != 'skipped'` (drafty z generacji
 AI są `skipped`).
+
+`include_in_ai_assistant_only=true` → filtruje `include_in_ai_assistant = true`.
+Asystent AI (`/assistant`) używa `exclude_draft=true&include_in_ai_assistant_only=true`.
+
+**PATCH `.../ai-assistant`** — body `{ "enabled": bool }`. Idempotentny.
+- `enabled=true` + MIME wspierany → `ocr_status=pending`, fetch z S3,
+  background reindex, ActivityLog.
+- `enabled=true` + MIME niewspierany → `ocr_status=skipped`,
+  `unsupported_format=true` w response, ActivityLog.
+- `enabled=false` → DELETE chunków, `include_in_ai_assistant=false`,
+  ActivityLog.
+
+**POST `bulk/ai-assistant`** — body `{ ids: UUID[], enabled: bool }`.
+Wynik per id w `results: AiAssistantBulkItemResult[]`.
+
+**POST `{id}/reindex`** — wymusza retry indeksacji niezależnie od stanu
+(np. dla `ocr_status=failed`). Przy okazji ustawia
+`include_in_ai_assistant=true`.
+
+Zob. [`../ai/ai-assistant-toggle.md`](../ai/ai-assistant-toggle.md).
 
 ---
 

@@ -24,7 +24,15 @@ from app.core.exceptions import (
 )
 from app.core.storage import get_storage_service
 from app.models.enums import DocumentType
-from app.schemas.document import DocumentDownloadURLRead, DocumentRead
+from app.schemas.document import (
+    AiAssistantBulkRequest,
+    AiAssistantBulkResponse,
+    AiAssistantToggleRequest,
+    AiAssistantToggleResult,
+    DocumentDownloadURLRead,
+    DocumentRead,
+    DocumentReindexResult,
+)
 from app.service.document import DocumentService
 
 router = APIRouter()
@@ -40,6 +48,7 @@ async def list_documents(
     customer_id: UUID | None = None,
     contract_id: UUID | None = None,
     exclude_draft: bool = False,
+    include_in_ai_assistant_only: bool = False,
     service: DocumentService = Depends(get_document_service),
 ) -> Any:
     return await service.list_documents(
@@ -47,6 +56,7 @@ async def list_documents(
         customer_id=customer_id,
         contract_id=contract_id,
         exclude_draft=exclude_draft,
+        include_in_ai_assistant_only=include_in_ai_assistant_only,
     )
 
 
@@ -59,6 +69,7 @@ async def upload_document(
     customer_id: str | None = Form(None),
     contract_id: str | None = Form(None),
     uploaded_by: str = Form(...),
+    include_in_ai_assistant: bool = Form(True),
     service: DocumentService = Depends(get_document_service),
 ) -> Any:
     try:
@@ -83,6 +94,7 @@ async def upload_document(
             contract_id=parsed_contract_id,
             uploaded_by=parsed_uploaded_by,
             background_tasks=background_tasks,
+            include_in_ai_assistant=include_in_ai_assistant,
         )
     except DocumentValidationError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
@@ -158,6 +170,99 @@ async def delete_document(
 ) -> None:
     try:
         await service.delete_document(document_id=id, requester_user_id=requester_user_id)
+    except DocumentValidationError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    except DocumentAccessDeniedError as exc:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
+    except DocumentNotFoundError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    except DocumentStorageError as exc:
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exc)) from exc
+
+
+@router.patch(
+    "/{id}/ai-assistant",
+    response_model=AiAssistantToggleResult,
+    status_code=status.HTTP_202_ACCEPTED,
+)
+async def set_ai_assistant_enabled(
+    id: UUID,
+    payload: AiAssistantToggleRequest,
+    background_tasks: BackgroundTasks,
+    requester_user_id: UUID,
+    service: DocumentService = Depends(get_document_service),
+) -> Any:
+    try:
+        attachment, unsupported = await service.set_ai_assistant_enabled(
+            document_id=id,
+            enabled=payload.enabled,
+            requester_user_id=requester_user_id,
+            background_tasks=background_tasks,
+        )
+        return AiAssistantToggleResult(
+            id=attachment.id,
+            include_in_ai_assistant=attachment.include_in_ai_assistant,
+            ocr_status=attachment.ocr_status,
+            unsupported_format=unsupported,
+        )
+    except DocumentValidationError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    except DocumentAccessDeniedError as exc:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
+    except DocumentNotFoundError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    except DocumentStorageError as exc:
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exc)) from exc
+
+
+@router.post(
+    "/bulk/ai-assistant",
+    response_model=AiAssistantBulkResponse,
+    status_code=status.HTTP_202_ACCEPTED,
+)
+async def bulk_set_ai_assistant_enabled(
+    payload: AiAssistantBulkRequest,
+    background_tasks: BackgroundTasks,
+    requester_user_id: UUID,
+    service: DocumentService = Depends(get_document_service),
+) -> Any:
+    try:
+        results = await service.bulk_set_ai_assistant_enabled(
+            document_ids=payload.ids,
+            enabled=payload.enabled,
+            requester_user_id=requester_user_id,
+            background_tasks=background_tasks,
+        )
+    except DocumentValidationError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    except DocumentAccessDeniedError as exc:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
+
+    return AiAssistantBulkResponse(results=results)
+
+
+@router.post(
+    "/{id}/reindex",
+    response_model=DocumentReindexResult,
+    status_code=status.HTTP_202_ACCEPTED,
+)
+async def reindex_document(
+    id: UUID,
+    background_tasks: BackgroundTasks,
+    requester_user_id: UUID,
+    service: DocumentService = Depends(get_document_service),
+) -> Any:
+    try:
+        attachment, unsupported = await service.reindex_document(
+            document_id=id,
+            requester_user_id=requester_user_id,
+            background_tasks=background_tasks,
+        )
+        return DocumentReindexResult(
+            id=attachment.id,
+            ocr_status=attachment.ocr_status,
+            unsupported_format=unsupported,
+        )
     except DocumentValidationError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     except DocumentAccessDeniedError as exc:

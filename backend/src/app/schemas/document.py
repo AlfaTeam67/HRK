@@ -19,6 +19,7 @@ class DocumentRead(BaseModel):
     mime_type: str | None = None
     file_size_bytes: int | None = None
     ocr_status: OcrStatus | None = None
+    include_in_ai_assistant: bool = True
     uploaded_by: UUID | None = None
     created_at: datetime
     deleted_at: datetime | None = None
@@ -29,3 +30,38 @@ class DocumentRead(BaseModel):
 class DocumentDownloadURLRead(BaseModel):
     url: str
     expires_in: int
+
+
+class AiAssistantToggleRequest(BaseModel):
+    enabled: bool
+
+
+class AiAssistantToggleResult(BaseModel):
+    id: UUID
+    include_in_ai_assistant: bool
+    ocr_status: OcrStatus | None = None
+    unsupported_format: bool = False
+
+
+class AiAssistantBulkRequest(BaseModel):
+    ids: list[UUID]
+    enabled: bool
+
+
+class AiAssistantBulkItemResult(BaseModel):
+    id: UUID
+    ok: bool
+    include_in_ai_assistant: bool | None = None
+    ocr_status: OcrStatus | None = None
+    unsupported_format: bool = False
+    error: str | None = None
+
+
+class AiAssistantBulkResponse(BaseModel):
+    results: list[AiAssistantBulkItemResult]
+
+
+class DocumentReindexResult(BaseModel):
+    id: UUID
+    ocr_status: OcrStatus | None = None
+    unsupported_format: bool = False

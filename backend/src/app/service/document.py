@@ -23,13 +23,19 @@ from app.core.exceptions import (
 from app.models.attachment import Attachment
 from app.models.contract import Contract
 from app.models.customer import Customer
-from app.models.enums import DocumentType, OcrStatus
+from app.models.enums import ActivityType, DocumentType, OcrStatus
 from app.models.user import User
+from app.repo.activity import ActivityLogRepository
 from app.repo.attachment import AttachmentRepository
 from app.repo.contract import ContractRepository
 from app.repo.customer import CustomerRepository
+from app.repo.document_chunk import DocumentChunkRepository
 from app.repo.user import UserRepository
-from app.service.document_processing import DocumentProcessingService
+from app.schemas.document import AiAssistantBulkItemResult
+from app.service.document_processing import (
+    DocumentProcessingService,
+    is_processable_mime,
+)
 from app.service.storage import StorageService, StorageServiceError
 
 ALLOWED_CONTENT_TYPES: Final[frozenset[str]] = frozenset(
@@ -55,9 +61,11 @@ class DocumentService:
     ) -> None:
         self._session = session
         self._attachments = AttachmentRepository(session)
+        self._chunks = DocumentChunkRepository(session)
         self._customers = CustomerRepository(session)
         self._contracts = ContractRepository(session)
         self._users = UserRepository(session)
+        self._activity = ActivityLogRepository(session)
         self._storage = storage_service or StorageService()
 
     async def upload_document(
@@ -70,6 +78,7 @@ class DocumentService:
         contract_id: UUID | None,
         uploaded_by: UUID,
         background_tasks: BackgroundTasks,
+        include_in_ai_assistant: bool = True,
     ) -> Attachment:
         if customer_id is None and contract_id is None:
             raise DocumentValidationError("Document must be linked to a customer or a contract.")
@@ -97,6 +106,13 @@ class DocumentService:
         except StorageServiceError as exc:
             raise DocumentStorageError("Could not store document in object storage.") from exc
 
+        # Decide initial OCR status: if the user opted out of AI indexing or the
+        # MIME type is not processable, we mark as SKIPPED and never enqueue
+        # processing. Otherwise default to PENDING and schedule the background
+        # task after commit.
+        will_process = include_in_ai_assistant and is_processable_mime(content_type)
+        initial_status = OcrStatus.PENDING if will_process else OcrStatus.SKIPPED
+
         try:
             attachment = await self._attachments.create(
                 {
@@ -110,17 +126,20 @@ class DocumentService:
                     "mime_type": content_type,
                     "file_size_bytes": len(content),
                     "uploaded_by": uploaded_by,
+                    "include_in_ai_assistant": include_in_ai_assistant,
+                    "ocr_status": initial_status,
                 }
             )
             await self._session.commit()
             await self._session.refresh(attachment)
-            background_tasks.add_task(
-                DocumentProcessingService().process,
-                attachment.id,
-                attachment.customer_id,
-                content,
-                content_type,
-            )
+            if will_process:
+                background_tasks.add_task(
+                    DocumentProcessingService().process,
+                    attachment.id,
+                    attachment.customer_id,
+                    content,
+                    content_type,
+                )
             return attachment
         except SQLAlchemyError as exc:
             await self._session.rollback()
@@ -193,9 +212,10 @@ class DocumentService:
         customer_id: UUID | None = None,
         contract_id: UUID | None = None,
         exclude_draft: bool = False,
+        include_in_ai_assistant_only: bool = False,
     ) -> list[Attachment]:
         if exclude_draft:
-            return list(
+            attachments = list(
                 await self._attachments.list_excluding_status(
                     customer_id=customer_id,
                     contract_id=contract_id,
@@ -203,14 +223,211 @@ class DocumentService:
                     excluded_status=OcrStatus.SKIPPED,
                 )
             )
-        filters: dict = {}
-        if company_id:
-            filters["company_id"] = company_id
-        if customer_id:
-            filters["customer_id"] = customer_id
-        if contract_id:
-            filters["contract_id"] = contract_id
-        return list(await self._attachments.list(**filters))
+        else:
+            filters: dict = {}
+            if company_id:
+                filters["company_id"] = company_id
+            if customer_id:
+                filters["customer_id"] = customer_id
+            if contract_id:
+                filters["contract_id"] = contract_id
+            attachments = list(await self._attachments.list(**filters))
+
+        if include_in_ai_assistant_only:
+            attachments = [a for a in attachments if a.include_in_ai_assistant]
+        return attachments
+
+    async def set_ai_assistant_enabled(
+        self,
+        *,
+        document_id: UUID,
+        enabled: bool,
+        requester_user_id: UUID,
+        background_tasks: BackgroundTasks,
+    ) -> tuple[Attachment, bool]:
+        """Toggle whether a document is searchable by the AI assistant.
+
+        Returns ``(attachment, unsupported_format)``. The second flag is
+        ``True`` when the user requested ``enabled=True`` but the document's
+        MIME type is not processable — the intent is recorded, but no
+        embedding will happen.
+        """
+        attachment = await self._attachments.get(document_id)
+        if attachment is None:
+            raise DocumentNotFoundError("Document not found.")
+        await self._get_requesting_user(requester_user_id)
+
+        unsupported = False
+        previous_enabled = bool(attachment.include_in_ai_assistant)
+        if enabled == previous_enabled:
+            # Idempotent — no state change, no audit trail entry.
+            return attachment, not is_processable_mime(attachment.mime_type) and enabled
+
+        if enabled:
+            attachment.include_in_ai_assistant = True
+            if is_processable_mime(attachment.mime_type):
+                # Schedule reindexing: fetch bytes from S3, kick off background.
+                attachment.ocr_status = OcrStatus.PENDING
+                await self._session.commit()
+                await self._session.refresh(attachment)
+                content, content_type = await self._fetch_object_for_processing(attachment)
+                background_tasks.add_task(
+                    DocumentProcessingService().process,
+                    attachment.id,
+                    attachment.customer_id,
+                    content,
+                    content_type,
+                )
+            else:
+                attachment.ocr_status = OcrStatus.SKIPPED
+                await self._session.commit()
+                await self._session.refresh(attachment)
+                unsupported = True
+        else:
+            # Remove chunks first, then flip the flag.
+            await self._chunks.delete_by_attachment(attachment.id)
+            attachment.include_in_ai_assistant = False
+            await self._session.commit()
+            await self._session.refresh(attachment)
+
+        await self._record_ai_toggle_activity(
+            attachment=attachment,
+            performed_by=requester_user_id,
+            enabled=enabled,
+            unsupported=unsupported,
+        )
+        await self._session.commit()
+        return attachment, unsupported
+
+    async def bulk_set_ai_assistant_enabled(
+        self,
+        *,
+        document_ids: list[UUID],
+        enabled: bool,
+        requester_user_id: UUID,
+        background_tasks: BackgroundTasks,
+    ) -> list[AiAssistantBulkItemResult]:
+        """Apply ``set_ai_assistant_enabled`` to many documents.
+
+        Errors per id are returned in the result list rather than raising.
+        """
+        await self._get_requesting_user(requester_user_id)
+        results: list[AiAssistantBulkItemResult] = []
+        for doc_id in document_ids:
+            try:
+                attachment, unsupported = await self.set_ai_assistant_enabled(
+                    document_id=doc_id,
+                    enabled=enabled,
+                    requester_user_id=requester_user_id,
+                    background_tasks=background_tasks,
+                )
+                results.append(
+                    AiAssistantBulkItemResult(
+                        id=doc_id,
+                        ok=True,
+                        include_in_ai_assistant=attachment.include_in_ai_assistant,
+                        ocr_status=attachment.ocr_status,
+                        unsupported_format=unsupported,
+                    )
+                )
+            except DocumentNotFoundError:
+                results.append(
+                    AiAssistantBulkItemResult(id=doc_id, ok=False, error="not_found")
+                )
+            except DocumentValidationError as exc:
+                results.append(AiAssistantBulkItemResult(id=doc_id, ok=False, error=str(exc)))
+            except DocumentStorageError as exc:
+                results.append(AiAssistantBulkItemResult(id=doc_id, ok=False, error=str(exc)))
+        return results
+
+    async def reindex_document(
+        self,
+        *,
+        document_id: UUID,
+        requester_user_id: UUID,
+        background_tasks: BackgroundTasks,
+    ) -> tuple[Attachment, bool]:
+        """Force re-processing of a document (for retry-after-failure flows).
+
+        Idempotent regardless of current ``ocr_status``. If the MIME type is
+        not processable, marks the document as SKIPPED and returns
+        ``unsupported=True``.
+        """
+        attachment = await self._attachments.get(document_id)
+        if attachment is None:
+            raise DocumentNotFoundError("Document not found.")
+        await self._get_requesting_user(requester_user_id)
+
+        # Reindexing implies the user wants the document in AI — flip the
+        # intent flag if it was off.
+        attachment.include_in_ai_assistant = True
+
+        if not is_processable_mime(attachment.mime_type):
+            attachment.ocr_status = OcrStatus.SKIPPED
+            await self._session.commit()
+            await self._session.refresh(attachment)
+            return attachment, True
+
+        # Drop any prior chunks so the reindex starts clean.
+        await self._chunks.delete_by_attachment(attachment.id)
+        attachment.ocr_status = OcrStatus.PENDING
+        await self._session.commit()
+        await self._session.refresh(attachment)
+
+        content, content_type = await self._fetch_object_for_processing(attachment)
+        background_tasks.add_task(
+            DocumentProcessingService().process,
+            attachment.id,
+            attachment.customer_id,
+            content,
+            content_type,
+        )
+        return attachment, False
+
+    async def _fetch_object_for_processing(self, attachment: Attachment) -> tuple[bytes, str]:
+        try:
+            content, content_type = await self._storage.get_object_bytes(key=attachment.s3_key)
+        except StorageServiceError as exc:
+            raise DocumentStorageError(
+                "Could not retrieve document bytes from storage for reindexing."
+            ) from exc
+        # Prefer the stored MIME so the processor uses the same path as on upload.
+        return content, attachment.mime_type or content_type
+
+    async def _record_ai_toggle_activity(
+        self,
+        *,
+        attachment: Attachment,
+        performed_by: UUID,
+        enabled: bool,
+        unsupported: bool,
+    ) -> None:
+        if enabled:
+            description = (
+                f"Włączono dokument {attachment.original_filename} dla asystenta AI."
+            )
+            if unsupported:
+                description += " Format nie jest wspierany — chunki nie zostaną utworzone."
+        else:
+            description = (
+                f"Wyłączono dokument {attachment.original_filename} z asystenta AI. "
+                "Chunki zostały usunięte."
+            )
+
+        await self._activity.create(
+            {
+                "customer_id": attachment.customer_id,
+                "contract_id": attachment.contract_id,
+                "activity_type": ActivityType.DOCUMENT,
+                "description": description,
+                "additional_data": {
+                    "attachment_id": str(attachment.id),
+                    "include_in_ai_assistant": enabled,
+                    "unsupported_format": unsupported,
+                },
+            },
+            performed_by=performed_by,
+        )
 
     async def _get_requesting_user(self, user_id: UUID) -> User:
         user = await self._users.get(user_id)

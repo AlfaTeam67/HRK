@@ -8,11 +8,19 @@ import {
   useRejectGeneration,
 } from '@/hooks/documentGenerations'
 import {
+  useBulkToggleAiAssistant,
   useDocumentDownloadUrl,
   useDocumentsQuery,
+  useReindexDocument,
+  useToggleAiAssistant,
 } from '@/hooks/documents'
 import { useContracts } from '@/hooks/contracts'
 import { useAppSelector } from '@/hooks/store'
+import {
+  AiAssistantOffConfirm,
+  AiAssistantToggle,
+} from '@/components/ui/AiAssistantToggle'
+import { deriveAiToggleState } from '@/components/ui/aiAssistantToggleHelpers'
 import { OcrStatusBadge } from '@/components/ui/OcrStatusBadge'
 import { PdfPreviewModal } from '@/components/ui/PdfPreviewModal'
 import type { DocumentRead } from '@/types/models'
@@ -86,10 +94,19 @@ export function DocumentsTab({ customerId }: Props) {
   const acceptMut = useAcceptGeneration()
   const rejectMut = useRejectGeneration()
   const downloadMut = useDocumentDownloadUrl()
+  const toggleAi = useToggleAiAssistant()
+  const bulkToggleAi = useBulkToggleAiAssistant()
+  const reindexMut = useReindexDocument()
   const [busyId, setBusyId] = useState<string | null>(null)
 
   const [previewDoc, setPreviewDoc] = useState<{ id: string; title: string } | null>(null)
   const [editingGen, setEditingGen] = useState<GenerationRecord | null>(null)
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [confirm, setConfirm] = useState<
+    | { kind: 'single'; id: string }
+    | { kind: 'bulk'; ids: string[] }
+    | null
+  >(null)
 
   const isLoading = genLoading || attLoading
   const clientDocs = attachments.filter((a) => !a.contract_id)
@@ -143,6 +160,74 @@ export function DocumentsTab({ customerId }: Props) {
     setPreviewDoc({ id: attachmentId, title })
   }
 
+  function toggleSelected(id: string) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  async function handleAiToggle(doc: DocumentRead, next: boolean) {
+    if (!user?.id) return
+    if (!next) {
+      setConfirm({ kind: 'single', id: doc.id })
+      return
+    }
+    try {
+      await toggleAi.mutateAsync({ id: doc.id, enabled: true, userId: user.id })
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Nieznany błąd'
+      alert(`Nie udało się włączyć dokumentu w asystencie AI.\n\n${msg}`)
+    }
+  }
+
+  async function handleAiRetry(doc: DocumentRead) {
+    if (!user?.id) return
+    try {
+      await reindexMut.mutateAsync({ id: doc.id, userId: user.id })
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Nieznany błąd'
+      alert(`Nie udało się ponowić indeksacji.\n\n${msg}`)
+    }
+  }
+
+  async function handleConfirmedDisable() {
+    if (!user?.id || !confirm) return
+    try {
+      if (confirm.kind === 'single') {
+        await toggleAi.mutateAsync({ id: confirm.id, enabled: false, userId: user.id })
+      } else {
+        await bulkToggleAi.mutateAsync({
+          ids: confirm.ids,
+          enabled: false,
+          userId: user.id,
+        })
+        setSelectedIds(new Set())
+      }
+      setConfirm(null)
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Nieznany błąd'
+      alert(`Nie udało się wyłączyć dokumentu z asystenta AI.\n\n${msg}`)
+    }
+  }
+
+  async function handleBulkEnable() {
+    if (!user?.id || selectedIds.size === 0) return
+    try {
+      await bulkToggleAi.mutateAsync({
+        ids: Array.from(selectedIds),
+        enabled: true,
+        userId: user.id,
+      })
+      setSelectedIds(new Set())
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Nieznany błąd'
+      alert(`Nie udało się włączyć dokumentów w asystencie AI.\n\n${msg}`)
+    }
+  }
+
   return (
     <div>
       {/* Header */}
@@ -175,12 +260,56 @@ export function DocumentsTab({ customerId }: Props) {
 
       {/* Dokumenty ogólne klienta */}
       <section style={{ marginBottom: 20 }}>
-        <SectionLabel>Dokumenty ogólne</SectionLabel>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+          <SectionLabel>Dokumenty ogólne</SectionLabel>
+          {selectedIds.size > 0 && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ fontSize: 11, color: colors.textMuted }}>
+                Zaznaczono: <strong style={{ color: colors.textPrimary }}>{selectedIds.size}</strong>
+              </span>
+              <button
+                onClick={handleBulkEnable}
+                disabled={bulkToggleAi.isPending}
+                style={btnLinkStyle}
+              >
+                Włącz w AI
+              </button>
+              <button
+                onClick={() => setConfirm({ kind: 'bulk', ids: Array.from(selectedIds) })}
+                disabled={bulkToggleAi.isPending}
+                style={{ ...btnLinkStyle, color: '#c94f02', borderColor: '#fdd5b8' }}
+              >
+                Wyłącz w AI
+              </button>
+              <button
+                onClick={() => setSelectedIds(new Set())}
+                style={btnLinkStyle}
+              >
+                Wyczyść
+              </button>
+            </div>
+          )}
+        </div>
         {clientDocs.length === 0 ? (
           <EmptyState>Brak dokumentów ogólnych. Użyj <strong>Dodaj dokument</strong>, aby dodać pełnomocnictwo lub inne dokumenty klienta.</EmptyState>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {clientDocs.map((doc) => <AttachmentRow key={doc.id} doc={doc} onDownload={() => handleDownload(doc.id)} onPreview={() => handlePreview(doc.id, doc.original_filename)} />)}
+            {clientDocs.map((doc) => (
+              <AttachmentRow
+                key={doc.id}
+                doc={doc}
+                selected={selectedIds.has(doc.id)}
+                onSelectToggle={() => toggleSelected(doc.id)}
+                onDownload={() => handleDownload(doc.id)}
+                onPreview={() => handlePreview(doc.id, doc.original_filename)}
+                onAiToggle={(next) => handleAiToggle(doc, next)}
+                onAiRetry={() => handleAiRetry(doc)}
+                aiBusy={
+                  (toggleAi.isPending && toggleAi.variables?.id === doc.id) ||
+                  (reindexMut.isPending && reindexMut.variables?.id === doc.id)
+                }
+              />
+            ))}
           </div>
         )}
       </section>
@@ -229,6 +358,14 @@ export function DocumentsTab({ customerId }: Props) {
           onSaved={() => setEditingGen(null)}
         />
       )}
+
+      <AiAssistantOffConfirm
+        isOpen={confirm !== null}
+        count={confirm?.kind === 'bulk' ? confirm.ids.length : 1}
+        busy={toggleAi.isPending || bulkToggleAi.isPending}
+        onConfirm={handleConfirmedDisable}
+        onCancel={() => setConfirm(null)}
+      />
     </div>
   )
 }
@@ -311,9 +448,32 @@ function GenerationRow({ gen, busy, onAccept, onReject, onDownloadPdf, onDownloa
   )
 }
 
-function AttachmentRow({ doc, onDownload, onPreview }: { doc: DocumentRead; onDownload: () => void; onPreview: () => void }) {
+function AttachmentRow({
+  doc,
+  selected,
+  onSelectToggle,
+  onDownload,
+  onPreview,
+  onAiToggle,
+  onAiRetry,
+  aiBusy,
+}: {
+  doc: DocumentRead
+  selected: boolean
+  onSelectToggle: () => void
+  onDownload: () => void
+  onPreview: () => void
+  onAiToggle: (next: boolean) => void
+  onAiRetry: () => void
+  aiBusy: boolean
+}) {
   const created = new Date(doc.created_at).toLocaleString('pl-PL', {
     day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit',
+  })
+  const aiState = deriveAiToggleState({
+    enabled: doc.include_in_ai_assistant,
+    ocrStatus: doc.ocr_status as OcrStatus,
+    mimeType: doc.mime_type,
   })
 
   return (
@@ -327,7 +487,15 @@ function AttachmentRow({ doc, onDownload, onPreview }: { doc: DocumentRead; onDo
       justifyContent: 'space-between',
       alignItems: 'center',
       gap: 14,
+      opacity: aiState === 'off' ? 0.85 : 1,
     }}>
+      <input
+        type="checkbox"
+        checked={selected}
+        onChange={onSelectToggle}
+        aria-label="Zaznacz dokument"
+        style={{ accentColor: '#e85c04', cursor: 'pointer', flexShrink: 0 }}
+      />
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
           <span style={{ fontSize: 13, fontWeight: 700, color: colors.textPrimary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -342,6 +510,16 @@ function AttachmentRow({ doc, onDownload, onPreview }: { doc: DocumentRead; onDo
           <OcrStatusBadge status={doc.ocr_status as OcrStatus} />
         </div>
       </div>
+
+      <AiAssistantToggle
+        state={aiState}
+        busy={aiBusy}
+        onChange={onAiToggle}
+        onRetry={onAiRetry}
+        onUnsupportedClick={() =>
+          alert('Format pliku niewspierany przez asystenta AI (tylko PDF, TXT i obrazy są indeksowane).')
+        }
+      />
 
       <div style={{ display: 'flex', gap: 6 }}>
         <button onClick={onPreview} style={btnLinkStyle}>Podgląd</button>

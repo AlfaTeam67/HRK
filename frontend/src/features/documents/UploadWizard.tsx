@@ -53,6 +53,7 @@ export function UploadWizard({ customerId, preselectedContractId, allowSkip, onC
   const [docType, setDocType] = useState<DocumentType | 'main'>('main')
   const [clientDocType, setClientDocType] = useState<DocumentType>('power_of_attorney')
   const [file, setFile] = useState<File | null>(null)
+  const [includeInAiAssistant, setIncludeInAiAssistant] = useState<boolean>(true)
 
   const fileInputRef = useRef<HTMLInputElement>(null)
   const uploadDoc = useUploadDocument()
@@ -79,6 +80,7 @@ export function UploadWizard({ customerId, preselectedContractId, allowSkip, onC
       customer_id: customerId,
       contract_id: isContractUpload ? contractId : undefined,
       uploaded_by: user.id,
+      include_in_ai_assistant: includeInAiAssistant,
     })
 
     if (docType === 'main' && contractId && uploaded?.id) {
@@ -156,6 +158,8 @@ export function UploadWizard({ customerId, preselectedContractId, allowSkip, onC
               busy={isBusy}
               allowSkip={allowSkip}
               fileInputRef={fileInputRef}
+              includeInAiAssistant={includeInAiAssistant}
+              onIncludeInAiAssistantChange={setIncludeInAiAssistant}
               onDocTypeChange={(v) => {
                 if (scope === 'contract') setDocType(v as DocumentType | 'main')
                 else setClientDocType(v as DocumentType)
@@ -239,6 +243,8 @@ function UploadStep({
   busy,
   allowSkip,
   fileInputRef,
+  includeInAiAssistant,
+  onIncludeInAiAssistantChange,
   onDocTypeChange,
   onFilePick,
   onUpload,
@@ -250,6 +256,8 @@ function UploadStep({
   busy: boolean
   allowSkip?: boolean
   fileInputRef: React.RefObject<HTMLInputElement | null>
+  includeInAiAssistant: boolean
+  onIncludeInAiAssistantChange: (v: boolean) => void
   onDocTypeChange: (v: string) => void
   onFilePick: (f: File) => void
   onUpload: () => void
@@ -300,6 +308,29 @@ function UploadStep({
         {file ? `✓ ${file.name}` : 'Upuść plik lub kliknij aby wybrać (PDF, DOCX)'}
         {!file && <div style={{ fontSize: 11, marginTop: 4 }}>max 15 MB</div>}
       </div>
+
+      <label
+        style={{
+          display: 'flex', alignItems: 'flex-start', gap: 10,
+          padding: '10px 12px', borderRadius: 8,
+          border: `1px solid ${C.border}`, background: C.surface, cursor: 'pointer',
+        }}
+      >
+        <input
+          type="checkbox"
+          checked={includeInAiAssistant}
+          onChange={(e) => onIncludeInAiAssistantChange(e.target.checked)}
+          style={{ accentColor: C.orange, marginTop: 2, flexShrink: 0 }}
+        />
+        <span>
+          <span style={{ fontSize: 12.5, fontWeight: 700, color: C.text, display: 'block' }}>
+            Załącz dla asystenta AI <span style={{ fontWeight: 400, color: C.muted }}>(zalecane)</span>
+          </span>
+          <span style={{ fontSize: 11, color: C.muted, lineHeight: 1.4, display: 'block', marginTop: 2 }}>
+            Plik zostanie przetworzony i dostępny w czacie z asystentem. Możesz włączyć/wyłączyć później na karcie dokumentu.
+          </span>
+        </span>
+      </label>
 
       <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
         {allowSkip && (

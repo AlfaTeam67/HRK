@@ -216,7 +216,11 @@ export function AdvisorPage() {
 
   const { data: customerDocs = [], isLoading: docsLoading } = useDocumentsQuery(
     selectedCustomerId
-      ? { customer_id: selectedCustomerId, exclude_draft: true }
+      ? {
+          customer_id: selectedCustomerId,
+          exclude_draft: true,
+          include_in_ai_assistant_only: true,
+        }
       : undefined,
   )
   const [isAiMode, setIsAiMode] = useState(false)
