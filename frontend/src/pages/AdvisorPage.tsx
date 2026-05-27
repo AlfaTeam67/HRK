@@ -10,10 +10,11 @@ import { cardStyle } from '@/lib/styles'
 import { Modal } from '@/components/ui/modal'
 import { useDocumentsQuery } from '@/hooks/documents'
 import { useCustomers } from '@/hooks/customers'
+import { useContracts } from '@/hooks/contracts'
 import { useRagSearch } from '@/hooks/rag'
 import { useAppSelector } from '@/hooks/store'
 import { OcrStatusBadge } from '@/components/ui/OcrStatusBadge'
-import type { DocumentRead } from '@/types/models'
+import type { Contract, DocumentRead } from '@/types/models'
 import type { OcrStatus } from '@/components/ui/OcrStatusBadge'
 
 pdfjs.GlobalWorkerOptions.workerSrc = new URL(
@@ -96,9 +97,11 @@ function docIcon(mime: string | null | undefined): string {
 /* ─── DocumentList ───────────────────────────────────────────── */
 function DocumentList({
   docs,
+  contracts,
   onOpen,
 }: {
   docs: DocumentRead[]
+  contracts: Contract[]
   onOpen: (doc: DocumentRead) => void
 }) {
   if (docs.length === 0) {
@@ -113,61 +116,110 @@ function DocumentList({
     )
   }
 
+  const groups = (() => {
+    const byContract = new Map<string, DocumentRead[]>()
+    const clientDocs: DocumentRead[] = []
+    for (const doc of docs) {
+      if (doc.contract_id) {
+        const arr = byContract.get(doc.contract_id) ?? []
+        arr.push(doc)
+        byContract.set(doc.contract_id, arr)
+      } else {
+        clientDocs.push(doc)
+      }
+    }
+    const contractGroups: { contract: Contract; docs: DocumentRead[] }[] = []
+    for (const [contractId, cDocs] of byContract) {
+      const contract = contracts.find((c) => c.id === contractId)
+      if (contract) contractGroups.push({ contract, docs: cDocs })
+      else clientDocs.push(...cDocs)
+    }
+    contractGroups.sort((a, b) => (b.contract.start_date ?? '').localeCompare(a.contract.start_date ?? ''))
+    return { contractGroups, clientDocs }
+  })()
+
   return (
-    <div style={{ flex: 1, overflowY: 'auto', padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 10, background: 'linear-gradient(160deg, #fafaf9 0%, #f5f2ef 100%)' }}>
-      {docs.map((doc) => (
-        <button
-          key={doc.id}
-          onClick={() => onOpen(doc)}
-          style={{
-            display: 'flex', alignItems: 'center', gap: 14,
-            padding: '14px 16px', borderRadius: 12, textAlign: 'left',
-            background: 'white', border: '1px solid #e8e4df',
-            cursor: 'pointer', fontFamily: 'inherit', width: '100%',
-            boxShadow: '0 1px 4px rgba(0,0,0,0.04)',
-            transition: 'border-color 0.15s, box-shadow 0.15s, transform 0.1s',
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.borderColor = '#fdd5b8'
-            e.currentTarget.style.boxShadow = '0 4px 16px rgba(232,92,4,0.10)'
-            e.currentTarget.style.transform = 'translateY(-1px)'
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.borderColor = '#e8e4df'
-            e.currentTarget.style.boxShadow = '0 1px 4px rgba(0,0,0,0.04)'
-            e.currentTarget.style.transform = 'translateY(0)'
-          }}
-        >
-          {/* Icon */}
-          <div style={{ width: 44, height: 44, borderRadius: 10, background: 'linear-gradient(135deg, #fff5f0, #fde8d8)', border: '1px solid #fdd5b8', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, flexShrink: 0 }}>
-            {docIcon(doc.mime_type)}
+    <div style={{ flex: 1, overflowY: 'auto', padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 14, background: 'linear-gradient(160deg, #fafaf9 0%, #f5f2ef 100%)' }}>
+      {groups.contractGroups.map(({ contract, docs: cDocs }) => (
+        <div key={contract.id}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: '#6b6b6b', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span>📋</span>
+            <span>Umowa {contract.contract_number}</span>
+            <span style={{ fontSize: 10, color: '#b5afa8', fontWeight: 500 }}>({cDocs.length})</span>
           </div>
-
-          {/* Info */}
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 13, fontWeight: 700, color: '#1a1714', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginBottom: 3 }}>
-              {doc.original_filename}
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-              <span style={{ fontSize: 10, fontWeight: 600, color: '#c94f02', background: '#fff5f0', border: '1px solid #fdd5b8', borderRadius: 4, padding: '1px 6px', letterSpacing: '0.02em' }}>
-                {doc.document_type}
-              </span>
-              {doc.file_size_bytes ? (
-                <span style={{ fontSize: 10, color: '#b5afa8' }}>{fmtBytes(doc.file_size_bytes)}</span>
-              ) : null}
-              <OcrStatusBadge status={doc.ocr_status as OcrStatus} />
-            </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, paddingLeft: 8 }}>
+            {cDocs.map((doc) => (
+              <DocButton key={doc.id} doc={doc} onOpen={onOpen} />
+            ))}
           </div>
-
-          {/* Arrow */}
-          <div style={{ width: 28, height: 28, borderRadius: '50%', background: '#f5f2ef', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#9e9389" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <polyline points="9 18 15 12 9 6" />
-            </svg>
-          </div>
-        </button>
+        </div>
       ))}
+      {groups.clientDocs.length > 0 && (
+        <div>
+          {groups.contractGroups.length > 0 && (
+            <div style={{ fontSize: 11, fontWeight: 700, color: '#6b6b6b', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span>📂</span>
+              <span>Dokumenty klienta</span>
+              <span style={{ fontSize: 10, color: '#b5afa8', fontWeight: 500 }}>({groups.clientDocs.length})</span>
+            </div>
+          )}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, paddingLeft: groups.contractGroups.length > 0 ? 8 : 0 }}>
+            {groups.clientDocs.map((doc) => (
+              <DocButton key={doc.id} doc={doc} onOpen={onOpen} />
+            ))}
+          </div>
+        </div>
+      )}
     </div>
+  )
+}
+
+function DocButton({ doc, onOpen }: { doc: DocumentRead; onOpen: (doc: DocumentRead) => void }) {
+  return (
+    <button
+      onClick={() => onOpen(doc)}
+      style={{
+        display: 'flex', alignItems: 'center', gap: 14,
+        padding: '14px 16px', borderRadius: 12, textAlign: 'left',
+        background: 'white', border: '1px solid #e8e4df',
+        cursor: 'pointer', fontFamily: 'inherit', width: '100%',
+        boxShadow: '0 1px 4px rgba(0,0,0,0.04)',
+        transition: 'border-color 0.15s, box-shadow 0.15s, transform 0.1s',
+      }}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.borderColor = '#fdd5b8'
+        e.currentTarget.style.boxShadow = '0 4px 16px rgba(232,92,4,0.10)'
+        e.currentTarget.style.transform = 'translateY(-1px)'
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.borderColor = '#e8e4df'
+        e.currentTarget.style.boxShadow = '0 1px 4px rgba(0,0,0,0.04)'
+        e.currentTarget.style.transform = 'translateY(0)'
+      }}
+    >
+      <div style={{ width: 44, height: 44, borderRadius: 10, background: 'linear-gradient(135deg, #fff5f0, #fde8d8)', border: '1px solid #fdd5b8', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, flexShrink: 0 }}>
+        {docIcon(doc.mime_type)}
+      </div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontSize: 13, fontWeight: 700, color: '#1a1714', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginBottom: 3 }}>
+          {doc.original_filename}
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+          <span style={{ fontSize: 10, fontWeight: 600, color: '#c94f02', background: '#fff5f0', border: '1px solid #fdd5b8', borderRadius: 4, padding: '1px 6px', letterSpacing: '0.02em' }}>
+            {doc.document_type}
+          </span>
+          {doc.file_size_bytes ? (
+            <span style={{ fontSize: 10, color: '#b5afa8' }}>{fmtBytes(doc.file_size_bytes)}</span>
+          ) : null}
+          <OcrStatusBadge status={doc.ocr_status as OcrStatus} />
+        </div>
+      </div>
+      <div style={{ width: 28, height: 28, borderRadius: '50%', background: '#f5f2ef', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#9e9389" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+          <polyline points="9 18 15 12 9 6" />
+        </svg>
+      </div>
+    </button>
   )
 }
 
@@ -222,6 +274,9 @@ export function AdvisorPage() {
           include_in_ai_assistant_only: true,
         }
       : undefined,
+  )
+  const { data: contracts = [] } = useContracts(
+    selectedCustomerId ? { customer_id: selectedCustomerId } : undefined,
   )
   const [isAiMode, setIsAiMode] = useState(false)
   const [isInfoModalOpen, setIsInfoModalOpen] = useState(false)
@@ -615,7 +670,7 @@ export function AdvisorPage() {
                 ))}
               </div>
             ) : (
-              <DocumentList docs={customerDocs} onOpen={handleDocOpen} />
+              <DocumentList docs={customerDocs} contracts={contracts} onOpen={handleDocOpen} />
             )
 
           )}
