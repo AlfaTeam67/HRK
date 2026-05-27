@@ -9,12 +9,12 @@ interface Props {
   onContractClick: (contractId: string) => void
 }
 
-const STATUS_COLORS: Record<string, { bg: string; fg: string }> = {
-  active: { bg: '#f0fff4', fg: '#276749' },
-  signed: { bg: '#f0fff4', fg: '#276749' },
-  draft: { bg: '#fff8f4', fg: '#c94f02' },
-  expiring: { bg: '#fffbeb', fg: '#92400e' },
-  terminated: { bg: '#f3f4f6', fg: '#718096' },
+const STATUS_COLORS: Record<string, { bg: string; fg: string; border: string }> = {
+  active: { bg: 'bg-green-50', fg: 'text-green-800', border: 'border-green-800/20' },
+  signed: { bg: 'bg-green-50', fg: 'text-green-800', border: 'border-green-800/20' },
+  draft: { bg: 'bg-orange-50', fg: 'text-orange-700', border: 'border-orange-700/20' },
+  expiring: { bg: 'bg-amber-50', fg: 'text-amber-800', border: 'border-amber-800/20' },
+  terminated: { bg: 'bg-gray-100', fg: 'text-gray-500', border: 'border-gray-500/20' },
 }
 
 function fmtDate(v?: string | null) {
@@ -30,7 +30,7 @@ export function ContractTreeList({ contracts, attachments, onContractClick }: Pr
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set())
 
   if (contracts.length === 0) {
-    return <p style={{ color: '#9e9389', fontSize: 13 }}>Brak umów dla tego klienta.</p>
+    return <p className="text-[13px] text-stone-400">Brak umów dla tego klienta.</p>
   }
 
   function toggle(id: string) {
@@ -43,7 +43,7 @@ export function ContractTreeList({ contracts, attachments, onContractClick }: Pr
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+    <div className="flex flex-col gap-1.5">
       {trees.map((tree) => (
         <TreeNode
           key={tree.parent.id}
@@ -80,50 +80,33 @@ function TreeNode({
     <div>
       {/* Parent row */}
       <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 10,
-          padding: '10px 14px',
-          background: 'white',
-          border: '1px solid #e3e0db',
-          borderRadius: 10,
-          cursor: 'pointer',
-        }}
+        className="flex items-center gap-2.5 px-3.5 py-2.5 bg-white border border-stone-200 rounded-[10px] cursor-pointer"
         onClick={() => onContractClick(parent.id)}
       >
         {hasChildren && (
           <button
             onClick={(e) => { e.stopPropagation(); onToggle() }}
-            style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, padding: 0, color: '#9e9389' }}
+            className="bg-transparent border-none cursor-pointer text-xs p-0 text-stone-400"
             aria-label={collapsed ? 'Rozwiń' : 'Zwiń'}
           >
             {collapsed ? '▸' : '▾'}
           </button>
         )}
-        {!hasChildren && <span style={{ width: 12 }} />}
-        <span style={{ fontSize: 13, fontWeight: 700, color: '#1a1714' }}>
+        {!hasChildren && <span className="w-3" />}
+        <span className="text-[13px] font-bold text-stone-900">
           📄 {parent.contract_number}
         </span>
-        <span style={{ fontSize: 12, color: '#7a6f67' }}>{parent.contract_type}</span>
+        <span className="text-xs text-stone-500">{parent.contract_type}</span>
         <span
-          style={{
-            fontSize: 10,
-            fontWeight: 700,
-            padding: '2px 8px',
-            borderRadius: 4,
-            background: sc.bg,
-            color: sc.fg,
-            border: `1px solid ${sc.fg}30`,
-          }}
+          className={`text-[10px] font-bold px-2 py-0.5 rounded ${sc.bg} ${sc.fg} border ${sc.border}`}
         >
           {parent.status}
         </span>
-        <span style={{ fontSize: 11, color: '#9e9389', marginLeft: 'auto' }}>
+        <span className="text-[11px] text-stone-400 ml-auto">
           {fmtDate(parent.start_date)} → {fmtDate(parent.end_date)}
         </span>
         {files > 0 && (
-          <span style={{ fontSize: 10.5, color: '#7a6f67', background: '#f2f0ed', borderRadius: 4, padding: '2px 6px' }}>
+          <span className="text-[10.5px] text-stone-500 bg-stone-100 rounded px-1.5 py-0.5">
             {files} {files === 1 ? 'plik' : 'pliki'}
           </span>
         )}
@@ -131,7 +114,7 @@ function TreeNode({
 
       {/* Children */}
       {!collapsed && hasChildren && (
-        <div style={{ marginLeft: 28, borderLeft: '2px solid #e3e0db', paddingLeft: 12, marginTop: 4 }}>
+        <div className="ml-7 border-l-2 border-stone-200 pl-3 mt-1">
           {amendments.length > 0 && (
             <ChildGroup label="Aneksy" items={amendments} attachments={attachments} onContractClick={onContractClick} icon="📎" />
           )}
@@ -158,8 +141,8 @@ function ChildGroup({
   icon: string
 }) {
   return (
-    <div style={{ marginBottom: 6 }}>
-      <div style={{ fontSize: 10, fontWeight: 700, color: '#9e9389', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>
+    <div className="mb-1.5">
+      <div className="text-[10px] font-bold text-stone-400 uppercase tracking-wide mb-1">
         {label} ({items.length})
       </div>
       {items.map((c) => {
@@ -169,24 +152,14 @@ function ChildGroup({
           <div
             key={c.id}
             onClick={() => onContractClick(c.id)}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 8,
-              padding: '7px 12px',
-              background: '#fafaf9',
-              border: '1px solid #f2f0ed',
-              borderRadius: 8,
-              cursor: 'pointer',
-              marginBottom: 4,
-            }}
+            className="flex items-center gap-2 px-3 py-1.5 bg-stone-50 border border-stone-100 rounded-lg cursor-pointer mb-1"
           >
-            <span style={{ fontSize: 12 }}>{icon}</span>
-            <span style={{ fontSize: 12.5, fontWeight: 600, color: '#1a1714' }}>{c.contract_number}</span>
-            <span style={{ fontSize: 11, color: '#7a6f67' }}>{c.contract_type}</span>
-            <span style={{ fontSize: 9.5, fontWeight: 700, padding: '1px 6px', borderRadius: 4, background: sc.bg, color: sc.fg }}>{c.status}</span>
+            <span className="text-xs">{icon}</span>
+            <span className="text-[12.5px] font-semibold text-stone-900">{c.contract_number}</span>
+            <span className="text-[11px] text-stone-500">{c.contract_type}</span>
+            <span className={`text-[9.5px] font-bold px-1.5 py-0.5 rounded ${sc.bg} ${sc.fg}`}>{c.status}</span>
             {files > 0 && (
-              <span style={{ fontSize: 10, color: '#7a6f67', marginLeft: 'auto' }}>{files} plik.</span>
+              <span className="text-[10px] text-stone-500 ml-auto">{files} plik.</span>
             )}
           </div>
         )

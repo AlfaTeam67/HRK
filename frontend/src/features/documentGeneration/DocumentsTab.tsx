@@ -356,9 +356,10 @@ function GroupedDocumentList({
         clientDocs.push(doc)
       }
     }
+    const contractMap = new Map(contracts.map((c) => [c.id, c]))
     const contractGroups: { contract: Contract; docs: DocumentRead[] }[] = []
     for (const [contractId, cDocs] of byContract) {
-      const contract = contracts.find((c) => c.id === contractId)
+      const contract = contractMap.get(contractId)
       if (contract) contractGroups.push({ contract, docs: cDocs })
       else clientDocs.push(...cDocs)
     }

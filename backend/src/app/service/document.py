@@ -137,8 +137,6 @@ class DocumentService:
                     DocumentProcessingService().process,
                     attachment.id,
                     attachment.customer_id,
-                    content,
-                    content_type,
                 )
             return attachment
         except SQLAlchemyError as exc:
@@ -290,13 +288,10 @@ class DocumentService:
                 )
                 await self._session.commit()
                 await self._session.refresh(attachment)
-                content, content_type = await self._fetch_object_for_processing(attachment)
                 background_tasks.add_task(
                     DocumentProcessingService().process,
                     attachment.id,
                     attachment.customer_id,
-                    content,
-                    content_type,
                 )
             else:
                 attachment.ocr_status = OcrStatus.SKIPPED
@@ -370,7 +365,6 @@ class DocumentService:
             except DocumentStorageError as exc:
                 results.append(AiAssistantBulkItemResult(id=doc_id, ok=False, error=str(exc)))
         return results
-        return results
 
     async def reindex_document(
         self,
@@ -406,25 +400,12 @@ class DocumentService:
         await self._session.commit()
         await self._session.refresh(attachment)
 
-        content, content_type = await self._fetch_object_for_processing(attachment)
         background_tasks.add_task(
             DocumentProcessingService().process,
             attachment.id,
             attachment.customer_id,
-            content,
-            content_type,
         )
         return attachment, False
-
-    async def _fetch_object_for_processing(self, attachment: Attachment) -> tuple[bytes, str]:
-        try:
-            content, content_type = await self._storage.get_object_bytes(key=attachment.s3_key)
-        except StorageServiceError as exc:
-            raise DocumentStorageError(
-                "Could not retrieve document bytes from storage for reindexing."
-            ) from exc
-        # Prefer the stored MIME so the processor uses the same path as on upload.
-        return content, attachment.mime_type or content_type
 
     async def _record_ai_toggle_activity(
         self,
