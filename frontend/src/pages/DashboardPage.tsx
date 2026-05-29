@@ -4,6 +4,8 @@ import { cardStyle } from '@/lib/styles'
 import { useAppSelector } from '@/hooks/store'
 import { useAlerts, useDashboardKpi } from '@/hooks/alerts'
 import { useAlertWebSockets } from '@/hooks/useAlertWebSockets'
+import { useRecentActivities } from '@/hooks/activities'
+import { useCustomers } from '@/hooks/customers'
 
 /* ─── Mock data (inline) ─────────────────────────────────────── */
 type AlertType = 'urgent' | 'warning' | 'info' | 'neutral'
@@ -54,57 +56,26 @@ const smartPulse = [
   { name: 'TechNova', badge: 'Wzrost skali', type: 'good' as const },
 ]
 
-const activity = [
-  {
-    client: 'Empik Sp. z o.o.',
-    action: 'Spotkanie kwartalne – omówienie warunków odnowienia.',
-    type: 'Spotkanie' as const,
-    date: '18.03.2026',
-    person: 'M. Janowska',
-  },
-  {
-    client: 'Biedronka',
-    action: 'Podpisano aneks nr 6 – aktualizacja stawek PPK',
-    type: 'Dokument' as const,
-    date: '15.03.2026',
-    person: 'A. Kowalski',
-  },
-  {
-    client: 'Rossmann',
-    action: 'Notatka: brak odpowiedzi na wysłaną nową usługę',
-    type: 'Notatka' as const,
-    date: '20.03.2026',
-    person: 'M. Janowska',
-  },
-  {
-    client: 'Lidl Polska',
-    action: 'Weryfikacja danych pracownika – Jan Kowalczyk',
-    type: 'Weryfikacja' as const,
-    date: '19.03.2026',
-    person: 'System AI',
-  },
-  {
-    client: 'MediaMarkt',
-    action: 'Wysłano ofertę na obsługę kadr i płac (nowy moduł)',
-    type: 'Dokument' as const,
-    date: '21.03.2026',
-    person: 'T. Nowak',
-  },
-  {
-    client: 'TechNova',
-    action: 'Telefoniczne potwierdzenie warunków SLA na kwiecień',
-    type: 'Spotkanie' as const,
-    date: '21.03.2026',
-    person: 'M. Nowak',
-  },
-  {
-    client: 'Carrefour',
-    action: 'Założono kartę klienta – nowe zapytanie ofertowe',
-    type: 'Notatka' as const,
-    date: '22.03.2026',
-    person: 'K. Lis',
-  },
-]
+/* ─── Activity type labels & styles ─────────────────────────── */
+const ACTIVITY_TYPE_LABEL: Record<string, string> = {
+  meeting:      'Spotkanie',
+  email:        'Email',
+  note:         'Notatka',
+  document:     'Dokument',
+  verification: 'Weryfikacja',
+  call:         'Telefon',
+  system:       'System',
+}
+
+const ACTIVITY_BADGE_STYLE: Record<string, CSSProperties> = {
+  meeting:      { background: '#fff5f0', color: '#c94f02', fontSize: 11, padding: '2px 8px', borderRadius: 4, fontWeight: 600 },
+  email:        { background: '#eff6ff', color: '#1d4ed8', fontSize: 11, padding: '2px 8px', borderRadius: 4, fontWeight: 600 },
+  note:         { background: '#f3f4f6', color: '#374151', fontSize: 11, padding: '2px 8px', borderRadius: 4, fontWeight: 600 },
+  document:     { background: '#fef3c7', color: '#92400e', fontSize: 11, padding: '2px 8px', borderRadius: 4, fontWeight: 600 },
+  verification: { background: '#f0fff4', color: '#276749', fontSize: 11, padding: '2px 8px', borderRadius: 4, fontWeight: 600 },
+  call:         { background: '#fdf4ff', color: '#7e22ce', fontSize: 11, padding: '2px 8px', borderRadius: 4, fontWeight: 600 },
+  system:       { background: '#f0eeeb', color: '#6b6b6b', fontSize: 11, padding: '2px 8px', borderRadius: 4, fontWeight: 600 },
+}
 
 /* ─── Style maps ─────────────────────────────────────────────── */
 const ALERT_STYLE: Record<AlertType, CSSProperties> = {
@@ -142,41 +113,6 @@ const ALERT_STYLE: Record<AlertType, CSSProperties> = {
   },
 }
 
-const BADGE_STYLE: Record<(typeof activity)[number]['type'], CSSProperties> = {
-  Spotkanie: {
-    background: '#fff5f0',
-    color: '#c94f02',
-    fontSize: 11,
-    padding: '2px 8px',
-    borderRadius: 4,
-    fontWeight: 600,
-  },
-  Dokument: {
-    background: '#fef3c7',
-    color: '#92400e',
-    fontSize: 11,
-    padding: '2px 8px',
-    borderRadius: 4,
-    fontWeight: 600,
-  },
-  Notatka: {
-    background: '#f3f4f6',
-    color: '#374151',
-    fontSize: 11,
-    padding: '2px 8px',
-    borderRadius: 4,
-    fontWeight: 600,
-  },
-  Weryfikacja: {
-    background: '#f0fff4',
-    color: '#276749',
-    fontSize: 11,
-    padding: '2px 8px',
-    borderRadius: 4,
-    fontWeight: 600,
-  },
-}
-
 const card: CSSProperties = cardStyle
 
 import { useState } from 'react'
@@ -197,6 +133,8 @@ export function DashboardPage() {
   const { data: kpiData, refetch: refetchKpi } = useDashboardKpi(user?.id)
   const { data: realAlerts, refetch: refetchAlerts } = useAlerts(user?.id)
   const { isConnected } = useAlertWebSockets(user?.id)
+  const { data: recentActivities = [], isLoading: activitiesLoading } = useRecentActivities(10)
+  const { data: customers = [] } = useCustomers()
 
   const kpis = kpiData
     ? [
@@ -576,73 +514,62 @@ export function DashboardPage() {
                 Zobacz wszystkie
               </span>
             </div>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-              <thead>
-                <tr>
-                  {['KLIENT', 'ZDARZENIE', 'TYP', 'DATA', 'OSOBA'].map((col) => (
-                    <th
-                      key={col}
-                      style={{
-                        textAlign: 'left',
-                        fontSize: 10,
-                        fontWeight: 700,
-                        color: '#9e9389',
-                        letterSpacing: '0.07em',
-                        paddingBottom: 8,
-                        borderBottom: '1px solid #f2f0ed',
-                      }}
-                    >
-                      {col}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {activity.map((row, i) => (
-                  <tr
-                    key={i}
-                    style={{ borderBottom: i < activity.length - 1 ? '1px solid #f9f8f6' : 'none' }}
-                  >
-                    <td
-                      style={{
-                        padding: '10px 0',
-                        fontWeight: 700,
-                        color: '#1a1714',
-                        whiteSpace: 'nowrap',
-                      }}
-                    >
-                      {row.client}
-                    </td>
-                    <td style={{ padding: '10px 12px 10px 8px', color: '#4b5563', maxWidth: 240 }}>
-                      {row.action}
-                    </td>
-                    <td style={{ padding: '10px 8px', whiteSpace: 'nowrap' }}>
-                      <span style={BADGE_STYLE[row.type]}>{row.type}</span>
-                    </td>
-                    <td
-                      style={{
-                        padding: '10px 8px',
-                        color: '#9e9389',
-                        whiteSpace: 'nowrap',
-                        fontSize: 12,
-                      }}
-                    >
-                      {row.date}
-                    </td>
-                    <td
-                      style={{
-                        padding: '10px 0',
-                        color: '#9e9389',
-                        whiteSpace: 'nowrap',
-                        fontSize: 12,
-                      }}
-                    >
-                      {row.person}
-                    </td>
+            {activitiesLoading ? (
+              <div style={{ fontSize: 13, color: '#6b6b6b', padding: '20px 0', textAlign: 'center' }}>Ładowanie aktywności…</div>
+            ) : recentActivities.length === 0 ? (
+              <div style={{ fontSize: 13, color: '#6b6b6b', padding: '20px 0', textAlign: 'center' }}>Brak zarejestrowanej aktywności.</div>
+            ) : (
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                <thead>
+                  <tr>
+                    {['KLIENT', 'ZDARZENIE', 'TYP', 'DATA'].map((col) => (
+                      <th
+                        key={col}
+                        style={{
+                          textAlign: 'left',
+                          fontSize: 10,
+                          fontWeight: 700,
+                          color: '#9e9389',
+                          letterSpacing: '0.07em',
+                          paddingBottom: 8,
+                          borderBottom: '1px solid #f2f0ed',
+                        }}
+                      >
+                        {col}
+                      </th>
+                    ))}
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {recentActivities.map((row, i) => {
+                    const customer = customers.find(c => c.id === row.customer_id)
+                    const clientName = customer?.company_name ?? customer?.ckk ?? '—'
+                    const badgeStyle = ACTIVITY_BADGE_STYLE[row.activity_type] ?? ACTIVITY_BADGE_STYLE['system']
+                    const typeLabel = ACTIVITY_TYPE_LABEL[row.activity_type] ?? row.activity_type
+                    const dateStr = new Date(row.activity_date).toLocaleDateString('pl-PL', { day: '2-digit', month: '2-digit', year: 'numeric' })
+                    return (
+                      <tr
+                        key={row.id}
+                        style={{ borderBottom: i < recentActivities.length - 1 ? '1px solid #f9f8f6' : 'none' }}
+                      >
+                        <td style={{ padding: '10px 0', fontWeight: 700, color: '#1a1714', whiteSpace: 'nowrap', maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          {clientName}
+                        </td>
+                        <td style={{ padding: '10px 12px 10px 8px', color: '#4b5563', maxWidth: 240 }}>
+                          {row.description}
+                        </td>
+                        <td style={{ padding: '10px 8px', whiteSpace: 'nowrap' }}>
+                          <span style={badgeStyle}>{typeLabel}</span>
+                        </td>
+                        <td style={{ padding: '10px 0', color: '#9e9389', whiteSpace: 'nowrap', fontSize: 12 }}>
+                          {dateStr}
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            )}
           </div>
         </div>
 

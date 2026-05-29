@@ -26,6 +26,16 @@ export function useActivities(filters: ActivityFilters) {
   })
 }
 
+export function useRecentActivities(limit = 10) {
+  return useQuery({
+    queryKey: ['activities-recent', limit],
+    queryFn: async () => {
+      const { data } = await apiClient.get<ActivityLog[]>(BASE, { params: { limit } })
+      return data
+    },
+  })
+}
+
 export function useCreateActivity() {
   const queryClient = useQueryClient()
   return useMutation({
