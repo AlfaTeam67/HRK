@@ -55,3 +55,17 @@ export function useLogin() {
 }
 
 export { AD_PROFILES }
+
+import { useQuery } from '@tanstack/react-query'
+
+export function useUser(id: string | null | undefined) {
+  return useQuery({
+    queryKey: ['users', id],
+    queryFn: async () => {
+      const { data } = await apiClient.get<User>(`/api/v1/users/${id}`)
+      return data
+    },
+    enabled: !!id,
+    staleTime: 5 * 60 * 1000, // 5 min — user data rarely changes
+  })
+}
