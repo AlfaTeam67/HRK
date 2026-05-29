@@ -185,9 +185,20 @@ export function ContractModal({ contractId, customerId, onClose, autoEdit = fals
     setNoteText('')
   }
 
+  /* ─── Status change ────────────────────────────────────────── */
+  const [statusChanging, setStatusChanging] = useState(false)
+
+  async function handleStatusChange(newStatus: ContractStatus) {
+    setStatusChanging(true)
+    try {
+      await updateContract.mutateAsync({ id: contractId, payload: { status: newStatus } })
+    } finally {
+      setStatusChanging(false)
+    }
+  }
+
   /* ─── Generation actions ────────────────────────────────────── */
   const [busyGenId, setBusyGenId] = useState<string | null>(null)
-
   async function handleAccept(genId: string) {
     if (!user?.id) return
     setBusyGenId(genId)
@@ -300,6 +311,8 @@ export function ContractModal({ contractId, customerId, onClose, autoEdit = fals
               onCancelEdit={() => setEditing(false)}
               onSave={saveEdit}
               onFormChange={(k, v) => setForm((p) => ({ ...p, [k]: v }))}
+              onStatusChange={handleStatusChange}
+              statusChanging={statusChanging}
             />
           )}
 
@@ -507,14 +520,6 @@ function ContractEventTimeline({
 
 /* ─── Tab: Historia / Oś czasu ────────────────────────────────── */
 
-const STATUS_LIFECYCLE: { status: ContractStatus; label: string; color: string; bg: string }[] = [
-  { status: 'draft',      label: 'Szkic',        color: '#6b6b6b', bg: '#f2f0ed' },
-  { status: 'signed',     label: 'Podpisana',    color: '#4338ca', bg: '#eef2ff' },
-  { status: 'active',     label: 'Aktywna',      color: '#276749', bg: '#f0fff4' },
-  { status: 'expiring',   label: 'Wygasająca',   color: '#92400e', bg: '#fffbeb' },
-  { status: 'terminated', label: 'Zakończona',   color: '#c94f02', bg: '#fff5f0' },
-]
-
 const ACTIVITY_ICON: Record<string, string> = {
   meeting: '🤝',
   email: '✉️',
@@ -537,8 +542,6 @@ function HistoriaOsiTab({
   const { data: accountManager } = useUser(contract?.account_manager_id ?? null)
 
   if (!contract) return <p style={{ color: C.muted, fontSize: 13 }}>Ładowanie…</p>
-
-  const currentStatusIdx = STATUS_LIFECYCLE.findIndex((s) => s.status === contract.status)
 
   /* ── Oś czasu statusów ── */
   return (
@@ -571,55 +574,6 @@ function HistoriaOsiTab({
         ) : (
           <div style={{ fontSize: 13, color: C.muted }}>Brak przypisanego opiekuna</div>
         )}
-      </div>
-
-      {/* Sekcja: Cykl życia — oś statusów */}
-      <div>
-        <div style={{ fontSize: 10.5, fontWeight: 700, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 12 }}>
-          Cykl życia umowy
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 0 }}>
-          {STATUS_LIFECYCLE.map((step, idx) => {
-            const isDone = idx < currentStatusIdx
-            const isCurrent = idx === currentStatusIdx
-            const isLast = idx === STATUS_LIFECYCLE.length - 1
-            return (
-              <div key={step.status} style={{ display: 'flex', alignItems: 'center', flex: isLast ? 0 : 1 }}>
-                {/* Node */}
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
-                  <div style={{
-                    width: isCurrent ? 32 : 24,
-                    height: isCurrent ? 32 : 24,
-                    borderRadius: '50%',
-                    background: isCurrent ? step.color : isDone ? '#c6f6d5' : '#f2f0ed',
-                    border: isCurrent ? `3px solid ${step.color}` : isDone ? '2px solid #38a169' : `2px solid ${C.border}`,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    transition: 'all 0.2s',
-                    boxShadow: isCurrent ? `0 0 0 4px ${step.color}22` : 'none',
-                  }}>
-                    {isDone && <span style={{ fontSize: 11, color: '#276749' }}>✓</span>}
-                    {isCurrent && <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'white', display: 'block' }} />}
-                  </div>
-                  <div style={{
-                    fontSize: 10, fontWeight: isCurrent ? 700 : 500,
-                    color: isCurrent ? step.color : isDone ? '#276749' : C.muted,
-                    whiteSpace: 'nowrap', textAlign: 'center',
-                  }}>
-                    {step.label}
-                  </div>
-                </div>
-                {/* Connector */}
-                {!isLast && (
-                  <div style={{
-                    flex: 1, height: 2, marginBottom: 22,
-                    background: isDone ? '#38a169' : '#e3e0db',
-                    transition: 'background 0.2s',
-                  }} />
-                )}
-              </div>
-            )
-          })}
-        </div>
       </div>
 
       {/* Sekcja: Oś czasu wydarzeń */}
@@ -677,8 +631,40 @@ function HistoriaOsiTab({
   )
 }
 
+/* ─── Status transition rules ─────────────────────────────────── */
+// UX labels map backend statuses to business-meaningful names
+const STATUS_LABELS: Record<ContractStatus, string> = {
+  draft:      'Utworzona',
+  signed:     'Wysłana do klienta',
+  active:     'Podpisana / Aktywna',
+  expiring:   'Wygasająca',
+  terminated: 'Zakończona',
+}
+
+// Allowed transitions from each status
+const STATUS_TRANSITIONS: Record<ContractStatus, { to: ContractStatus; label: string; danger?: boolean }[]> = {
+  draft:      [{ to: 'signed',     label: 'Wyślij do klienta' },
+               { to: 'terminated', label: 'Anuluj umowę', danger: true }],
+  signed:     [{ to: 'active',     label: 'Oznacz jako podpisaną' },
+               { to: 'terminated', label: 'Zakończ umowę', danger: true }],
+  active:     [{ to: 'expiring',   label: 'Oznacz jako wygasającą' },
+               { to: 'terminated', label: 'Zakończ umowę', danger: true }],
+  expiring:   [{ to: 'active',     label: 'Przywróć aktywną' },
+               { to: 'terminated', label: 'Zakończ umowę', danger: true }],
+  terminated: [],
+}
+
+// Full lifecycle steps for the progress stepper
+const LIFECYCLE_STEPS: { status: ContractStatus; label: string }[] = [
+  { status: 'draft',      label: 'Utworzona' },
+  { status: 'signed',     label: 'Wysłana' },
+  { status: 'active',     label: 'Podpisana' },
+  { status: 'expiring',   label: 'Wygasa' },
+  { status: 'terminated', label: 'Zakończona' },
+]
+
 /* ─── Tab: Dane umowy ─────────────────────────────────────────── */
-function DaneTab({ contract, editing, form, saving, onStartEdit, onCancelEdit, onSave, onFormChange }: {
+function DaneTab({ contract, editing, form, saving, onStartEdit, onCancelEdit, onSave, onFormChange, onStatusChange, statusChanging }: {
   contract: ReturnType<typeof useContract>['data']
   editing: boolean
   form: Record<string, string>
@@ -687,6 +673,8 @@ function DaneTab({ contract, editing, form, saving, onStartEdit, onCancelEdit, o
   onCancelEdit: () => void
   onSave: () => void
   onFormChange: (k: string, v: string) => void
+  onStatusChange: (newStatus: ContractStatus) => void
+  statusChanging: boolean
 }) {
   if (!contract) return <p style={{ color: C.muted, fontSize: 13 }}>Ładowanie…</p>
 
@@ -765,6 +753,92 @@ function DaneTab({ contract, editing, form, saving, onStartEdit, onCancelEdit, o
           <p style={{ fontSize: 13, color: C.text, margin: 0, lineHeight: 1.6 }}>{contract.notes}</p>
         </div>
       )}
+
+      {/* Status lifecycle stepper + actions */}
+      <div style={{ border: `1px solid ${C.border}`, borderRadius: 10, overflow: 'hidden', marginBottom: 16 }}>
+        {/* Stepper header */}
+        <div style={{ padding: '14px 16px', borderBottom: `1px solid ${C.border}`, background: C.surface }}>
+          <div style={{ fontSize: 10.5, fontWeight: 700, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 14 }}>
+            Cykl życia umowy
+          </div>
+          <div style={{ position: 'relative' }}>
+            {/* Background connector line — from center of first dot to center of last dot */}
+            <div style={{
+              position: 'absolute', top: 11,
+              left: 'calc(10% + 12px)', right: 'calc(10% + 12px)',
+              height: 1.5, background: '#e3e0db', zIndex: 0,
+            }} />
+            {/* Steps */}
+            <div style={{ display: 'flex', position: 'relative', zIndex: 1 }}>
+              {LIFECYCLE_STEPS.map((step, idx) => {
+                const currentIdx = LIFECYCLE_STEPS.findIndex(s => s.status === contract.status)
+                const isDone = idx < currentIdx
+                const isCurrent = idx === currentIdx
+                return (
+                  <div key={step.status} style={{
+                    flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6,
+                  }}>
+                    <div style={{
+                      width: 24, height: 24, borderRadius: '50%',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontSize: 9, fontWeight: 800,
+                      background: isCurrent ? C.orange : isDone ? '#dcfce7' : 'white',
+                      border: isCurrent ? `2px solid ${C.orange}` : isDone ? '2px solid #16a34a' : `2px solid #d4d0cb`,
+                      color: isCurrent ? 'white' : isDone ? '#16a34a' : C.muted,
+                      boxShadow: isCurrent ? `0 0 0 3px rgba(232,92,4,0.12)` : 'none',
+                    }}>
+                      {isDone ? '✓' : idx + 1}
+                    </div>
+                    <span style={{
+                      fontSize: 9, fontWeight: isCurrent ? 700 : 500,
+                      color: isCurrent ? C.orange : isDone ? '#16a34a' : C.muted,
+                      lineHeight: 1.3, textAlign: 'center', display: 'block',
+                      whiteSpace: 'nowrap',
+                    }}>
+                      {step.label}
+                    </span>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        </div>
+
+        {/* Action buttons */}
+        {STATUS_TRANSITIONS[contract.status]?.length > 0 && (
+          <div style={{ padding: '12px 16px', display: 'flex', gap: 8 }}>
+            {STATUS_TRANSITIONS[contract.status].map((t) => (
+              <button
+                key={t.to}
+                disabled={statusChanging}
+                onClick={() => {
+                  if (t.danger && !window.confirm(`Czy na pewno chcesz zmienić status na "${STATUS_LABELS[t.to]}"?`)) return
+                  onStatusChange(t.to)
+                }}
+                style={{
+                  flex: 1, padding: '8px 0', borderRadius: 6,
+                  fontSize: 12, fontWeight: 600, cursor: statusChanging ? 'not-allowed' : 'pointer',
+                  fontFamily: 'inherit', transition: 'opacity 0.15s',
+                  opacity: statusChanging ? 0.55 : 1,
+                  ...(t.danger
+                    ? { background: 'white', color: '#b91c1c', border: '1px solid #fca5a5' }
+                    : { background: C.orange, color: 'white', border: 'none' }
+                  ),
+                }}
+              >
+                {statusChanging ? 'Zapisuję…' : t.label}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {contract.status === 'terminated' && (
+          <div style={{ padding: '12px 16px', fontSize: 12, color: C.muted, textAlign: 'center' }}>
+            Umowa zakończona — brak dostępnych akcji
+          </div>
+        )}
+      </div>
+
       <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
         <button onClick={onStartEdit} style={btnPrimary}>Edytuj</button>
       </div>
