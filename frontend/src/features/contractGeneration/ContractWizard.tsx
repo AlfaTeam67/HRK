@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 
 import { Modal } from '@/components/ui/modal'
 import { useCustomers } from '@/hooks/customers'
@@ -62,31 +62,30 @@ export function ContractWizard({ isOpen, onClose, onGenerated }: Props) {
     [customers, clientId],
   )
 
-  const [initKey, setInitKey] = useState(0)
-  useEffect(() => {
-    if (isOpen) setInitKey((k) => k + 1)
-  }, [isOpen])
+  const hasInited = useRef(false)
 
   useEffect(() => {
-    if (!isOpen || customers.length === 0 || initKey === 0) return
+    if (!isOpen) {
+      hasInited.current = false
+      return
+    }
+    if (hasInited.current || customers.length === 0) return
+    hasInited.current = true
+
     const first = customers[0]
-    // use setTimeout to break sync setState chain (avoids react-hooks/set-state-in-effect)
-    const id = setTimeout(() => {
-      setStep(1)
-      setType('ramowa')
-      setClientId(first.id)
-      setContractNumber(generateContractNumber(first.ckk, new Date().getFullYear()))
-      setStartDate(new Date().toISOString().split('T')[0])
-      setEndDate('')
-      setBillingCycle('monthly')
-      setServices(MOCK_SERVICES.map((s) => ({ id: s.id, name: s.name, included: true, price: s.basePrice })))
-      setPreamble('')
-      setNotes('')
-      setGenerated(false)
-    }, 0)
-    return () => clearTimeout(id)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [initKey])
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setStep(1)
+    setType('ramowa')
+    setClientId(first.id)
+    setContractNumber(generateContractNumber(first.ckk, new Date().getFullYear()))
+    setStartDate(new Date().toISOString().split('T')[0])
+    setEndDate('')
+    setBillingCycle('monthly')
+    setServices(MOCK_SERVICES.map((s) => ({ id: s.id, name: s.name, included: true, price: s.basePrice })))
+    setPreamble('')
+    setNotes('')
+    setGenerated(false)
+  }, [isOpen, customers])
 
   function handleClientChange(id: string) {
     setClientId(id)
