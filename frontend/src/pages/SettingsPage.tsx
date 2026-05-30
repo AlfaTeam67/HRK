@@ -47,7 +47,7 @@ export function SettingsPage() {
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
         <div>
           <h1 style={{ fontSize: 22, fontWeight: 700, color: '#1a1714', margin: 0, marginBottom: 2 }}>Ustawienia</h1>
-          <p style={{ fontSize: 12.5, color: '#9e9389', margin: 0 }}>Zarządzanie użytkownikami, rolami i uprawnieniami systemu CRM.</p>
+          <p style={{ fontSize: 12.5, color: '#7a6f67', margin: 0 }}>Zarządzanie użytkownikami, rolami i uprawnieniami systemu CRM.</p>
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
           <button style={{ background: 'white', border: '1px solid #e3e0db', borderRadius: 6, padding: '7px 14px', fontSize: 13, color: '#6b6b6b', cursor: 'pointer' }}>
@@ -64,9 +64,9 @@ export function SettingsPage() {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 14, marginBottom: 20 }}>
         {kpis.map((kpi) => (
           <div key={kpi.label} style={{ ...card, padding: '16px 18px', borderTop: `3px solid ${kpi.color}` }}>
-            <div style={{ fontSize: 10, fontWeight: 700, color: '#9e9389', letterSpacing: '0.07em', marginBottom: 8 }}>{kpi.label}</div>
+            <div style={{ fontSize: 10, fontWeight: 700, color: '#7a6f67', letterSpacing: '0.07em', marginBottom: 8 }}>{kpi.label}</div>
             <div style={{ fontSize: 28, fontWeight: 800, color: '#1a1714', lineHeight: 1, marginBottom: 6 }}>{kpi.value}</div>
-            <div style={{ fontSize: 11, color: '#9e9389' }}>{kpi.sub}</div>
+            <div style={{ fontSize: 11, color: '#7a6f67' }}>{kpi.sub}</div>
           </div>
         ))}
       </div>
@@ -77,7 +77,7 @@ export function SettingsPage() {
           {(['users', 'roles'] as const).map((tab) => {
             const labels = { users: 'Użytkownicy', roles: 'Role i uprawnienia' }
             return (
-              <button key={tab} onClick={() => setActiveTab(tab)} style={{ padding: '12px 16px', fontSize: 13, fontWeight: 600, border: 'none', background: 'none', cursor: 'pointer', color: activeTab === tab ? '#e85c04' : '#9e9389', borderBottom: activeTab === tab ? '2px solid #e85c04' : '2px solid transparent' }}>
+              <button key={tab} onClick={() => setActiveTab(tab)} style={{ padding: '12px 16px', fontSize: 13, fontWeight: 600, border: 'none', background: 'none', cursor: 'pointer', color: activeTab === tab ? '#e85c04' : '#7a6f67', borderBottom: activeTab === tab ? '2px solid #e85c04' : '2px solid transparent' }}>
                 {labels[tab]}
               </button>
             )
@@ -89,7 +89,7 @@ export function SettingsPage() {
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
               <thead>
                 <tr>{['UŻYTKOWNIK','ROLA','KLIENCI','STATUS','OSTATNIE LOGOWANIE',''].map(col => (
-                  <th key={col} style={{ textAlign: 'left', fontSize: 10, fontWeight: 700, color: '#9e9389', letterSpacing: '0.06em', paddingBottom: 10, borderBottom: '1px solid #f2f0ed' }}>{col}</th>
+                  <th key={col} style={{ textAlign: 'left', fontSize: 10, fontWeight: 700, color: '#7a6f67', letterSpacing: '0.06em', paddingBottom: 10, borderBottom: '1px solid #f2f0ed' }}>{col}</th>
                 ))}</tr>
               </thead>
               <tbody>
@@ -100,7 +100,7 @@ export function SettingsPage() {
                         <div style={{ width: 32, height: 32, borderRadius: '50%', background: u.ac, color: 'white', fontSize: 11, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{u.avatar}</div>
                         <div>
                           <div style={{ fontWeight: 700, color: '#1a1714' }}>{u.name}</div>
-                          <div style={{ fontSize: 11, color: '#9e9389' }}>{u.email}</div>
+                          <div style={{ fontSize: 11, color: '#7a6f67' }}>{u.email}</div>
                         </div>
                       </div>
                     </td>
@@ -111,7 +111,7 @@ export function SettingsPage() {
                     <td style={{ padding: '11px 8px' }}>
                       <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 20, fontWeight: 600, background: u.status === 'Aktywny' ? '#f0fff4' : '#f9f8f6', color: u.status === 'Aktywny' ? '#276749' : '#6b6b6b' }}>{u.status}</span>
                     </td>
-                    <td style={{ padding: '11px 8px', color: '#9e9389', fontSize: 12 }}>{u.lastLogin}</td>
+                    <td style={{ padding: '11px 8px', color: '#7a6f67', fontSize: 12 }}>{u.lastLogin}</td>
                     <td style={{ padding: '11px 0' }}>
                       <button style={{ fontSize: 11, border: '1px solid #e3e0db', borderRadius: 6, padding: '3px 10px', background: 'white', color: '#4b5563', cursor: 'pointer' }}>Edytuj</button>
                     </td>

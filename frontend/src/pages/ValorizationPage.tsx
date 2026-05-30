@@ -59,7 +59,7 @@ export function ValorizationPage() {
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
         <div>
           <h1 style={{ fontSize: 22, fontWeight: 700, color: '#1a1714', margin: 0, marginBottom: 2 }}>Waloryzacja</h1>
-          <p style={{ fontSize: 12.5, color: '#9e9389', margin: 0 }}>Reguły waloryzacji, wskaźniki GUS i pipeline odnowień umów.</p>
+          <p style={{ fontSize: 12.5, color: '#7a6f67', margin: 0 }}>Reguły waloryzacji, wskaźniki GUS i pipeline odnowień umów.</p>
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
           <button style={{ background: 'white', border: '1px solid #e3e0db', borderRadius: 6, padding: '7px 14px', fontSize: 13, color: '#6b6b6b', cursor: 'pointer' }}>
@@ -169,7 +169,7 @@ export function ValorizationPage() {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 14, marginBottom: 20 }}>
         {kpis.map((kpi) => (
           <div key={kpi.label} style={{ ...card, padding: '16px 18px', borderTop: `3px solid ${kpi.color}` }}>
-            <div style={{ fontSize: 10, fontWeight: 700, color: '#9e9389', letterSpacing: '0.07em', marginBottom: 8 }}>{kpi.label}</div>
+            <div style={{ fontSize: 10, fontWeight: 700, color: '#7a6f67', letterSpacing: '0.07em', marginBottom: 8 }}>{kpi.label}</div>
             <div style={{ fontSize: 30, fontWeight: 800, color: '#1a1714', lineHeight: 1, marginBottom: 6 }}>{kpi.value}</div>
             <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 4, fontWeight: 600, background: kpi.color + '18', color: kpi.color }}>{kpi.sub}</span>
           </div>
@@ -178,7 +178,7 @@ export function ValorizationPage() {
 
       {/* GUS update info */}
       {cpiUpdated && (
-        <div style={{ marginBottom: 14, display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, color: '#9e9389' }}>
+        <div style={{ marginBottom: 14, display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, color: '#7a6f67' }}>
           <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
           Wskaźnik CPI ({cpiDisplay}) pobrano z GUS BDL · zaktualizowano: {cpiUpdated}
         </div>
@@ -188,7 +188,7 @@ export function ValorizationPage() {
       <div style={{ ...card, overflow: 'hidden', marginBottom: 16 }}>
         <div style={{ padding: '14px 18px', borderBottom: '1px solid #f2f0ed' }}>
           <div style={{ fontSize: 14, fontWeight: 700, color: '#1a1714' }}>Reguły waloryzacji</div>
-          <div style={{ fontSize: 12, color: '#9e9389', marginTop: 2 }}>Wskaźniki indeksacji i statusy dla aktywnych umów</div>
+          <div style={{ fontSize: 12, color: '#7a6f67', marginTop: 2 }}>Wskaźniki indeksacji i statusy dla aktywnych umów</div>
         </div>
         <div style={{ padding: '0 18px 18px' }}>
           {rules.map((v, i) => {
@@ -203,23 +203,23 @@ export function ValorizationPage() {
               }}>
                 <div>
                   <div style={{ fontWeight: 700, fontSize: 13, color: '#1a1714' }}>{v.client}</div>
-                  <div style={{ fontSize: 11, color: '#9e9389', marginTop: 1 }}>{v.contract}</div>
+                  <div style={{ fontSize: 11, color: '#7a6f67', marginTop: 1 }}>{v.contract}</div>
                 </div>
                 <div>
-                  <div style={{ fontSize: 10, color: '#9e9389', marginBottom: 2, fontWeight: 600 }}>INDEKS / PRÓG</div>
+                  <div style={{ fontSize: 10, color: '#7a6f67', marginBottom: 2, fontWeight: 600 }}>INDEKS / PRÓG</div>
                   <div style={{ fontSize: 12, fontWeight: 600, color: '#1a1714' }}>{v.index} · {v.threshold}</div>
                 </div>
                 <div>
-                  <div style={{ fontSize: 10, color: '#9e9389', marginBottom: 2, fontWeight: 600 }}>OBECNY GUS</div>
+                  <div style={{ fontSize: 10, color: '#7a6f67', marginBottom: 2, fontWeight: 600 }}>OBECNY GUS</div>
                   <div style={{ fontSize: 14, fontWeight: 800, color: '#e85c04' }}>{v.current}</div>
                 </div>
                 <div>
-                  <div style={{ fontSize: 10, color: '#9e9389', marginBottom: 2, fontWeight: 600 }}>OSTATNIA ZMIANA</div>
+                  <div style={{ fontSize: 10, color: '#7a6f67', marginBottom: 2, fontWeight: 600 }}>OSTATNIA ZMIANA</div>
                   <div style={{ fontSize: 12, fontWeight: 700, color: '#276749' }}>{v.last}</div>
-                  <div style={{ fontSize: 10, color: '#9e9389' }}>{v.lastDate}</div>
+                  <div style={{ fontSize: 10, color: '#7a6f67' }}>{v.lastDate}</div>
                 </div>
                 <div>
-                  <div style={{ fontSize: 10, color: '#9e9389', marginBottom: 2, fontWeight: 600 }}>PLANOWANA OD</div>
+                  <div style={{ fontSize: 10, color: '#7a6f67', marginBottom: 2, fontWeight: 600 }}>PLANOWANA OD</div>
                   <div style={{ fontSize: 12, fontWeight: 600, color: '#1a1714' }}>{v.effective}</div>
                 </div>
                 <div style={{ textAlign: 'right' }}>
@@ -237,7 +237,7 @@ export function ValorizationPage() {
       <div style={card}>
         <div style={{ padding: '14px 18px', borderBottom: '1px solid #f2f0ed' }}>
           <div style={{ fontSize: 14, fontWeight: 700, color: '#1a1714' }}>Pipeline odnowień</div>
-          <div style={{ fontSize: 12, color: '#9e9389', marginTop: 2 }}>Etapy procesu renegocjacji i waloryzacji umów</div>
+          <div style={{ fontSize: 12, color: '#7a6f67', marginTop: 2 }}>Etapy procesu renegocjacji i waloryzacji umów</div>
         </div>
         <div style={{ padding: '18px', display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 14 }}>
           {pipeline.map((stage, i) => (
@@ -246,9 +246,9 @@ export function ValorizationPage() {
                 <div style={{ position: 'absolute', right: -14, top: '50%', transform: 'translateY(-50%)', color: '#e3e0db', fontSize: 20, zIndex: 1 }}>›</div>
               )}
               <div style={{ borderRadius: 8, background: '#fafaf9', border: '1px solid #f2f0ed', borderTop: `3px solid ${stage.color}`, padding: '18px 16px', textAlign: 'center' }}>
-                <div style={{ fontSize: 10, fontWeight: 700, color: '#9e9389', marginBottom: 10, letterSpacing: '0.05em', textTransform: 'uppercase' }}>{stage.stage}</div>
+                <div style={{ fontSize: 10, fontWeight: 700, color: '#7a6f67', marginBottom: 10, letterSpacing: '0.05em', textTransform: 'uppercase' }}>{stage.stage}</div>
                 <div style={{ fontSize: 34, fontWeight: 800, color: '#1a1714', lineHeight: 1, marginBottom: 4 }}>{stage.count}</div>
-                <div style={{ fontSize: 11, color: '#9e9389', marginBottom: 10 }}>umów</div>
+                <div style={{ fontSize: 11, color: '#7a6f67', marginBottom: 10 }}>umów</div>
                 <div style={{ fontSize: 15, fontWeight: 700, color: stage.color }}>{stage.value}</div>
               </div>
             </div>

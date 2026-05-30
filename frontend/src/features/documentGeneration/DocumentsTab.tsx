@@ -288,7 +288,7 @@ function GenerationRow({ gen, busy, onAccept, onReject, onDownloadPdf, onDownloa
       <div style={{ display: 'flex', gap: 8, flexShrink: 0, alignItems: 'center' }}>
         {canAccept && (
           <span style={{
-            fontSize: 9, fontWeight: 700, color: '#9e9389',
+            fontSize: 9, fontWeight: 700, color: '#7a6f67',
             background: '#f5f2ef', border: '1px solid #e3e0db',
             borderRadius: 4, padding: '2px 6px', letterSpacing: '0.05em', whiteSpace: 'nowrap',
           }}>
@@ -320,7 +320,7 @@ function AttachmentRow({ doc, onDownload, onPreview }: { doc: DocumentRead; onDo
     <div style={{
       background: 'white',
       border: `1px solid ${colors.border}`,
-      borderLeft: `3px solid #9e9389`,
+      borderLeft: `3px solid #7a6f67`,
       borderRadius: 10,
       padding: '12px 16px',
       display: 'flex',
