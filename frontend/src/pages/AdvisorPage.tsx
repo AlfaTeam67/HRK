@@ -105,8 +105,8 @@ function DocumentList({
     return (
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 12, padding: 32, background: 'linear-gradient(160deg, #fafaf9 0%, #f5f2ef 100%)' }}>
         <div style={{ width: 64, height: 64, borderRadius: 16, background: '#f0ede9', border: '1px solid #e3e0db', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 28 }}>📂</div>
-        <div style={{ fontSize: 14, fontWeight: 700, color: '#9e9389', textAlign: 'center' }}>Brak dokumentów</div>
-        <div style={{ fontSize: 12, color: '#b5afa8', textAlign: 'center', maxWidth: 200, lineHeight: 1.6 }}>
+        <div style={{ fontSize: 14, fontWeight: 700, color: '#7a6f67', textAlign: 'center' }}>Brak dokumentów</div>
+        <div style={{ fontSize: 12, color: '#8a8077', textAlign: 'center', maxWidth: 200, lineHeight: 1.6 }}>
           Dla tego klienta nie ma jeszcze żadnych dokumentów.
         </div>
       </div>
@@ -153,7 +153,7 @@ function DocumentList({
                 {doc.document_type}
               </span>
               {doc.file_size_bytes ? (
-                <span style={{ fontSize: 10, color: '#b5afa8' }}>{fmtBytes(doc.file_size_bytes)}</span>
+                <span style={{ fontSize: 10, color: '#8a8077' }}>{fmtBytes(doc.file_size_bytes)}</span>
               ) : null}
               <OcrStatusBadge status={doc.ocr_status as OcrStatus} />
             </div>
@@ -161,7 +161,7 @@ function DocumentList({
 
           {/* Arrow */}
           <div style={{ width: 28, height: 28, borderRadius: '50%', background: '#f5f2ef', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#9e9389" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#7a6f67" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <polyline points="9 18 15 12 9 6" />
             </svg>
           </div>
@@ -489,10 +489,10 @@ export function AdvisorPage() {
                 style={{
                   display: 'flex', alignItems: 'center', gap: 6,
                   background: 'none', border: 'none', cursor: 'pointer', padding: 0,
-                  color: '#9e9389', fontFamily: 'inherit', transition: 'color 0.15s',
+                  color: '#7a6f67', fontFamily: 'inherit', transition: 'color 0.15s',
                 }}
                 onMouseEnter={(e) => (e.currentTarget.style.color = '#e85c04')}
-                onMouseLeave={(e) => (e.currentTarget.style.color = '#9e9389')}
+                onMouseLeave={(e) => (e.currentTarget.style.color = '#7a6f67')}
               >
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                   <polyline points="15 18 9 12 15 6" />
@@ -507,7 +507,7 @@ export function AdvisorPage() {
                 <div>
                   <div style={{ fontSize: 13, fontWeight: 700, color: '#1a1714', lineHeight: 1.2 }}>Dokumenty klienta</div>
                   {!docsLoading && (
-                    <div style={{ fontSize: 10, color: '#9e9389' }}>
+                    <div style={{ fontSize: 10, color: '#7a6f67' }}>
                       {customerDocs.length} {customerDocs.length === 1 ? 'plik' : 'pliki/plików'}
                     </div>
                   )}
@@ -521,7 +521,7 @@ export function AdvisorPage() {
                   {activeDocView.title}
                 </div>
                 {numPages > 0 && (
-                  <div style={{ fontSize: 10, color: '#9e9389', flexShrink: 0 }}>· {numPages} str.</div>
+                  <div style={{ fontSize: 10, color: '#7a6f67', flexShrink: 0 }}>· {numPages} str.</div>
                 )}
               </div>
             )}
@@ -544,7 +544,7 @@ export function AdvisorPage() {
                           <div key={i} style={{ width: 7, height: 7, borderRadius: '50%', background: '#e85c04', animation: `dot-bounce 1.2s ease-in-out ${i * 0.2}s infinite` }} />
                         ))}
                       </div>
-                      <div style={{ fontSize: 12, color: '#9e9389' }}>Pobieranie dokumentu...</div>
+                      <div style={{ fontSize: 12, color: '#7a6f67' }}>Pobieranie dokumentu...</div>
                     </div>
                   )}
                   {pdfFetchError && (
@@ -581,7 +581,7 @@ export function AdvisorPage() {
                   onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
                   disabled={currentPage <= 1}
                   title="Poprzednia strona"
-                  style={{ position: 'absolute', left: 8, top: '50%', transform: 'translateY(-50%)', width: 38, height: 38, borderRadius: '50%', background: currentPage <= 1 ? 'rgba(200,190,180,0.5)' : 'white', border: 'none', cursor: currentPage <= 1 ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: currentPage <= 1 ? '#b5afa8' : '#1a1714', boxShadow: currentPage <= 1 ? 'none' : '0 2px 12px rgba(0,0,0,0.18)', transition: 'all 0.15s' }}
+                  style={{ position: 'absolute', left: 8, top: '50%', transform: 'translateY(-50%)', width: 38, height: 38, borderRadius: '50%', background: currentPage <= 1 ? 'rgba(200,190,180,0.5)' : 'white', border: 'none', cursor: currentPage <= 1 ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: currentPage <= 1 ? '#8a8077' : '#1a1714', boxShadow: currentPage <= 1 ? 'none' : '0 2px 12px rgba(0,0,0,0.18)', transition: 'all 0.15s' }}
                   onMouseEnter={(e) => { if (currentPage > 1) { e.currentTarget.style.boxShadow = '0 4px 18px rgba(232,92,4,0.22)'; e.currentTarget.style.color = '#e85c04' } }}
                   onMouseLeave={(e) => { if (currentPage > 1) { e.currentTarget.style.boxShadow = '0 2px 12px rgba(0,0,0,0.18)'; e.currentTarget.style.color = '#1a1714' } }}
                 >
@@ -594,7 +594,7 @@ export function AdvisorPage() {
                   onClick={() => setCurrentPage((p) => Math.min(numPages, p + 1))}
                   disabled={currentPage >= numPages}
                   title="Następna strona"
-                  style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', width: 38, height: 38, borderRadius: '50%', background: currentPage >= numPages ? 'rgba(200,190,180,0.5)' : 'white', border: 'none', cursor: currentPage >= numPages ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: currentPage >= numPages ? '#b5afa8' : '#1a1714', boxShadow: currentPage >= numPages ? 'none' : '0 2px 12px rgba(0,0,0,0.18)', transition: 'all 0.15s' }}
+                  style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', width: 38, height: 38, borderRadius: '50%', background: currentPage >= numPages ? 'rgba(200,190,180,0.5)' : 'white', border: 'none', cursor: currentPage >= numPages ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: currentPage >= numPages ? '#8a8077' : '#1a1714', boxShadow: currentPage >= numPages ? 'none' : '0 2px 12px rgba(0,0,0,0.18)', transition: 'all 0.15s' }}
                   onMouseEnter={(e) => { if (currentPage < numPages) { e.currentTarget.style.boxShadow = '0 4px 18px rgba(232,92,4,0.22)'; e.currentTarget.style.color = '#e85c04' } }}
                   onMouseLeave={(e) => { if (currentPage < numPages) { e.currentTarget.style.boxShadow = '0 2px 12px rgba(0,0,0,0.18)'; e.currentTarget.style.color = '#1a1714' } }}
                 >
@@ -632,11 +632,11 @@ export function AdvisorPage() {
               </div>
               <div>
                 <div style={{ fontSize: 13, fontWeight: 700, color: '#1a1714', lineHeight: 1.2 }}>AI Asystent</div>
-                <div style={{ fontSize: 10, color: '#9e9389' }}>RAG · dokumenty klienta</div>
+                <div style={{ fontSize: 10, color: '#7a6f67' }}>RAG · dokumenty klienta</div>
               </div>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <label htmlFor={clientContextSelectId} style={{ fontSize: 11, color: '#9e9389', fontWeight: 500 }}>
+              <label htmlFor={clientContextSelectId} style={{ fontSize: 11, color: '#7a6f67', fontWeight: 500 }}>
                 Kontekst:
               </label>
               <select
@@ -673,7 +673,7 @@ export function AdvisorPage() {
                       🤖
                     </div>
                     <span style={{ fontSize: 12, fontWeight: 700, color: '#c94f02' }}>AI Asystent</span>
-                    <span style={{ fontSize: 10, color: '#9e9389' }}>{msg.ts}</span>
+                    <span style={{ fontSize: 10, color: '#7a6f67' }}>{msg.ts}</span>
                   </div>
                 )}
                 <div
@@ -719,7 +719,7 @@ export function AdvisorPage() {
                           </button>
                           <div style={{ fontSize: 12.5, lineHeight: 1.6, color: '#3d3530' }}>
                             <span style={{ fontWeight: 700 }}>Fragment {frag.index}</span>
-                            <span style={{ fontSize: 11, color: '#9e9389', marginLeft: 4 }}>
+                            <span style={{ fontSize: 11, color: '#7a6f67', marginLeft: 4 }}>
                               ({Math.round(frag.similarity * 100)}% zgodności)
                             </span>
                             <br />
@@ -768,7 +768,7 @@ export function AdvisorPage() {
                   )}
                 </div>
                 {msg.role === 'user' && (
-                  <span style={{ fontSize: 10, color: '#9e9389', marginTop: 3 }}>{msg.ts}</span>
+                  <span style={{ fontSize: 10, color: '#7a6f67', marginTop: 3 }}>{msg.ts}</span>
                 )}
               </div>
             ))}
@@ -821,7 +821,7 @@ export function AdvisorPage() {
                   padding: '6px 14px', borderRadius: 20, flexShrink: 0,
                   border: `1px solid ${isAiMode ? '#fdd5b8' : '#e3e0db'}`,
                   background: isAiMode ? 'linear-gradient(135deg, #e85c04, #c94f02)' : '#fafaf9',
-                  color: isAiMode ? 'white' : '#9e9389',
+                  color: isAiMode ? 'white' : '#7a6f67',
                   fontSize: 11, fontWeight: 700, cursor: 'pointer',
                   transition: 'all 0.2s',
                   boxShadow: isAiMode ? '0 3px 10px rgba(232,92,4,0.25)' : 'none',
@@ -830,19 +830,19 @@ export function AdvisorPage() {
                 <span style={{ fontSize: 13 }}>🧠</span>
                 Rozumowanie AI
                 <div style={{ width: 24, height: 12, borderRadius: 6, background: isAiMode ? 'rgba(255,255,255,0.3)' : '#e3e0db', position: 'relative', flexShrink: 0 }}>
-                  <div style={{ position: 'absolute', top: 2, left: isAiMode ? 12 : 2, width: 8, height: 8, borderRadius: '50%', background: isAiMode ? 'white' : '#9e9389', transition: 'left 0.2s' }} />
+                  <div style={{ position: 'absolute', top: 2, left: isAiMode ? 12 : 2, width: 8, height: 8, borderRadius: '50%', background: isAiMode ? 'white' : '#7a6f67', transition: 'left 0.2s' }} />
                 </div>
               </button>
               <button
                 onClick={() => setIsInfoModalOpen(true)}
                 title="Informacje o trybach"
                 style={{
-                  background: '#f5f2ef', border: '1px solid #e3e0db', color: '#9e9389',
+                  background: '#f5f2ef', border: '1px solid #e3e0db', color: '#7a6f67',
                   cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
                   width: 28, height: 28, borderRadius: 8, transition: 'all 0.2s', flexShrink: 0,
                 }}
                 onMouseEnter={(e) => { e.currentTarget.style.color = '#e85c04'; e.currentTarget.style.borderColor = '#fdd5b8' }}
-                onMouseLeave={(e) => { e.currentTarget.style.color = '#9e9389'; e.currentTarget.style.borderColor = '#e3e0db' }}
+                onMouseLeave={(e) => { e.currentTarget.style.color = '#7a6f67'; e.currentTarget.style.borderColor = '#e3e0db' }}
               >
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                   <circle cx="12" cy="12" r="10" /><line x1="12" y1="16" x2="12" y2="12" /><line x1="12" y1="8" x2="12.01" y2="8" />

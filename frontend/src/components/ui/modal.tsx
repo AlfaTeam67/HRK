@@ -56,7 +56,7 @@ export function Modal({ isOpen, onClose, title, children, maxWidth = 500 }: Moda
             onClick={onClose}
             style={{
               background: 'none', border: 'none', cursor: 'pointer',
-              color: '#9e9389', display: 'flex', alignItems: 'center', padding: 4,
+              color: '#7a6f67', display: 'flex', alignItems: 'center', padding: 4,
             }}
           >
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

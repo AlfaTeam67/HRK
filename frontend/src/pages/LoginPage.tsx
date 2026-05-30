@@ -38,7 +38,7 @@ export function LoginPage() {
           <h1 style={{ fontSize: 20, fontWeight: 800, color: '#1a1714', margin: 0, marginBottom: 4 }}>
             HRK Payroll Consulting
           </h1>
-          <p style={{ fontSize: 12.5, color: '#9e9389', margin: 0 }}>
+          <p style={{ fontSize: 12.5, color: '#7a6f67', margin: 0 }}>
             System CRM · Środowisko wewnętrzne
           </p>
         </div>
@@ -71,7 +71,7 @@ export function LoginPage() {
             </div>
             <div>
               <div style={{ fontSize: 12, fontWeight: 700, color: '#1a1714' }}>Active Directory</div>
-              <div style={{ fontSize: 11, color: '#9e9389' }}>HRK\domena · logowanie SSO</div>
+              <div style={{ fontSize: 11, color: '#7a6f67' }}>HRK\domena · logowanie SSO</div>
             </div>
           </div>
 
@@ -137,7 +137,7 @@ export function LoginPage() {
             margin: '20px 0 16px',
           }}>
             <div style={{ flex: 1, height: 1, background: '#f2f0ed' }} />
-            <span style={{ fontSize: 10.5, fontWeight: 600, color: '#b5afa8', whiteSpace: 'nowrap' }}>
+            <span style={{ fontSize: 10.5, fontWeight: 600, color: '#8a8077', whiteSpace: 'nowrap' }}>
               SYMULACJA KONT
             </span>
             <div style={{ flex: 1, height: 1, background: '#f2f0ed' }} />
@@ -184,7 +184,7 @@ export function LoginPage() {
                   <div style={{ fontSize: 13, fontWeight: 700, color: '#1a1714' }}>
                     {u.displayName}
                   </div>
-                  <div style={{ fontSize: 11, color: '#9e9389' }}>
+                  <div style={{ fontSize: 11, color: '#7a6f67' }}>
                     HRK\{u.login} · {u.department}
                   </div>
                 </div>
@@ -197,7 +197,7 @@ export function LoginPage() {
         </div>
 
         {/* ── Footer ────────────────────────────────── */}
-        <p style={{ textAlign: 'center', fontSize: 11, color: '#b5afa8', marginTop: 20 }}>
+        <p style={{ textAlign: 'center', fontSize: 11, color: '#8a8077', marginTop: 20 }}>
           HRK Payroll Consulting · System wewnętrzny
         </p>
       </div>
