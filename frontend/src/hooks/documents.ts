@@ -1,6 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { apiClient } from '@/lib/axios'
 import type { DocumentRead } from '@/types/models'
+import type { components } from '@/types/api'
+
+type AiAssistantToggleResult = components['schemas']['AiAssistantToggleResult']
+type AiAssistantBulkResponse = components['schemas']['AiAssistantBulkResponse']
+type DocumentReindexResult = components['schemas']['DocumentReindexResult']
 
 const BASE = '/api/v1/documents'
 
@@ -11,6 +16,7 @@ export interface DocumentUploadParams {
   customer_id?: string
   contract_id?: string
   uploaded_by: string
+  include_in_ai_assistant?: boolean
 }
 
 export function useUploadDocument() {
@@ -25,6 +31,9 @@ export function useUploadDocument() {
       if (params.customer_id) formData.append('customer_id', params.customer_id)
       if (params.contract_id) formData.append('contract_id', params.contract_id)
       formData.append('uploaded_by', params.uploaded_by)
+      if (params.include_in_ai_assistant !== undefined) {
+        formData.append('include_in_ai_assistant', String(params.include_in_ai_assistant))
+      }
 
       const { data } = await apiClient.post<DocumentRead>(`${BASE}/`, formData, {
         headers: {
@@ -44,6 +53,7 @@ export function useDocumentsQuery(params?: {
   customer_id?: string
   contract_id?: string
   exclude_draft?: boolean
+  include_in_ai_assistant_only?: boolean
 }) {
   return useQuery({
     queryKey: ['documents', params],
@@ -79,6 +89,76 @@ export function useDeleteDocument() {
   return useMutation({
     mutationFn: async ({ id, userId }: { id: string; userId: string }) => {
       await apiClient.delete(`${BASE}/${id}`, { params: { requester_user_id: userId } })
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['documents'] })
+    },
+  })
+}
+
+
+/* ─── AI assistant toggle / bulk / reindex ─── */
+
+export function useToggleAiAssistant() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async ({
+      id,
+      enabled,
+      userId,
+    }: {
+      id: string
+      enabled: boolean
+      userId: string
+    }) => {
+      const { data } = await apiClient.patch<AiAssistantToggleResult>(
+        `${BASE}/${id}/ai-assistant`,
+        { enabled },
+        { params: { requester_user_id: userId } },
+      )
+      return data
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['documents'] })
+    },
+  })
+}
+
+export function useBulkToggleAiAssistant() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async ({
+      ids,
+      enabled,
+      userId,
+    }: {
+      ids: string[]
+      enabled: boolean
+      userId: string
+    }) => {
+      const { data } = await apiClient.post<AiAssistantBulkResponse>(
+        `${BASE}/bulk/ai-assistant`,
+        { ids, enabled },
+        { params: { requester_user_id: userId } },
+      )
+      return data
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['documents'] })
+    },
+  })
+}
+
+export function useReindexDocument() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ id, userId }: { id: string; userId: string }) => {
+      const { data } = await apiClient.post<DocumentReindexResult>(
+        `${BASE}/${id}/reindex`,
+        null,
+        { params: { requester_user_id: userId } },
+      )
+      return data
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['documents'] })

@@ -23,7 +23,10 @@ backend/
 │       ├── b9813a3347a3_merge_multiple_heads.py
 │       ├── c3f8e2a1b0d9_normalize_enum_values_to_lowercase.py
 │       ├── d7e2c1f4a9b3_add_document_generations.py
-│       └── f3a9b2c1d8e4_add_primary_document_to_contracts.py
+│       ├── f3a9b2c1d8e4_add_primary_document_to_contracts.py
+│       ├── e1f2a3b4c5d6_add_gus_cpi_snapshots.py
+│       ├── a2b3c4d5e6f7_merge_gus_cpi_and_primary_document_heads.py
+│       └── b8c9d0e1f2a3_add_include_in_ai_assistant_to_attachments.py
 ```
 
 ---

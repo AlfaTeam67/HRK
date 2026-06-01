@@ -16,6 +16,7 @@ from app.models.enums import OcrStatus
 from app.repo.attachment import AttachmentRepository
 from app.repo.document_chunk import DocumentChunkRepository
 from app.service.embedding import EmbeddingService
+from app.service.storage import StorageService
 
 logger = logging.getLogger(__name__)
 
@@ -26,6 +27,13 @@ _PDF_MIME = "application/pdf"
 _TEXT_MIME = "text/plain"
 _IMAGE_MIMES = {"image/jpeg", "image/png", "image/tiff", "image/bmp", "image/webp"}
 _PROCESSABLE = {_PDF_MIME, _TEXT_MIME} | _IMAGE_MIMES
+
+
+def is_processable_mime(mime_type: str | None) -> bool:
+    """Return True if the chunker/embedding pipeline supports this MIME type."""
+    if not mime_type:
+        return False
+    return mime_type in _PROCESSABLE
 
 
 def _split_long(text: str, page: int | None) -> list[tuple[str, int | None]]:
@@ -146,13 +154,12 @@ def _build_chunks(paragraphs: list[tuple[str, int | None]]) -> list[dict]:
 class DocumentProcessingService:
     def __init__(self) -> None:
         self._embed = EmbeddingService()
+        self._storage = StorageService()
 
     async def process(
         self,
         attachment_id: UUID,
         customer_id: UUID | None,
-        content: bytes,
-        mime_type: str,
     ) -> None:
         async with AsyncSessionLocal() as session:
             attachments = AttachmentRepository(session)
@@ -165,6 +172,8 @@ class DocumentProcessingService:
                 )
                 return
 
+            mime_type = attachment.mime_type or ""
+
             if mime_type not in _PROCESSABLE:
                 attachment.ocr_status = OcrStatus.SKIPPED
                 await session.commit()
@@ -174,6 +183,7 @@ class DocumentProcessingService:
             await session.commit()
 
             try:
+                content, _ = await self._storage.get_object_bytes(key=attachment.s3_key)
                 paragraphs = _extract_paragraphs(content, mime_type)
                 raw_chunks = _build_chunks(paragraphs)
 

@@ -196,6 +196,57 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/documents/{id}/ai-assistant": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Set Ai Assistant Enabled */
+        patch: operations["set_ai_assistant_enabled_api_v1_documents__id__ai_assistant_patch"];
+        trace?: never;
+    };
+    "/api/v1/documents/bulk/ai-assistant": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Bulk Set Ai Assistant Enabled */
+        post: operations["bulk_set_ai_assistant_enabled_api_v1_documents_bulk_ai_assistant_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/documents/{id}/reindex": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Reindex Document */
+        post: operations["reindex_document_api_v1_documents__id__reindex_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/gus/cpi": {
         parameters: {
             query?: never;
@@ -371,23 +422,6 @@ export interface paths {
         put?: never;
         /** Search Documents */
         post: operations["search_documents_api_v1_rag_search_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/reports/activity": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Activity log report */
-        get: operations["get_activity_report_api_v1_reports_activity_get"];
-        put?: never;
-        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -756,23 +790,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/valorizations/auto": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Auto-generate valorizations */
-        post: operations["auto_generate_valorizations_api_v1_valorizations_auto_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/v1/valorizations/{valorization_id}": {
         parameters: {
             query?: never;
@@ -884,17 +901,6 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
-        /** ActivityKPI */
-        ActivityKPI: {
-            /** Events Count */
-            events_count: number;
-            /** Meetings Count */
-            meetings_count: number;
-            /** Documents Count */
-            documents_count: number;
-            /** Notes Count */
-            notes_count: number;
-        };
         /**
          * ActivityLogCreate
          * @description Request payload for creating an activity log entry.
@@ -951,49 +957,64 @@ export interface components {
              */
             created_at: string;
         };
-        /** ActivityLogReportItem */
-        ActivityLogReportItem: {
-            /**
-             * Id
-             * Format: uuid
-             */
-            id: string;
-            /** Customer Id */
-            customer_id: string | null;
-            /** Contract Id */
-            contract_id: string | null;
-            activity_type: components["schemas"]["ActivityType"];
-            /** Description */
-            description: string;
-            /** Performed By */
-            performed_by: string | null;
-            /** Performed By Login */
-            performed_by_login: string | null;
-            /**
-             * Activity Date
-             * Format: date-time
-             */
-            activity_date: string;
-            /** Additional Data */
-            additional_data: {
-                [key: string]: unknown;
-            };
-            /** Is Own */
-            is_own: boolean;
-        };
-        /** ActivityLogReportResponse */
-        ActivityLogReportResponse: {
-            /** Items */
-            items: components["schemas"]["ActivityLogReportItem"][];
-            kpi: components["schemas"]["ActivityKPI"];
-            /** Total */
-            total: number;
-        };
         /**
          * ActivityType
          * @enum {string}
          */
         ActivityType: "meeting" | "email" | "note" | "document" | "verification" | "call" | "system";
+        /** AiAssistantBulkItemResult */
+        AiAssistantBulkItemResult: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Ok */
+            ok: boolean;
+            /** Include In Ai Assistant */
+            include_in_ai_assistant?: boolean | null;
+            ocr_status?: components["schemas"]["OcrStatus"] | null;
+            /**
+             * Unsupported Format
+             * @default false
+             */
+            unsupported_format: boolean;
+            /** Error */
+            error?: string | null;
+        };
+        /** AiAssistantBulkRequest */
+        AiAssistantBulkRequest: {
+            /** Ids */
+            ids: string[];
+            /** Enabled */
+            enabled: boolean;
+        };
+        /** AiAssistantBulkResponse */
+        AiAssistantBulkResponse: {
+            /** Results */
+            results: components["schemas"]["AiAssistantBulkItemResult"][];
+        };
+        /** AiAssistantToggleRequest */
+        AiAssistantToggleRequest: {
+            /** Enabled */
+            enabled: boolean;
+        };
+        /** AiAssistantToggleResult */
+        AiAssistantToggleResult: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Include In Ai Assistant */
+            include_in_ai_assistant: boolean;
+            ocr_status?: components["schemas"]["OcrStatus"] | null;
+            /**
+             * Unsupported Format
+             * @default false
+             */
+            unsupported_format: boolean;
+        };
         /**
          * AiSummaryResponse
          * @description Response payload for AI-generated customer summary.
@@ -1072,6 +1093,11 @@ export interface components {
             contract_id?: string | null;
             /** Uploaded By */
             uploaded_by: string;
+            /**
+             * Include In Ai Assistant
+             * @default true
+             */
+            include_in_ai_assistant: boolean;
         };
         /** ChunkResult */
         ChunkResult: {
@@ -1824,6 +1850,11 @@ export interface components {
             /** File Size Bytes */
             file_size_bytes?: number | null;
             ocr_status?: components["schemas"]["OcrStatus"] | null;
+            /**
+             * Include In Ai Assistant
+             * @default true
+             */
+            include_in_ai_assistant: boolean;
             /** Uploaded By */
             uploaded_by?: string | null;
             /**
@@ -1833,6 +1864,20 @@ export interface components {
             created_at: string;
             /** Deleted At */
             deleted_at?: string | null;
+        };
+        /** DocumentReindexResult */
+        DocumentReindexResult: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            ocr_status?: components["schemas"]["OcrStatus"] | null;
+            /**
+             * Unsupported Format
+             * @default false
+             */
+            unsupported_format: boolean;
         };
         /**
          * DocumentTemplateRead
@@ -2423,8 +2468,6 @@ export interface components {
              * Format: uuid
              */
             id: string;
-            /** Department */
-            department?: string | null;
         };
         /** UserUpdate */
         UserUpdate: {
@@ -2441,65 +2484,6 @@ export interface components {
             msg: string;
             /** Error Type */
             type: string;
-        };
-        /**
-         * ValorizationAutoItem
-         * @description Automation rule per contract.
-         */
-        ValorizationAutoItem: {
-            /**
-             * Contract Id
-             * Format: uuid
-             */
-            contract_id: string;
-            index_type?: components["schemas"]["IndexType"] | null;
-            /** Index Value */
-            index_value?: number | string | null;
-        };
-        /**
-         * ValorizationAutoRequest
-         * @description Request payload for auto-generating valorizations.
-         */
-        ValorizationAutoRequest: {
-            /**
-             * Planned Date
-             * Format: date
-             */
-            planned_date: string;
-            /** Items */
-            items: components["schemas"]["ValorizationAutoItem"][];
-        };
-        /**
-         * ValorizationAutoResponse
-         * @description Auto-generation response summary.
-         */
-        ValorizationAutoResponse: {
-            /**
-             * Planned Date
-             * Format: date
-             */
-            planned_date: string;
-            /** Year */
-            year: number;
-            /** Gus Value */
-            gus_value: string | null;
-            /** Created */
-            created: components["schemas"]["ValorizationRead"][];
-            /** Skipped */
-            skipped: components["schemas"]["ValorizationAutoSkipped"][];
-        };
-        /**
-         * ValorizationAutoSkipped
-         * @description Skipped contract during auto-generation.
-         */
-        ValorizationAutoSkipped: {
-            /**
-             * Contract Id
-             * Format: uuid
-             */
-            contract_id: string;
-            /** Reason */
-            reason: string;
         };
         /**
          * ValorizationCreate
@@ -2981,6 +2965,7 @@ export interface operations {
                 customer_id?: string | null;
                 contract_id?: string | null;
                 exclude_draft?: boolean;
+                include_in_ai_assistant_only?: boolean;
             };
             header?: never;
             path?: never;
@@ -3158,6 +3143,111 @@ export interface operations {
                 };
                 content: {
                     "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    set_ai_assistant_enabled_api_v1_documents__id__ai_assistant_patch: {
+        parameters: {
+            query: {
+                requester_user_id: string;
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AiAssistantToggleRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AiAssistantToggleResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    bulk_set_ai_assistant_enabled_api_v1_documents_bulk_ai_assistant_post: {
+        parameters: {
+            query: {
+                requester_user_id: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AiAssistantBulkRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AiAssistantBulkResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    reindex_document_api_v1_documents__id__reindex_post: {
+        parameters: {
+            query: {
+                requester_user_id: string;
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocumentReindexResult"];
                 };
             };
             /** @description Validation Error */
@@ -3497,43 +3587,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["RagSearchResponse"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    get_activity_report_api_v1_reports_activity_get: {
-        parameters: {
-            query: {
-                current_user_id: string;
-                period?: number;
-                user_id?: string | null;
-                customer_id?: string | null;
-                activity_type?: components["schemas"]["ActivityType"] | null;
-                limit?: number;
-                offset?: number;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ActivityLogReportResponse"];
                 };
             };
             /** @description Validation Error */
@@ -4910,39 +4963,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ValorizationRead"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    auto_generate_valorizations_api_v1_valorizations_auto_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["ValorizationAutoRequest"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ValorizationAutoResponse"];
                 };
             };
             /** @description Validation Error */
