@@ -52,11 +52,11 @@ const IcoReports = () => (
 )
 
 const NAV_MAIN = [
-  { to: '/',                   label: 'Pulpit główny', icon: IcoDashboard,    badge: 0,  end: true  },
-  { to: '/managed-dashboard',  label: 'Mój pulpit',    icon: IcoDashboard,    badge: 0,  end: false },
-  { to: '/clients',            label: 'Klienci',       icon: IcoClients,      badge: 19, end: false },
-  { to: '/contracts',          label: 'Umowy',         icon: IcoContracts,    badge: 0,  end: false },
-  { to: '/valorization',       label: 'Waloryzacja',   icon: IcoValorization, badge: 0,  end: false },
+  { to: '/',                   label: 'Pulpit główny', icon: IcoDashboard,    badge: 0, end: true  },
+  { to: '/managed-dashboard',  label: 'Mój pulpit',    icon: IcoDashboard,    badge: 0, end: false },
+  { to: '/clients',            label: 'Klienci',       icon: IcoClients,      badge: 0, end: false },
+  { to: '/contracts',          label: 'Umowy',         icon: IcoContracts,    badge: 0, end: false },
+  { to: '/valorization',       label: 'Waloryzacja',   icon: IcoValorization, badge: 0, end: false },
 ]
 const NAV_AI    = [{ to: '/assistant', label: 'Chat z asystentem', icon: IcoAI,      end: false }]
 const NAV_ADMIN = [
