@@ -29,6 +29,7 @@ class AttachmentRepository(BaseRepository[Attachment]):
         contract_id: UUID | None = None,
         company_id: UUID | None = None,
         excluded_status: OcrStatus,
+        include_in_ai_assistant: bool | None = None,
     ) -> Sequence[Attachment]:
         query = (
             select(Attachment)
@@ -41,5 +42,7 @@ class AttachmentRepository(BaseRepository[Attachment]):
             query = query.where(Attachment.contract_id == contract_id)
         if company_id is not None:
             query = query.where(Attachment.company_id == company_id)
+        if include_in_ai_assistant is not None:
+            query = query.where(Attachment.include_in_ai_assistant == include_in_ai_assistant)
         result = await self.session.execute(query)
         return result.scalars().all()

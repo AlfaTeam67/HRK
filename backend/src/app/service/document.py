@@ -219,6 +219,7 @@ class DocumentService:
                     contract_id=contract_id,
                     company_id=company_id,
                     excluded_status=OcrStatus.SKIPPED,
+                    include_in_ai_assistant=True if include_in_ai_assistant_only else None,
                 )
             )
         else:
@@ -229,10 +230,10 @@ class DocumentService:
                 filters["customer_id"] = customer_id
             if contract_id:
                 filters["contract_id"] = contract_id
+            if include_in_ai_assistant_only:
+                filters["include_in_ai_assistant"] = True
             attachments = list(await self._attachments.list(**filters))
 
-        if include_in_ai_assistant_only:
-            attachments = [a for a in attachments if a.include_in_ai_assistant]
         return attachments
 
     async def set_ai_assistant_enabled(
