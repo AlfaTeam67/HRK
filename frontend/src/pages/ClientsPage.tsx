@@ -460,8 +460,6 @@ export function ClientsPageApi() {
           </div>
 
           <div className="cp-list-meta">
-            <span style={{ fontWeight: 700, color: '#1a1714' }}>{clients.length}</span> klientów
-            &nbsp;·&nbsp;
             <span style={{ color: '#38a169', fontWeight: 600 }}>
               ● {clients.filter((c) => c.status === 'active').length} aktywnych
             </span>
