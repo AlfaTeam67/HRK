@@ -550,12 +550,23 @@ export function ValorizationPage() {
   }
 
   const rows = useMemo(
-    () =>
-      valorizations.map((value) => {
+    () => {
+      const mapped = valorizations.map((value) => {
         const contract = contractsById.get(value.contract_id)
         const customer = contract ? customersById.get(contract.customer_id) : undefined
         return { value, contract, customer }
-      }),
+      })
+      return mapped.sort((a, b) => {
+        const customerA = a.customer?.company_name || a.customer?.ckk || ''
+        const customerB = b.customer?.company_name || b.customer?.ckk || ''
+        const cmp = customerA.localeCompare(customerB, 'pl')
+        if (cmp !== 0) return cmp
+        return (a.contract?.contract_number || '').localeCompare(
+          b.contract?.contract_number || '',
+          'pl'
+        )
+      })
+    },
     [valorizations, contractsById, customersById]
   )
 
