@@ -225,13 +225,54 @@ async def seed() -> None:  # noqa: C901
             ]
             session.add_all(activities)
 
-            # Valorization for some
-            if idx % 2 == 1:
-                session.add(Valorization(
-                    contract_id=c1.id, year=today.year, index_type=IndexType.GUS_CPI,
-                    index_value=Decimal("4.5"), planned_date=today + timedelta(days=15),
-                    status=ValorizationStatus.PENDING, created_by=manager_id
-                ))
+            # Valorization data — current + next year for each customer
+            current_year = today.year
+            next_year = today.year + 1
+            status_cycle = idx % 4
+            if status_cycle == 0:
+                current_status = ValorizationStatus.APPLIED
+            elif status_cycle == 1:
+                current_status = ValorizationStatus.APPROVED
+            elif status_cycle == 2:
+                current_status = ValorizationStatus.REJECTED
+            else:
+                current_status = ValorizationStatus.PENDING
+
+            current_index_type = IndexType.GUS_CPI if idx % 2 == 0 else IndexType.FIXED_PCT
+            current_index_value = Decimal("4.6") if idx % 2 == 0 else Decimal("5.2")
+            current_planned_date = date(current_year, 1, 15)
+
+            session.add(
+                Valorization(
+                    contract_id=c1.id,
+                    year=current_year,
+                    index_type=current_index_type,
+                    index_value=current_index_value,
+                    planned_date=current_planned_date,
+                    applied_date=today - timedelta(days=30)
+                    if current_status == ValorizationStatus.APPLIED
+                    else None,
+                    approved_by=manager_id
+                    if current_status in (ValorizationStatus.APPROVED, ValorizationStatus.APPLIED)
+                    else None,
+                    status=current_status,
+                    notes="Seedowana waloryzacja dla historii umowy.",
+                    created_by=manager_id,
+                )
+            )
+
+            session.add(
+                Valorization(
+                    contract_id=c1.id,
+                    year=next_year,
+                    index_type=IndexType.GUS_CPI,
+                    index_value=Decimal("4.3"),
+                    planned_date=date(next_year, 1, 15),
+                    status=ValorizationStatus.PENDING,
+                    notes="Waloryzacja zaplanowana na kolejny rok.",
+                    created_by=manager_id,
+                )
+            )
 
         await session.commit()
         print(f"docker-seed completed: Generated 10 customers, {len(customers)*2} contracts and assigned to Kasia and others.")

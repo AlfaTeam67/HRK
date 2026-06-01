@@ -57,3 +57,35 @@ class ValorizationRead(ORMBaseSchema):
     created_by: uuid.UUID | None
     created_at: datetime
     updated_at: datetime
+
+
+class ValorizationAutoItem(BaseModel):
+    """Automation rule per contract."""
+
+    contract_id: uuid.UUID
+    index_type: IndexType | None = None
+    index_value: Decimal | None = None
+
+
+class ValorizationAutoRequest(BaseModel):
+    """Request payload for auto-generating valorizations."""
+
+    planned_date: date
+    items: list[ValorizationAutoItem]
+
+
+class ValorizationAutoSkipped(BaseModel):
+    """Skipped contract during auto-generation."""
+
+    contract_id: uuid.UUID
+    reason: str
+
+
+class ValorizationAutoResponse(BaseModel):
+    """Auto-generation response summary."""
+
+    planned_date: date
+    year: int
+    gus_value: Decimal | None
+    created: list[ValorizationRead]
+    skipped: list[ValorizationAutoSkipped]

@@ -38,6 +38,17 @@ class ValorizationRepository:
         result = await self.db.execute(stmt)
         return list(result.scalars().all())
 
+    async def get_by_contract_year(
+        self, contract_id: uuid.UUID, year: int
+    ) -> Valorization | None:
+        stmt = (
+            select(Valorization)
+            .where(Valorization.contract_id == contract_id)
+            .where(Valorization.year == year)
+        )
+        result = await self.db.execute(stmt)
+        return result.scalar_one_or_none()
+
     async def create(self, data: dict) -> Valorization:
         val = Valorization(**data)
         self.db.add(val)

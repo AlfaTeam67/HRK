@@ -7,7 +7,13 @@ from fastapi import APIRouter, Depends, Query, status
 
 from app.api.deps import get_crm_service
 from app.models.enums import ValorizationStatus
-from app.schemas.valorizations import ValorizationCreate, ValorizationRead, ValorizationUpdate
+from app.schemas.valorizations import (
+    ValorizationAutoRequest,
+    ValorizationAutoResponse,
+    ValorizationCreate,
+    ValorizationRead,
+    ValorizationUpdate,
+)
 from app.service import CRMService
 
 router = APIRouter(tags=["valorizations"])
@@ -38,6 +44,18 @@ async def create_valorization(
     service: Annotated[CRMService, Depends(get_crm_service)],
 ) -> Any:
     return await service.create_valorization(payload)
+
+
+@router.post(
+    "/valorizations/auto",
+    response_model=ValorizationAutoResponse,
+    summary="Auto-generate valorizations",
+)
+async def auto_generate_valorizations(
+    payload: ValorizationAutoRequest,
+    service: Annotated[CRMService, Depends(get_crm_service)],
+) -> Any:
+    return await service.generate_valorizations(payload)
 
 
 @router.get(

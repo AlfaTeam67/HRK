@@ -64,7 +64,7 @@ export function Modal({ isOpen, onClose, title, children, maxWidth = 500 }: Moda
             </svg>
           </button>
         </div>
-        <div style={{ padding: 20, overflowY: 'auto' }}>
+        <div style={{ padding: 20, overflowY: 'auto', flex: 1, minHeight: 0 }}>
           {children}
         </div>
       </div>

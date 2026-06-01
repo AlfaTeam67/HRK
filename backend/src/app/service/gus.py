@@ -110,7 +110,12 @@ class GUSService:
 
     async def _fetch_year(self, year: int) -> list[dict[str, Any]]:
         url = f"{self.BASE_URL}/data/by-variable/{self.VARIABLE_ID}"
-        params = {"format": "json", "unit-level": 0, "year": year, "page-size": 5}
+        params: dict[str, str | int] = {
+            "format": "json",
+            "unit-level": 0,
+            "year": year,
+            "page-size": 5,
+        }
         async with httpx.AsyncClient(timeout=15.0, follow_redirects=True, headers=self._headers) as c:
             r = await c.get(url, params=params)
             r.raise_for_status()
