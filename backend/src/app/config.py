@@ -55,7 +55,7 @@ class Settings(BaseSettings):
     # RAG — similarity filtering
     # cosine distance threshold for pre-reranker SQL filter (0=identical, 1=orthogonal, 2=opposite)
     # chunks with distance >= this value are discarded before reranking
-    rag_vec_max_distance: float = 0.35
+    rag_vec_max_distance: float = 0.55
 
     # OpenRouter (AI mode — swap base_url to ollama /v1 when switching to local)
     openrouter_api_key: str = ""

@@ -417,16 +417,12 @@ class DocumentGenerationService:
             processing.process,
             new_amendment_att_id,
             customer_id,
-            clean_pdf,
-            "application/pdf",
         )
         if new_cover_letter_att_id and clean_cover_pdf:
             background_tasks.add_task(
                 processing.process,
                 new_cover_letter_att_id,
                 customer_id,
-                clean_cover_pdf,
-                "application/pdf",
             )
 
         # Best-effort cleanup of draft artifacts after commit.
