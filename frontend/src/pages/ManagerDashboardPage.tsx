@@ -62,7 +62,7 @@ export function ManagerDashboardPage() {
   }
 
   if (loadingCustomers) return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '60vh', color: '#9e9389' }}>
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '60vh', color: '#7a6f67' }}>
       Ładowanie Twojego portfela...
     </div>
   )
@@ -72,7 +72,7 @@ export function ManagerDashboardPage() {
       <div style={{ padding: 40, textAlign: 'center', background: 'white', borderRadius: 12, border: '1px solid #e3e0db' }}>
         <div style={{ fontSize: 48, marginBottom: 20 }}>🏢</div>
         <h2 style={{ fontSize: 20, fontWeight: 700, color: '#1a1714', marginBottom: 10 }}>Brak przypisanych firm</h2>
-        <p style={{ color: '#9e9389', fontSize: 14, maxWidth: 400, margin: '0 auto' }}>
+        <p style={{ color: '#7a6f67', fontSize: 14, maxWidth: 400, margin: '0 auto' }}>
           Jako opiekun klienta, tutaj zobaczysz zestawienie najważniejszych informacji o firmach, za które jesteś odpowiedzialny. 
         </p>
       </div>
@@ -221,7 +221,7 @@ export function ManagerDashboardPage() {
         </div>
         <div style={{ textAlign: 'right' }}>
           <div style={{ fontSize: 13, fontWeight: 600, color: '#1a1714' }}>{user?.displayName || 'Katarzyna Nowakowska'}</div>
-          <div style={{ fontSize: 11, color: '#9e9389', textTransform: 'capitalize' }}>{todayStr}</div>
+          <div style={{ fontSize: 11, color: '#7a6f67', textTransform: 'capitalize' }}>{todayStr}</div>
         </div>
       </div>
 
@@ -233,14 +233,14 @@ export function ManagerDashboardPage() {
           <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.8)' }}>Aktywnych podmiotów</div>
         </div>
         <div style={{ ...cardStyle, padding: '18px' }}>
-          <div style={{ fontSize: 10, fontWeight: 700, color: '#9e9389', letterSpacing: '0.05em', marginBottom: 10 }}>PRACOWNICY</div>
+          <div style={{ fontSize: 10, fontWeight: 700, color: '#7a6f67', letterSpacing: '0.05em', marginBottom: 10 }}>PRACOWNICY</div>
           <div style={{ fontSize: 28, fontWeight: 800, color: '#1a1714', marginBottom: 2 }}>{portfolioStats.totalEmployees.toLocaleString()}</div>
           <div style={{ height: 3, background: '#f5f2ef', borderRadius: 2, marginTop: 6, overflow: 'hidden' }}>
             <div style={{ width: '70%', height: '100%', background: '#e85c04' }} />
           </div>
         </div>
         <div style={{ ...cardStyle, padding: '18px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-          <div style={{ fontSize: 10, fontWeight: 700, color: '#9e9389', letterSpacing: '0.05em', marginBottom: 6 }}>ZDROWIE PORTFELA</div>
+          <div style={{ fontSize: 10, fontWeight: 700, color: '#7a6f67', letterSpacing: '0.05em', marginBottom: 6 }}>ZDROWIE PORTFELA</div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 4, height: 32, marginBottom: 4 }}>
             <div title="Active" style={{ flex: portfolioStats.activeCount || 1, background: '#38a169', height: '100%', borderRadius: '4px 0 0 4px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 800, color: 'white' }}>{portfolioStats.activeCount}</div>
             <div title="Needs Attention" style={{ flex: portfolioStats.attentionCount || 0, background: '#d69e2e', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 800, color: 'white' }}>{portfolioStats.attentionCount > 0 ? portfolioStats.attentionCount : ''}</div>
@@ -252,7 +252,7 @@ export function ManagerDashboardPage() {
           </div>
         </div>
         <div style={{ ...cardStyle, padding: '18px' }}>
-          <div style={{ fontSize: 10, fontWeight: 700, color: '#9e9389', letterSpacing: '0.05em', marginBottom: 10 }}>ROZKŁAD BRANŻ</div>
+          <div style={{ fontSize: 10, fontWeight: 700, color: '#7a6f67', letterSpacing: '0.05em', marginBottom: 10 }}>ROZKŁAD BRANŻ</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                <span style={{ fontSize: 9, fontWeight: 600 }}>Retail</span>
@@ -269,7 +269,7 @@ export function ManagerDashboardPage() {
           </div>
         </div>
         <div style={{ ...cardStyle, padding: '18px' }}>
-          <div style={{ fontSize: 10, fontWeight: 700, color: '#9e9389', letterSpacing: '0.05em', marginBottom: 10 }}>WALORYZACJE</div>
+          <div style={{ fontSize: 10, fontWeight: 700, color: '#7a6f67', letterSpacing: '0.05em', marginBottom: 10 }}>WALORYZACJE</div>
           <div style={{ fontSize: 28, fontWeight: 800, color: '#1a1714', marginBottom: 2 }}>3</div>
           <div style={{ fontSize: 10, color: '#e53e3e', fontWeight: 700 }}>Wymagane akcje</div>
         </div>
@@ -309,16 +309,16 @@ export function ManagerDashboardPage() {
                   <div style={{ fontSize: 18, fontWeight: 800, color: '#1a1714', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={activeCustomer?.company_name || activeCustomer?.ckk}>
                     {activeCustomer?.company_name || activeCustomer?.ckk}
                   </div>
-                  <div style={{ fontSize: 12, color: '#9e9389', fontWeight: 600 }}>{activeCustomer?.industry} · {activeCustomer?.segment}</div>
+                  <div style={{ fontSize: 12, color: '#7a6f67', fontWeight: 600 }}>{activeCustomer?.industry} · {activeCustomer?.segment}</div>
                 </div>
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
                 <div style={{ padding: '12px', background: '#fafaf9', borderRadius: 10, border: '1px solid #f2f0ed' }}>
-                  <div style={{ fontSize: 10, color: '#9e9389', fontWeight: 700, marginBottom: 4 }}>NIP</div>
+                  <div style={{ fontSize: 10, color: '#7a6f67', fontWeight: 700, marginBottom: 4 }}>NIP</div>
                   <div style={{ fontSize: 13, fontWeight: 700 }}>{activeCustomer?.invoice_nip || '—'}</div>
                 </div>
                 <div style={{ padding: '12px', background: '#fafaf9', borderRadius: 10, border: '1px solid #f2f0ed' }}>
-                  <div style={{ fontSize: 10, color: '#9e9389', fontWeight: 700, marginBottom: 4 }}>PRACOWNICY</div>
+                  <div style={{ fontSize: 10, color: '#7a6f67', fontWeight: 700, marginBottom: 4 }}>PRACOWNICY</div>
                   <div style={{ fontSize: 13, fontWeight: 700 }}>{activeCustomer?.employee_count?.toLocaleString()} os.</div>
                 </div>
               </div>
@@ -343,7 +343,7 @@ export function ManagerDashboardPage() {
                   <div key={c.id} style={{ padding: '12px', border: '1px solid #f2f0ed', borderRadius: 10, display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#fcfcfb' }}>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontSize: 12, fontWeight: 800, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.contract_number}</div>
-                      <div style={{ fontSize: 10, color: '#9e9389' }}>Do: {c.end_date}</div>
+                      <div style={{ fontSize: 10, color: '#7a6f67' }}>Do: {c.end_date}</div>
                     </div>
                     <div style={{ width: 32, height: 32, borderRadius: 8, background: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginLeft: 8 }}>📄</div>
                   </div>
@@ -379,7 +379,7 @@ export function ManagerDashboardPage() {
                         }}>
                           {noteTypeLabels[n.note_type as NoteType] || n.note_type}
                         </span>
-                        <div style={{ fontSize: 10, color: '#9e9389', fontWeight: 600, whiteSpace: 'nowrap' }}>
+                        <div style={{ fontSize: 10, color: '#7a6f67', fontWeight: 600, whiteSpace: 'nowrap' }}>
                           {n.created_at ? new Date(n.created_at).toLocaleDateString('pl-PL') : 'brak daty'}
                         </div>
                       </div>
@@ -387,7 +387,7 @@ export function ManagerDashboardPage() {
                    </div>
                 ))}
                 {(!notes || notes.length === 0) && !loadingNotes && (
-                   <div style={{ gridColumn: 'span 2', padding: '20px', textAlign: 'center', color: '#9e9389', fontSize: 12 }}>
+                   <div style={{ gridColumn: 'span 2', padding: '20px', textAlign: 'center', color: '#7a6f67', fontSize: 12 }}>
                       Brak notatek dla tego klienta.
                    </div>
                 )}
@@ -407,7 +407,7 @@ export function ManagerDashboardPage() {
                  <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <div>
                        <div style={{ fontSize: 12, fontWeight: 800 }}>{v.client}</div>
-                       <div style={{ fontSize: 10, color: '#9e9389' }}>{v.date}</div>
+                       <div style={{ fontSize: 10, color: '#7a6f67' }}>{v.date}</div>
                     </div>
                     <div style={{ fontSize: 13, fontWeight: 800, color: '#e85c04' }}>+{v.val}</div>
                  </div>
@@ -430,7 +430,7 @@ export function ManagerDashboardPage() {
                   </div>
                   <div style={{ paddingBottom: i === 2 ? 0 : 4 }}>
                     <div style={{ fontSize: 12, fontWeight: 800 }}>{ev.text}</div>
-                    <div style={{ fontSize: 10, color: '#9e9389' }}>{ev.type} · {ev.time}</div>
+                    <div style={{ fontSize: 10, color: '#7a6f67' }}>{ev.type} · {ev.time}</div>
                   </div>
                 </div>
               ))}

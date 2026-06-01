@@ -19,5 +19,6 @@ class UserUpdate(BaseModel):
 
 class UserRead(UserBase):
     id: UUID
+    department: str | None = None
 
     model_config = ConfigDict(from_attributes=True)

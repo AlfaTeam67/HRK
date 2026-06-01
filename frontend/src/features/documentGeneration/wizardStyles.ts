@@ -9,7 +9,7 @@ export const colors = {
   borderSoft: '#f2f0ed',
   cardBg: '#fafaf9',
   textPrimary: '#1a1714',
-  textMuted: '#9e9389',
+  textMuted: '#7a6f67',
   textSubtle: '#7a6f67',
   positive: '#276749',
   negative: '#9b2c2c',

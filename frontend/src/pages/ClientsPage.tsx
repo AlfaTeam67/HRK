@@ -146,8 +146,8 @@ function SearchIcon() {
 }
 
 function Timeline({ events, loading = false }: { events: TLEvent[]; loading?: boolean }) {
-  if (loading) return <p style={{ color: '#9e9389', fontSize: 13 }}>Ładowanie…</p>
-  if (!events.length) return <p style={{ color: '#9e9389', fontSize: 13 }}>Brak zdarzeń.</p>
+  if (loading) return <p style={{ color: '#7a6f67', fontSize: 13 }}>Ładowanie…</p>
+  if (!events.length) return <p style={{ color: '#7a6f67', fontSize: 13 }}>Brak zdarzeń.</p>
 
   return (
     <div className="cp-tl-wrap">
@@ -191,7 +191,7 @@ function Timeline({ events, loading = false }: { events: TLEvent[]; loading?: bo
                 >
                   {m.label}
                 </span>
-                <span style={{ fontSize: 11, fontWeight: 700, color: '#9e9389' }}>{ev.label}</span>
+                <span style={{ fontSize: 11, fontWeight: 700, color: '#7a6f67' }}>{ev.label}</span>
               </div>
               <div style={{ fontSize: 13, fontWeight: 700, color: '#1a1714' }}>{ev.title}</div>
               {ev.detail && (
@@ -463,8 +463,6 @@ export function ClientsPageApi() {
           </div>
 
           <div className="cp-list-meta">
-            <span style={{ fontWeight: 700, color: '#1a1714' }}>{clients.length}</span> klientów
-            &nbsp;·&nbsp;
             <span style={{ color: '#38a169', fontWeight: 600 }}>
               ● {clients.filter((c) => c.status === 'active').length} aktywnych
             </span>
@@ -472,7 +470,7 @@ export function ClientsPageApi() {
 
           <div className="cp-list-scroll">
             {isLoading && (
-              <div style={{ padding: 16, fontSize: 13, color: '#9e9389' }}>Ładowanie…</div>
+              <div style={{ padding: 16, fontSize: 13, color: '#7a6f67' }}>Ładowanie…</div>
             )}
 
             {clients.map((c) => {
@@ -544,7 +542,7 @@ export function ClientsPageApi() {
                   height="48"
                   viewBox="0 0 24 24"
                   fill="none"
-                  stroke="#9e9389"
+                  stroke="#7a6f67"
                   strokeWidth="1.5"
                 >
                   <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
@@ -911,7 +909,7 @@ export function ClientsPageApi() {
                     </div>
 
                     {notes.length === 0 && (
-                      <p style={{ color: '#9e9389', fontSize: 13 }}>Brak notatek.</p>
+                      <p style={{ color: '#7a6f67', fontSize: 13 }}>Brak notatek.</p>
                     )}
 
                     {notes.map((n) => (
@@ -1160,7 +1158,7 @@ export function ClientsPageApi() {
               disabled={createContract.isPending}
               style={{
                 flex: 1, padding: '12px', borderRadius: 8, border: 'none',
-                background: createContract.isPending ? '#9e9389' : 'linear-gradient(135deg, #e85c04, #c94f02)',
+                background: createContract.isPending ? '#7a6f67' : 'linear-gradient(135deg, #e85c04, #c94f02)',
                 color: 'white', fontSize: 13, fontWeight: 700, cursor: 'pointer',
                 boxShadow: '0 4px 12px rgba(232, 92, 4, 0.2)',
               }}
