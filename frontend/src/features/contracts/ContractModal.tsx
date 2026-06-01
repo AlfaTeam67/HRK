@@ -324,14 +324,6 @@ export function ContractModal({ contractId, customerId, onClose, autoEdit = fals
             />
           )}
 
-          {activeTab === 'historia' && (
-            <HistoriaOsiTab
-              contract={contract}
-              activities={activities}
-              generations={allGenerations.filter((g) => g.contract_id === contractId)}
-            />
-          )}
-
           {activeTab === 'dokumenty' && (
             <DokumentyTab
               contract={contract}

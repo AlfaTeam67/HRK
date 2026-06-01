@@ -81,16 +81,16 @@ async def seed() -> None:  # noqa: C901
 
         # 4. Create Customers and assign managers (Kasia gets almost all for demo)
         customer_data = [
-            ("C001", "CKD001", companies[0], user_kasia, CustomerStatus.ACTIVE, "Enterprise", "Retail", 1200),
-            ("C002", "CKD002", companies[1], user_kasia, CustomerStatus.NEEDS_ATTENTION, "Mid", "Retail", 850),
-            ("C003", "CKD003", companies[2], user_tomek, CustomerStatus.ACTIVE, "Enterprise", "Retail", 2400),
-            ("C004", "CKD004", companies[3], user_kasia, CustomerStatus.ACTIVE, "Enterprise", "Ecommerce", 4500),
-            ("C005", "CKD005", companies[4], user_kasia, CustomerStatus.ACTIVE, "Enterprise", "Retail", 3200),
-            ("C006", "CKD006", companies[5], user_kasia, CustomerStatus.ACTIVE, "Mid", "Retail", 15000),
-            ("C007", "CKD007", companies[6], user_kasia, CustomerStatus.ACTIVE, "Enterprise", "Retail", 8000),
-            ("C008", "CKD008", companies[7], user_kasia, CustomerStatus.CHURN_RISK, "Mid", "Retail", 5400),
-            ("C009", "CKD009", companies[8], user_kasia, CustomerStatus.ACTIVE, "Enterprise", "Electronics", 2100),
-            ("C010", "CKD010", companies[9], user_asia, CustomerStatus.ACTIVE, "Mid", "Tech", 150),
+            ("C001", "CKD001", companies[0], user_asia,  CustomerStatus.ACTIVE,           "Enterprise", "Retail",      1200),
+            ("C002", "CKD002", companies[1], user_kasia, CustomerStatus.NEEDS_ATTENTION,  "Mid",        "Retail",       850),
+            ("C003", "CKD003", companies[2], user_tomek, CustomerStatus.ACTIVE,           "Enterprise", "Retail",      2400),
+            ("C004", "CKD004", companies[3], user_kasia, CustomerStatus.ACTIVE,           "Enterprise", "Ecommerce",   4500),
+            ("C005", "CKD005", companies[4], user_kasia, CustomerStatus.ACTIVE,           "Enterprise", "Retail",      3200),
+            ("C006", "CKD006", companies[5], user_kasia, CustomerStatus.ACTIVE,           "Mid",        "Retail",     15000),
+            ("C007", "CKD007", companies[6], user_kasia, CustomerStatus.ACTIVE,           "Enterprise", "Retail",      8000),
+            ("C008", "CKD008", companies[7], user_kasia, CustomerStatus.CHURN_RISK,       "Mid",        "Retail",      5400),
+            ("C009", "CKD009", companies[8], user_asia,  CustomerStatus.ACTIVE,           "Enterprise", "Electronics", 2100),
+            ("C010", "CKD010", companies[9], user_asia,  CustomerStatus.ACTIVE,           "Mid",        "Tech",         150),
         ]
 
         customers = []
