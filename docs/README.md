@@ -41,6 +41,7 @@ oraz konwencje pracy.
 ### 5. AI / RAG / Generowanie dokumentów
 - [`ai/rag.md`](ai/rag.md) — embeddingi, chunkowanie, vector search, reranker
 - [`ai/document-generation.md`](ai/document-generation.md) — preview → finalize → accept, szablony Jinja2, WeasyPrint
+- [`ai/ai-assistant-toggle.md`](ai/ai-assistant-toggle.md) — przełącznik „Załącz dla asystenta AI" per dokument (checkbox + switch + bulk + reindex)
 - [`ai/ai-summary.md`](ai/ai-summary.md) — streaming AI summary klienta (SSE), cache 1h
 - [`ai/llm-providers.md`](ai/llm-providers.md) — OpenRouter (Gemma) ↔ Ollama (lokalny LLM), prompty
 

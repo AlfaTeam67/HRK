@@ -23,6 +23,11 @@ interface Props {
   contracts: Contract[]
   onClose: () => void
   onFinalized: (generationId: string) => void
+  initialContractId?: string
+  initialYear?: number
+  initialIndexType?: IndexType
+  initialIndexValue?: number
+  initialEffectiveDate?: string
 }
 
 type StepKey = 1 | 2 | 3 | 4
@@ -30,7 +35,18 @@ type StepKey = 1 | 2 | 3 | 4
 const TONE_VALUES: DocumentTone[] = ['formal', 'neutral', 'warm', 'assertive']
 const INDEX_VALUES: IndexType[] = ['GUS_CPI', 'fixed_pct', 'custom']
 
-export function DocumentWizard({ isOpen, customer, contracts, onClose, onFinalized }: Props) {
+export function DocumentWizard({
+  isOpen,
+  customer,
+  contracts,
+  onClose,
+  onFinalized,
+  initialContractId,
+  initialYear,
+  initialIndexType,
+  initialIndexValue,
+  initialEffectiveDate,
+}: Props) {
   const user = useAppSelector((s) => s.auth.user)
   const { data: templates = [] } = useDocumentTemplates()
   const previewMut = usePreviewGeneration()
@@ -40,12 +56,11 @@ export function DocumentWizard({ isOpen, customer, contracts, onClose, onFinaliz
   const [templateKey, setTemplateKey] = useState<string>('amendment_valorization')
   const [contractId, setContractId] = useState<string>('')
 
-  const [year, setYear] = useState<number>(new Date().getFullYear() + 1)
+  const defaultYear = new Date().getFullYear() + 1
+  const [year, setYear] = useState<number>(defaultYear)
   const [indexType, setIndexType] = useState<IndexType>('GUS_CPI')
   const [indexValue, setIndexValue] = useState<string>('4.60')
-  const [effectiveDate, setEffectiveDate] = useState<string>(
-    `${new Date().getFullYear() + 1}-01-01`
-  )
+  const [effectiveDate, setEffectiveDate] = useState<string>(`${defaultYear}-01-01`)
 
   const [tone, setTone] = useState<DocumentTone>('neutral')
   const [includeCoverLetter, setIncludeCoverLetter] = useState<boolean>(true)
@@ -75,19 +90,25 @@ export function DocumentWizard({ isOpen, customer, contracts, onClose, onFinaliz
     if (!isOpen) return
     setStep(1)
     setTemplateKey('amendment_valorization')
-    setContractId(eligibleContracts[0]?.id ?? '')
+    setContractId(initialContractId ?? '')
+    setYear(initialYear ?? defaultYear)
+    setIndexType(initialIndexType ?? 'GUS_CPI')
+    setIndexValue(
+      initialIndexValue !== undefined ? initialIndexValue.toFixed(2) : '4.60'
+    )
+    setEffectiveDate(initialEffectiveDate ?? `${defaultYear}-01-01`)
     setPreview(null)
     setPreviewError(null)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen, customer.id])
+  }, [isOpen, customer.id, initialContractId, initialYear, initialIndexType, initialIndexValue, initialEffectiveDate])
 
   // Fill in contract once contracts arrive (avoids race with first render).
   useEffect(() => {
     if (!isOpen) return
     if (contractId) return
-    const fallback = eligibleContracts[0]?.id
+    const fallback = initialContractId ?? eligibleContracts[0]?.id
     if (fallback) setContractId(fallback)
-  }, [isOpen, contractId, eligibleContracts])
+  }, [isOpen, contractId, eligibleContracts, initialContractId])
 
   const buildRequest = (): GenerationRequest => ({
     template_key: templateKey,

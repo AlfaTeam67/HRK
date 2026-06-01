@@ -1,4 +1,4 @@
-import { useMutation } from '@tanstack/react-query'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import { useDispatch } from 'react-redux'
 
 import { apiClient } from '@/lib/axios'
@@ -55,8 +55,6 @@ export function useLogin() {
 }
 
 export { AD_PROFILES }
-
-import { useQuery } from '@tanstack/react-query'
 
 export function useUser(id: string | null | undefined) {
   return useQuery({

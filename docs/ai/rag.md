@@ -89,8 +89,11 @@ SQL (skrót):
 SELECT id, attachment_id, customer_id, chunk_index, content,
        page_number, bbox, section_title,
        embedding <=> :vec AS vec_score
-FROM document_chunks
-WHERE customer_id = :cid
+FROM document_chunks dc
+INNER JOIN attachments a ON a.id = dc.attachment_id
+WHERE dc.customer_id = :cid
+  AND a.include_in_ai_assistant = TRUE
+  AND a.deleted_at IS NULL
   AND embedding <=> :vec < :max_distance
 ORDER BY vec_score
 LIMIT :top_k;
@@ -99,6 +102,10 @@ LIMIT :top_k;
 - `max_distance` = `settings.rag_vec_max_distance` (default **0.35**).
 - Pre-filter po `customer_id` jest **kluczowy** — bez niego HNSW
   przeszukałby wszystkich klientów.
+- JOIN do `attachments` + filtr `include_in_ai_assistant = TRUE` to
+  **defense-in-depth** — nawet gdy chunki nie zostały skasowane przy
+  toggle OFF (race condition), search ich nie zwróci. Zob.
+  [`ai-assistant-toggle.md`](ai-assistant-toggle.md).
 - Operator `<=>` = cosine distance (mniejsze = bardziej podobne).
 
 ### `RerankerClient` (`app/service/reranker_client.py`)
@@ -244,10 +251,13 @@ W praktyce dotyczy to draftów wygenerowanych przez `DocumentGenerationService`:
 - `accept()` → nowy `Attachment(ocr_status=pending)` → kolejka chunków
   → po przetworzeniu widoczne w RAG.
 
-Filtr w UI Asystenta: `GET /api/v1/documents?exclude_draft=true` →
-`ocr_status != 'skipped'`.
+Filtr w UI Asystenta: `GET /api/v1/documents?exclude_draft=true&include_in_ai_assistant_only=true`
+— `exclude_draft` ukrywa drafty (`ocr_status=skipped`), a
+`include_in_ai_assistant_only` ukrywa dokumenty wyłączone przez opiekuna
+przełącznikiem.
 
-Zob. [`document-generation.md`](document-generation.md).
+Zob. [`document-generation.md`](document-generation.md) oraz
+[`ai-assistant-toggle.md`](ai-assistant-toggle.md).
 
 ---
 
@@ -270,6 +280,8 @@ Zob. [`document-generation.md`](document-generation.md).
 
 - [`document-generation.md`](document-generation.md) — generowanie
   aneksów/pism z AI.
+- [`ai-assistant-toggle.md`](ai-assistant-toggle.md) — przełącznik
+  „Załącz dla asystenta AI" per dokument.
 - [`ai-summary.md`](ai-summary.md) — streaming AI summary klienta.
 - [`llm-providers.md`](llm-providers.md) — OpenRouter ↔ lokalna Ollama.
 - [`../workflows/document-upload.md`](../workflows/document-upload.md) —

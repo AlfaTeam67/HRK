@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING
 import sqlalchemy as sa
 from sqlalchemy import (
     BigInteger,
+    Boolean,
     ForeignKey,
     Index,
     Integer,
@@ -95,6 +96,11 @@ class Attachment(Base, CreatedAtMixin, SoftDeleteMixin):
         JSONB, server_default=text("'{}'::jsonb"), nullable=False
     )
     version: Mapped[int] = mapped_column(Integer, server_default=text("1"), nullable=False)
+    include_in_ai_assistant: Mapped[bool] = mapped_column(
+        Boolean,
+        server_default=text("true"),
+        nullable=False,
+    )
     # 🔴 Fix: was nullable=False with ondelete="SET NULL" — impossible.
     #    Uploader may be deleted → keep SET NULL, make nullable.
     uploaded_by: Mapped[uuid.UUID | None] = mapped_column(

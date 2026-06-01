@@ -50,12 +50,16 @@ class DocumentChunkRepository(BaseRepository[DocumentChunk]):
         query = """
             SELECT id, attachment_id, content, page_number, bbox, section_title, vec_score, kw_score
             FROM (
-                SELECT id, attachment_id, content, page_number, bbox, section_title,
-                       (embedding <=> CAST(:vec AS vector(768))) AS vec_score,
+                SELECT dc.id, dc.attachment_id, dc.content, dc.page_number, dc.bbox,
+                       dc.section_title,
+                       (dc.embedding <=> CAST(:vec AS vector(768))) AS vec_score,
                        ({keyword_boost}) AS kw_score
-                FROM document_chunks
-                WHERE customer_id = :customer_id
-                  AND (embedding <=> CAST(:vec AS vector(768))) < :max_distance
+                FROM document_chunks dc
+                INNER JOIN attachments a ON a.id = dc.attachment_id
+                WHERE dc.customer_id = :customer_id
+                  AND a.include_in_ai_assistant = TRUE
+                  AND a.deleted_at IS NULL
+                  AND (dc.embedding <=> CAST(:vec AS vector(768))) < :max_distance
             ) sub
             ORDER BY (vec_score - kw_score) ASC
             LIMIT :top_k

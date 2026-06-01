@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { cardStyle as card } from '@/lib/styles'
 import { ContractModal } from '@/features/contracts/ContractModal'
 import { UploadWizard } from '@/features/documents/UploadWizard'
+import { ContractWizard } from '@/features/contractGeneration/ContractWizard'
 import { useAppSelector } from '@/hooks/store'
 import { useAlerts, useDashboardKpi } from '@/hooks/alerts'
 import { Modal } from '@/components/ui/modal'
@@ -27,6 +28,7 @@ export function ContractsPage() {
   const navigate = useNavigate()
   const [contractModalId, setContractModalId] = useState<{ contractId: string; customerId: string; autoEdit?: boolean } | null>(null)
   const [isContractModalOpen, setIsContractModalOpen] = useState(false)
+  const [isContractGenOpen, setIsContractGenOpen] = useState(false)
   // After contract creation: show UploadWizard for the new contract
   const [postCreationWizard, setPostCreationWizard] = useState<{ contractId: string; customerId: string } | null>(null)
   const user = useAppSelector((s) => s.auth.user)
@@ -155,14 +157,22 @@ export function ContractsPage() {
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
         <div>
           <h1 style={{ fontSize: 22, fontWeight: 700, color: '#1a1714', margin: 0, marginBottom: 2 }}>Umowy i Dokumenty</h1>
-          <p style={{ fontSize: 12.5, color: '#9e9389', margin: 0 }}>Zarządzanie cyklem życia kontraktów i repozytorium dokumentów RAG.</p>
+          <p style={{ fontSize: 12.5, color: '#7a6f67', margin: 0 }}>Zarządzanie cyklem życia kontraktów i repozytorium dokumentów RAG.</p>
         </div>
-        <button
-          onClick={() => setIsContractModalOpen(true)}
-          style={{ background: 'linear-gradient(135deg, #e85c04, #c94f02)', color: 'white', border: 'none', borderRadius: 8, padding: '10px 18px', fontSize: 13, fontWeight: 700, cursor: 'pointer', boxShadow: '0 4px 12px rgba(232, 92, 4, 0.25)', display: 'flex', alignItems: 'center', gap: 8 }}
-        >
-          <span>+</span> Nowa Umowa
-        </button>
+        <div style={{ display: 'flex', gap: 10 }}>
+          <button
+            onClick={() => setIsContractGenOpen(true)}
+            style={{ background: 'white', color: '#e85c04', border: '1.5px solid #e85c04', borderRadius: 8, padding: '10px 18px', fontSize: 13, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8 }}
+          >
+            <span style={{ fontSize: 16 }}>✦</span> Generuj umowę
+          </button>
+          <button
+            onClick={() => setIsContractModalOpen(true)}
+            style={{ background: 'linear-gradient(135deg, #e85c04, #c94f02)', color: 'white', border: 'none', borderRadius: 8, padding: '10px 18px', fontSize: 13, fontWeight: 700, cursor: 'pointer', boxShadow: '0 4px 12px rgba(232, 92, 4, 0.25)', display: 'flex', alignItems: 'center', gap: 8 }}
+          >
+            <span>+</span> Nowa Umowa
+          </button>
+        </div>
       </div>
 
       {/* New Contract Modal */}
@@ -255,7 +265,7 @@ export function ContractsPage() {
               disabled={createContract.isPending}
               style={{ 
                 flex: 1, padding: '12px', borderRadius: 8, border: 'none', 
-                background: createContract.isPending ? '#9e9389' : 'linear-gradient(135deg, #e85c04, #c94f02)', 
+                background: createContract.isPending ? '#7a6f67' : 'linear-gradient(135deg, #e85c04, #c94f02)', 
                 color: 'white', fontSize: 13, fontWeight: 700, cursor: 'pointer',
                 boxShadow: '0 4px 12px rgba(232, 92, 4, 0.2)'
               }}
@@ -270,7 +280,7 @@ export function ContractsPage() {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 14, marginBottom: 20 }}>
         {kpis.map((kpi) => (
           <div key={kpi.label} style={{ ...card, padding: '16px 18px', borderTop: `3px solid ${kpi.color}` }}>
-            <div style={{ fontSize: 10, fontWeight: 700, color: '#9e9389', letterSpacing: '0.07em', marginBottom: 8 }}>{kpi.label}</div>
+            <div style={{ fontSize: 10, fontWeight: 700, color: '#7a6f67', letterSpacing: '0.07em', marginBottom: 8 }}>{kpi.label}</div>
             <div style={{ fontSize: 30, fontWeight: 800, color: '#1a1714', lineHeight: 1, marginBottom: 6 }}>{kpi.value}</div>
             <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 4, fontWeight: 600, background: kpi.color + '18', color: kpi.color }}>{kpi.sub}</span>
           </div>
@@ -307,7 +317,7 @@ export function ContractsPage() {
                 const labels: Record<SortCol, string> = { client: 'KLIENT', number: 'NR UMOWY', type: 'TYP', status: 'STATUS', end_date: 'TERMIN' }
                 const active = sortCol === col
                 return (
-                  <th key={col} style={{ padding: '12px 18px', fontSize: 11, fontWeight: 700, color: active ? '#e85c04' : '#9e9389', userSelect: 'none' }}>
+                  <th key={col} style={{ padding: '12px 18px', fontSize: 11, fontWeight: 700, color: active ? '#e85c04' : '#7a6f67', userSelect: 'none' }}>
                     <button
                       onClick={() => handleSort(col)}
                       style={{ background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: 11, fontWeight: 700, color: 'inherit', display: 'flex', alignItems: 'center', gap: 4, padding: 0 }}
@@ -325,9 +335,9 @@ export function ContractsPage() {
           </thead>
           <tbody>
             {contractsLoading ? (
-              <tr><td colSpan={6} style={{ padding: '40px', textAlign: 'center', color: '#9e9389' }}>Ładowanie danych...</td></tr>
+              <tr><td colSpan={6} style={{ padding: '40px', textAlign: 'center', color: '#7a6f67' }}>Ładowanie danych...</td></tr>
             ) : filteredContracts.length === 0 ? (
-              <tr><td colSpan={6} style={{ padding: '40px', textAlign: 'center', color: '#9e9389' }}>Brak umów spełniających kryteria.</td></tr>
+              <tr><td colSpan={6} style={{ padding: '40px', textAlign: 'center', color: '#7a6f67' }}>Brak umów spełniających kryteria.</td></tr>
             ) : filteredContracts.map((c) => {
               const client = customers.find(cust => cust.id === c.customer_id)
               const statusStyles = STATUS_S[c.status] || STATUS_S['draft']
@@ -390,6 +400,28 @@ export function ContractsPage() {
           onClose={() => setContractModalId(null)}
         />
       )}
+
+      <ContractWizard
+        isOpen={isContractGenOpen}
+        onClose={() => setIsContractGenOpen(false)}
+        onGenerated={async (result) => {
+          try {
+            const created = await createContract.mutateAsync({
+              customer_id: result.customer_id,
+              contract_number: result.contract_number,
+              contract_type: result.contract_type as ContractType,
+              start_date: result.start_date,
+              end_date: result.end_date || undefined,
+              billing_cycle: (result.billing_cycle as BillingCycle) || undefined,
+              account_manager_id: user?.id,
+              status: 'draft' as ContractStatus,
+            })
+            setPostCreationWizard({ contractId: created.id, customerId: created.customer_id })
+          } catch {
+            alert('Nie udało się utworzyć umowy. Spróbuj ponownie.')
+          }
+        }}
+      />
 
       {postCreationWizard && (
         <UploadWizard

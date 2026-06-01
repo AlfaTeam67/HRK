@@ -185,7 +185,7 @@ export function PdfPreviewModal({ attachmentId, title, userId, onClose }: Props)
                 />
               ))}
             </div>
-            <div style={{ fontSize: 12, color: '#9e9389' }}>Pobieranie dokumentu...</div>
+            <div style={{ fontSize: 12, color: '#7a6f67' }}>Pobieranie dokumentu...</div>
           </div>
         )}
 
@@ -193,7 +193,7 @@ export function PdfPreviewModal({ attachmentId, title, userId, onClose }: Props)
           <div style={{ textAlign: 'center' }}>
             <div style={{ fontSize: 32, opacity: 0.3, marginBottom: 10 }}>⚠️</div>
             <div style={{ fontSize: 13, fontWeight: 600, color: '#c94f02' }}>Nie udało się pobrać pliku</div>
-            <div style={{ fontSize: 11, color: '#9e9389', marginTop: 4, maxWidth: 280 }}>{error}</div>
+            <div style={{ fontSize: 11, color: '#7a6f67', marginTop: 4, maxWidth: 280 }}>{error}</div>
           </div>
         )}
 

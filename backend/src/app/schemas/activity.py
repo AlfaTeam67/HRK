@@ -32,3 +32,29 @@ class ActivityLogRead(ORMBaseSchema):
     activity_date: datetime
     additional_data: dict
     created_at: datetime
+
+
+class ActivityKPI(BaseModel):
+    events_count: int
+    meetings_count: int
+    documents_count: int
+    notes_count: int
+
+
+class ActivityLogReportItem(BaseModel):
+    id: uuid.UUID
+    customer_id: uuid.UUID | None
+    contract_id: uuid.UUID | None
+    activity_type: ActivityType
+    description: str
+    performed_by: uuid.UUID | None
+    performed_by_login: str | None
+    activity_date: datetime
+    additional_data: dict
+    is_own: bool
+
+
+class ActivityLogReportResponse(BaseModel):
+    items: list[ActivityLogReportItem]
+    kpi: ActivityKPI
+    total: int

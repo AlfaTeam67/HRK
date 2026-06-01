@@ -291,10 +291,12 @@ Plik w S3 z metadanymi.
 | extracted_text    | TEXT          |                                          | Surowy tekst (opcjonalnie) |
 | extracted_fields  | JSONB         | DEFAULT '{}'                             | Pola strukturalne (np. nr umowy) |
 | version           | INTEGER       | DEFAULT 1                                |  |
+| include_in_ai_assistant | BOOLEAN | NOT NULL DEFAULT TRUE                    | Intencja użytkownika: czy dokument ma być widoczny w Asystencie AI. Filtr `JOIN` w `DocumentChunkRepository.search`. |
 | uploaded_by       | UUID NULL     | FK users.id ON DELETE SET NULL           |  |
 
 Indeksy: `company_id`, `customer_id`, `contract_id`, **partial index**
-`ocr_status IN ('pending','processing')` → kolejka do przetworzenia.
+`ocr_status IN ('pending','processing')` → kolejka do przetworzenia,
+**partial index** `include_in_ai_assistant = TRUE` → szybkie filtrowanie chunków.
 
 Mixiny: `CreatedAtMixin`, `SoftDeleteMixin`.
 
