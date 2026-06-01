@@ -9,6 +9,7 @@ from app.api.v1.document_generations import router as document_generations_route
 from app.api.v1.documents import router as documents_router
 from app.api.v1.gus import router as gus_router
 from app.api.v1.rag import router as rag_router
+from app.api.v1.reports import router as reports_router
 from app.api.v1.users import router as users_router
 
 api_router = APIRouter()
@@ -25,4 +26,5 @@ api_router.include_router(
     tags=["document-generations"],
 )
 api_router.include_router(rag_router, prefix="/rag", tags=["rag"])
+api_router.include_router(reports_router, prefix="/reports", tags=["reports"])
 api_router.include_router(users_router, prefix="/users", tags=["users"])

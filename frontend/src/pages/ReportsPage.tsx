@@ -1,117 +1,271 @@
-/* ─── Mock data (inline) ─────────────────────────────────────── */
-const kpis = [
-  { label: 'ZDARZEŃ W TYM MIESIĄCU', value: '247', sub: '+23 vs. poprz. miesiąc', color: '#3182ce' },
-  { label: 'ZMIANY STATUSÓW',        value: '48',  sub: 'umów i klientów',        color: '#e85c04' },
-  { label: 'AKCEPTACJE',             value: '19',  sub: 'waloryzacji i aneksów',  color: '#38a169' },
-  { label: 'EKSPORTY DANYCH',        value: '12',  sub: 'pliki PDF/XLSX',         color: '#d69e2e' },
+import { useState } from 'react'
+import { useAppSelector } from '@/hooks/store'
+import {
+  useActivityLog,
+  type ActivityLogReportItem,
+  type ActivityReportPeriod,
+} from '@/hooks/useActivityLog'
+import { cardStyle as card } from '@/lib/styles'
+import type { components } from '@/types/api'
+
+type ActivityType = components['schemas']['ActivityType']
+
+const PERIODS: { label: string; value: ActivityReportPeriod }[] = [
+  { label: 'Ostatnie 7 dni',    value: 7   },
+  { label: 'Ostatnie 30 dni',   value: 30  },
+  { label: 'Ostatnie 90 dni',   value: 90  },
+  { label: 'Ostatnie pół roku', value: 180 },
+  { label: 'Ostatni rok',       value: 365 },
 ]
 
-const log = [
-  { ts: '2026-04-13 12:45', user: 'M. Janowska',  action: 'Zmiana statusu umowy',      detail: 'HRK/EMP/2024/07 → "Do odnowienia"',           type: 'change'  as const },
-  { ts: '2026-04-13 11:10', user: 'M. Nowak',      action: 'Zatwierdzenie waloryzacji', detail: 'Empik +5,2% – zaakceptowane',                 type: 'approve' as const },
-  { ts: '2026-04-13 09:32', user: 'System',         action: 'Alert automatyczny',       detail: 'HRK/EMP/2024/07 – 30 dni do końca umowy',     type: 'system'  as const },
-  { ts: '2026-04-12 16:55', user: 'A. Kowalski',   action: 'Dodanie notatki',           detail: 'Biedronka – spotkanie kwartalne zaplanowane',  type: 'note'    as const },
-  { ts: '2026-04-12 14:20', user: 'K. Lis',        action: 'Eksport raportu',           detail: 'Raport waloryzacji Q1 2026 – PDF',             type: 'export'  as const },
-  { ts: '2026-04-11 10:03', user: 'A. Wiśniewska', action: 'Podgląd dokumentu',         detail: 'HRK/EMP/2024/07 aneks nr 6',                  type: 'view'    as const },
-  { ts: '2026-04-11 09:22', user: 'M. Janowska',  action: 'Zmiana opiekuna',           detail: 'MediaMarkt – nowy opiekun: M. Nowak',          type: 'change'  as const },
-  { ts: '2026-04-10 17:01', user: 'M. Nowak',      action: 'Zatwierdzenie waloryzacji', detail: 'Biedronka +4,1% – zaakceptowane',              type: 'approve' as const },
-  { ts: '2026-04-10 14:30', user: 'K. Lis',        action: 'Eksport raportu',           detail: 'Lista umów wygasających Q2 2026 – XLSX',       type: 'export'  as const },
-  { ts: '2026-04-09 11:15', user: 'System',         action: 'Weryfikacja spójności',    detail: '3 rozbieżności w danych Empik – oznaczono',   type: 'system'  as const },
+const ACTIVITY_TYPES: { label: string; value: ActivityType }[] = [
+  { label: 'Spotkanie',    value: 'meeting'      },
+  { label: 'E-mail',       value: 'email'        },
+  { label: 'Notatka',      value: 'note'         },
+  { label: 'Dokument',     value: 'document'     },
+  { label: 'Weryfikacja',  value: 'verification' },
+  { label: 'Telefon',      value: 'call'         },
+  { label: 'System',       value: 'system'       },
 ]
 
-const BADGE: Record<typeof log[number]['type'], { bg: string; color: string; label: string }> = {
-  change:  { bg: '#fffbeb', color: '#92400e', label: 'Zmiana'    },
-  approve: { bg: '#f0fff4', color: '#276749', label: 'Akceptacja' },
-  system:  { bg: '#ebf8ff', color: '#2b6cb0', label: 'System'    },
-  note:    { bg: '#f3f4f6', color: '#374151', label: 'Notatka'   },
-  export:  { bg: '#fff5f0', color: '#c94f02', label: 'Eksport'   },
-  view:    { bg: '#f0fff4', color: '#276749', label: 'Odczyt'    },
+const TYPE_BADGE: Record<ActivityType, { bg: string; color: string; label: string; dot: string }> = {
+  meeting:      { bg: '#ebf8ff', color: '#2b6cb0', label: 'Spotkanie',   dot: '#3182ce' },
+  email:        { bg: '#f0fff4', color: '#276749', label: 'E-mail',      dot: '#38a169' },
+  note:         { bg: '#f3f4f6', color: '#374151', label: 'Notatka',     dot: '#718096' },
+  document:     { bg: '#fff5f0', color: '#c94f02', label: 'Dokument',    dot: '#e85c04' },
+  verification: { bg: '#fffbeb', color: '#92400e', label: 'Weryfikacja', dot: '#d69e2e' },
+  call:         { bg: '#faf5ff', color: '#6b21a8', label: 'Telefon',     dot: '#9f7aea' },
+  system:       { bg: '#f1f5f9', color: '#475569', label: 'System',      dot: '#94a3b8' },
 }
 
-import { cardStyle as card } from '@/lib/styles'
+function formatDate(iso: string): string {
+  const d = new Date(iso)
+  const date = d.toLocaleDateString('pl-PL', { day: '2-digit', month: '2-digit', year: 'numeric' })
+  const time = d.toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' })
+  return `${date}, ${time}`
+}
 
-/* ─── Component ──────────────────────────────────────────────── */
+interface KpiCardProps { label: string; value: number; color: string; icon: string }
+
+function KpiCard({ label, value, color, icon }: KpiCardProps) {
+  return (
+    <div style={{ ...card, padding: '18px 20px', position: 'relative', overflow: 'hidden' }}>
+      <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3, background: color }} />
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+        <div>
+          <div style={{ fontSize: 11, fontWeight: 600, color: '#9b8f87', letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 10 }}>
+            {label}
+          </div>
+          <div style={{ fontSize: 32, fontWeight: 800, color: '#1a1714', lineHeight: 1 }}>
+            {value}
+          </div>
+        </div>
+        <div style={{ fontSize: 22, opacity: 0.15 }}>{icon}</div>
+      </div>
+    </div>
+  )
+}
+
+function LogRow({ item, idx, total }: { item: ActivityLogReportItem; idx: number; total: number }) {
+  const badge = TYPE_BADGE[item.activity_type] ?? { bg: '#f3f4f6', color: '#374151', label: item.activity_type, dot: '#718096' }
+  const isLast = idx === total - 1
+
+  return (
+    <div style={{
+      display: 'grid',
+      gridTemplateColumns: '14px 1fr',
+      gap: 0,
+      padding: '0 20px',
+      position: 'relative',
+    }}>
+      {/* Timeline line */}
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', paddingTop: 14 }}>
+        <div style={{ width: 10, height: 10, borderRadius: '50%', background: badge.dot, flexShrink: 0, border: '2px solid white', boxShadow: `0 0 0 2px ${badge.dot}33` }} />
+        {!isLast && <div style={{ width: 1, flexGrow: 1, background: '#e8e4e0', marginTop: 4 }} />}
+      </div>
+
+      {/* Content */}
+      <div style={{
+        paddingLeft: 14,
+        paddingBottom: isLast ? 16 : 20,
+        paddingTop: 10,
+        borderBottom: !isLast ? '1px solid #f5f3f1' : 'none',
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4, flexWrap: 'wrap' }}>
+          {/* Badge */}
+          <span style={{
+            fontSize: 10, padding: '2px 7px', borderRadius: 4,
+            fontWeight: 700, background: badge.bg, color: badge.color,
+            letterSpacing: '0.04em',
+          }}>
+            {badge.label}
+          </span>
+
+          {/* User */}
+          <span style={{
+            fontSize: 12, fontWeight: item.is_own ? 700 : 500,
+            color: item.is_own ? '#e85c04' : '#374151',
+          }}>
+            {item.performed_by_login ?? 'System'}
+            {item.is_own && <span style={{ fontSize: 10, fontWeight: 400, color: '#e85c04', marginLeft: 4, opacity: 0.8 }}>(Ty)</span>}
+          </span>
+
+          {/* Time */}
+          <span style={{ fontSize: 11, color: '#a09890', marginLeft: 'auto', whiteSpace: 'nowrap' }}>
+            {formatDate(item.activity_date)}
+          </span>
+        </div>
+
+        {/* Description */}
+        <div style={{ fontSize: 13, color: '#2d2825', lineHeight: 1.4 }}>
+          {item.description}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+const SELECT: React.CSSProperties = {
+  border: '1px solid #e3e0db',
+  borderRadius: 6,
+  padding: '7px 30px 7px 11px',
+  fontSize: 13,
+  color: '#1a1714',
+  background: 'white',
+  outline: 'none',
+  cursor: 'pointer',
+  appearance: 'none' as const,
+  backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%237a6f67' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E")`,
+  backgroundRepeat: 'no-repeat',
+  backgroundPosition: 'right 10px center',
+}
+
+const LIMIT = 50
+
 export function ReportsPage() {
+  const user = useAppSelector((s) => s.auth.user)
+  const isAdmin = user?.department === 'Administrator IT'
+
+  const [period, setPeriod] = useState<ActivityReportPeriod>(30)
+  const [activityType, setActivityType] = useState<ActivityType | ''>('')
+  const [offset, setOffset]   = useState(0)
+
+  const { data, isLoading, isError } = useActivityLog({
+    period,
+    activity_type: activityType || undefined,
+    limit: LIMIT,
+    offset,
+  })
+
+  const kpi   = data?.kpi
+  const items = data?.items ?? []
+  const total = data?.total ?? 0
+
   return (
     <div style={{ width: '100%' }}>
-      {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
-        <div>
-          <h1 style={{ fontSize: 22, fontWeight: 700, color: '#1a1714', margin: 0, marginBottom: 2 }}>Raporty</h1>
-          <p style={{ fontSize: 12.5, color: '#7a6f67', margin: 0 }}>Pełny log audytowy wszystkich operacji w systemie HRK CRM.</p>
+
+      {/* Header + filters */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20, flexWrap: 'wrap' }}>
+        <div style={{ flex: 1, minWidth: 200 }}>
+          <h1 style={{ fontSize: 20, fontWeight: 700, color: '#1a1714', margin: 0, marginBottom: 2 }}>Aktywności</h1>
+          <p style={{ fontSize: 12.5, color: '#9b8f87', margin: 0 }}>
+            {isAdmin ? 'Wszystkie operacje w systemie.' : 'Twoje działania i działania na Twoich klientach.'}
+          </p>
         </div>
-        <div style={{ display: 'flex', gap: 8 }}>
-          <button style={{ background: 'white', border: '1px solid #e3e0db', borderRadius: 6, padding: '7px 14px', fontSize: 13, color: '#6b6b6b', cursor: 'pointer' }}>
-            Filtruj
-          </button>
-          <button style={{ background: '#e85c04', border: 'none', borderRadius: 6, padding: '7px 16px', color: 'white', fontSize: 13, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-              <polyline points="7 10 12 15 17 10"/>
-              <line x1="12" y1="15" x2="12" y2="3"/>
-            </svg>
-            Eksportuj PDF
-          </button>
+
+        {/* Period dropdown */}
+        <div style={{ position: 'relative' }}>
+          <select
+            value={period}
+            onChange={(e) => { setPeriod(Number(e.target.value) as ActivityReportPeriod); setOffset(0) }}
+            style={SELECT}
+          >
+            {PERIODS.map((p) => (
+              <option key={p.value} value={p.value}>{p.label}</option>
+            ))}
+          </select>
+        </div>
+
+        {/* Activity type dropdown */}
+        <div style={{ position: 'relative' }}>
+          <select
+            value={activityType}
+            onChange={(e) => { setActivityType(e.target.value as ActivityType | ''); setOffset(0) }}
+            style={SELECT}
+          >
+            <option value=''>Wszystkie typy</option>
+            {ACTIVITY_TYPES.map((t) => (
+              <option key={t.value} value={t.value}>{t.label}</option>
+            ))}
+          </select>
         </div>
       </div>
 
       {/* KPI cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 14, marginBottom: 20 }}>
-        {kpis.map((kpi) => (
-          <div key={kpi.label} style={{ ...card, padding: '16px 18px', borderTop: `3px solid ${kpi.color}` }}>
-            <div style={{ fontSize: 10, fontWeight: 700, color: '#7a6f67', letterSpacing: '0.07em', marginBottom: 8 }}>{kpi.label}</div>
-            <div style={{ fontSize: 28, fontWeight: 800, color: '#1a1714', lineHeight: 1, marginBottom: 6 }}>{kpi.value}</div>
-            <div style={{ fontSize: 11, color: '#7a6f67' }}>{kpi.sub}</div>
-          </div>
-        ))}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 12, marginBottom: 20 }}>
+        <KpiCard label='Zdarzeń'         value={kpi?.events_count   ?? 0} color='#3182ce' icon='📊' />
+        <KpiCard label='Spotkania'        value={kpi?.meetings_count  ?? 0} color='#e85c04' icon='🤝' />
+        <KpiCard label='Dokumenty'        value={kpi?.documents_count ?? 0} color='#38a169' icon='📄' />
+        <KpiCard label='Notatki'          value={kpi?.notes_count     ?? 0} color='#9f7aea' icon='📝' />
       </div>
 
-      {/* Audit log */}
+      {/* Timeline log */}
       <div style={{ ...card, overflow: 'hidden' }}>
-        <div style={{ padding: '14px 18px', borderBottom: '1px solid #f2f0ed', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div style={{ padding: '14px 20px', borderBottom: '1px solid #f0ece8', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
           <div>
-            <div style={{ fontSize: 14, fontWeight: 700, color: '#1a1714' }}>Log audytowy</div>
-            <div style={{ fontSize: 12, color: '#7a6f67', marginTop: 2 }}>Wszystkie operacje zapisu, odczytu i zatwierdzeń</div>
+            <div style={{ fontSize: 14, fontWeight: 700, color: '#1a1714' }}>Oś czasu</div>
+            <div style={{ fontSize: 12, color: '#9b8f87', marginTop: 1 }}>
+              {isLoading ? 'Ładowanie…' : total === 0 ? 'Brak zdarzeń' : `${total} zdarzeń`}
+            </div>
           </div>
-          <div style={{ position: 'relative' }}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#7a6f67" strokeWidth="2" style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)' }}>
-              <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
-            </svg>
-            <input
-              name="audit-log-search"
-              placeholder="Szukaj w logu…"
-              readOnly
-              aria-label="Wyszukiwarka logu audytowego (demo)"
-              style={{ border: '1px solid #e3e0db', borderRadius: 6, padding: '6px 10px 6px 32px', fontSize: 13, outline: 'none', color: '#1a1714', background: '#fafaf9', width: 200 }}
-            />
-          </div>
+          {!isAdmin && (
+            <div style={{ fontSize: 11, color: '#9b8f87', background: '#f5f3f1', borderRadius: 5, padding: '4px 10px' }}>
+              Twoje + Twoich klientów
+            </div>
+          )}
         </div>
 
-        {/* Column headers */}
-        <div style={{ display: 'grid', gridTemplateColumns: '160px 120px 180px 1fr 90px', gap: 8, padding: '8px 18px', fontSize: 10, fontWeight: 700, color: '#7a6f67', letterSpacing: '0.06em', borderBottom: '1px solid #f2f0ed' }}>
-          <span>CZAS</span><span>UŻYTKOWNIK</span><span>AKCJA</span><span>SZCZEGÓŁY</span><span>TYP</span>
-        </div>
+        {isError && (
+          <div style={{ padding: 24, textAlign: 'center', color: '#e53e3e', fontSize: 13 }}>
+            Błąd ładowania danych.
+          </div>
+        )}
+        {isLoading && (
+          <div style={{ padding: 24, textAlign: 'center', color: '#9b8f87', fontSize: 13 }}>
+            Ładowanie…
+          </div>
+        )}
+        {!isLoading && !isError && items.length === 0 && (
+          <div style={{ padding: 32, textAlign: 'center', color: '#9b8f87', fontSize: 13 }}>
+            Brak danych dla wybranego okresu.
+          </div>
+        )}
 
-        {log.map((entry, i) => (
-          <div key={i} style={{
-            display: 'grid', gridTemplateColumns: '160px 120px 180px 1fr 90px',
-            gap: 8, padding: '10px 18px', alignItems: 'center',
-            background: i % 2 === 0 ? '#fafaf9' : 'white',
-            borderBottom: i < log.length - 1 ? '1px solid #f2f0ed' : 'none',
-          }}>
-            <span style={{ fontSize: 11, color: '#7a6f67', fontFamily: 'monospace' }}>{entry.ts}</span>
-            <span style={{ fontSize: 12, fontWeight: 600, color: '#1a1714' }}>{entry.user}</span>
-            <span style={{ fontSize: 12, color: '#374151' }}>{entry.action}</span>
-            <span style={{ fontSize: 11, color: '#7a6f67', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{entry.detail}</span>
-            <span style={{ fontSize: 10, padding: '3px 8px', borderRadius: 4, fontWeight: 600, textAlign: 'center', background: BADGE[entry.type]?.bg, color: BADGE[entry.type]?.color }}>
-              {BADGE[entry.type]?.label}
+        {items.length > 0 && (
+          <div style={{ padding: '8px 0 0' }}>
+            {items.map((item, i) => (
+              <LogRow key={item.id} item={item} idx={i} total={items.length} />
+            ))}
+          </div>
+        )}
+
+        {total > LIMIT && (
+          <div style={{ padding: '12px 20px', borderTop: '1px solid #f0ece8', display: 'flex', gap: 8, alignItems: 'center', justifyContent: 'center', fontSize: 12 }}>
+            <button
+              disabled={offset === 0}
+              onClick={() => setOffset(Math.max(0, offset - LIMIT))}
+              style={{ border: '1px solid #e3e0db', borderRadius: 6, padding: '5px 14px', cursor: offset === 0 ? 'not-allowed' : 'pointer', color: '#6b6b6b', background: 'white', opacity: offset === 0 ? 0.4 : 1 }}
+            >← Poprzednia</button>
+            <span style={{ color: '#9b8f87', minWidth: 120, textAlign: 'center' }}>
+              {offset + 1}–{Math.min(offset + LIMIT, total)} z {total}
             </span>
+            <button
+              disabled={offset + LIMIT >= total}
+              onClick={() => setOffset(offset + LIMIT)}
+              style={{ border: '1px solid #e3e0db', borderRadius: 6, padding: '5px 14px', cursor: offset + LIMIT >= total ? 'not-allowed' : 'pointer', color: '#6b6b6b', background: 'white', opacity: offset + LIMIT >= total ? 0.4 : 1 }}
+            >Następna →</button>
           </div>
-        ))}
-
-        <div style={{ padding: '12px 18px', borderTop: '1px solid #f2f0ed', fontSize: 12, color: '#7a6f67', textAlign: 'center' }}>
-          Wyświetlono 10 z 247 zdarzeń · <span style={{ color: '#e85c04', cursor: 'pointer', fontWeight: 600 }}>Załaduj więcej</span>
-        </div>
+        )}
       </div>
     </div>
   )

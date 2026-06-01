@@ -29,35 +29,45 @@ from app.models.service import Service
 from app.models.service_group import ServiceGroup
 from app.models.user import User
 
+_USER_DEPARTMENTS = {
+    "asia": "Specjalista HR",
+    "mateusz": "Administrator IT",
+    "tomek": "Handlowy",
+    "kasia": "Opiekun klienta",
+}
+
 
 async def seed() -> None:  # noqa: C901
     async with AsyncSessionLocal() as session:
-        # 1. Idempotency check (Expand to check more CKKs)
-        seed_ckks = {f"C{i:03d}" for i in range(1, 11)}
-        stmt = select(Customer.id).where(Customer.ckk.in_(seed_ckks))
-        existing = await session.execute(stmt)
-        if existing.first():
-            print("docker-seed: demo data already exists. Skipping.")
-            return
-
-        # 2. Create Users (Ensure Asia, Mateusz and Kasia exist in DB)
-        # We search for them first to avoid duplicates if they were created by login
+        # 1. Always ensure users exist and have correct departments (runs even on re-seed)
         user_stmt = select(User).where(or_(User.login == "asia", User.login == "mateusz", User.login == "kasia", User.login == "tomek"))
         res = await session.execute(user_stmt)
         existing_users = {u.login: u for u in res.scalars().all()}
 
-        def get_or_create_user(login: str, email: str) -> User:
+        def get_or_create_user(login: str, email: str, department: str) -> User:
             if login in existing_users:
-                return existing_users[login]
-            u = User(login=login, email=email)
+                u = existing_users[login]
+                u.department = department
+                return u
+            u = User(login=login, email=email, department=department)
             session.add(u)
             return u
 
-        user_asia = get_or_create_user("asia", "asia@hrk.eu")
-        user_tomek = get_or_create_user("tomek", "tomek@hrk.eu")
-        user_kasia = get_or_create_user("kasia", "kasia@hrk.pl")
+        user_asia = get_or_create_user("asia", "asia@hrk.eu", "Specjalista HR")
+        user_mateusz = get_or_create_user("mateusz", "mateusz@hrk.eu", "Administrator IT")
+        user_tomek = get_or_create_user("tomek", "tomek@hrk.eu", "Handlowy")
+        user_kasia = get_or_create_user("kasia", "kasia@hrk.pl", "Opiekun klienta")
 
         await session.flush()
+
+        # 2. Idempotency check — skip bulk data if already seeded
+        seed_ckks = {f"C{i:03d}" for i in range(1, 11)}
+        stmt = select(Customer.id).where(Customer.ckk.in_(seed_ckks))
+        existing = await session.execute(stmt)
+        if existing.first():
+            await session.commit()
+            print("docker-seed: demo data already exists. Updated user departments only.")
+            return
 
         # 3. Create Companies
         company_names = [
@@ -217,11 +227,23 @@ async def seed() -> None:  # noqa: C901
             ]
             session.add_all(notes)
 
-            # Timeline Activities
+            # Timeline Activities — varied types, users, time spread
+            now = datetime.now(UTC)
+            cname = companies[idx - 1].name
             activities = [
-                ActivityLog(customer_id=customer.id, activity_type=ActivityType.CALL, description="Rozmowa o przedłużeniu umowy", performed_by=manager_id, activity_date=datetime.now(UTC) - timedelta(days=2)),
-                ActivityLog(customer_id=customer.id, activity_type=ActivityType.MEETING, description="Spotkanie kwartalne - status operacyjny", performed_by=manager_id, activity_date=datetime.now(UTC) - timedelta(days=15)),
-                ActivityLog(customer_id=customer.id, activity_type=ActivityType.EMAIL, description="Wysłano projekt aneksu waloryzacyjnego", performed_by=manager_id, activity_date=datetime.now(UTC) - timedelta(hours=5)),
+                # Last 7 days
+                ActivityLog(customer_id=customer.id, contract_id=c1.id, activity_type=ActivityType.CALL, description=f"Rozmowa o przedłużeniu umowy — {cname}", performed_by=manager_id, activity_date=now - timedelta(days=1)),
+                ActivityLog(customer_id=customer.id, activity_type=ActivityType.EMAIL, description=f"Wysłano projekt aneksu waloryzacyjnego — {cname}", performed_by=manager_id, activity_date=now - timedelta(days=3)),
+                ActivityLog(customer_id=customer.id, activity_type=ActivityType.SYSTEM, description=f"Alert: zbliżający się koniec umowy — {cname}", performed_by=None, activity_date=now - timedelta(days=5)),
+                # Last 30 days
+                ActivityLog(customer_id=customer.id, activity_type=ActivityType.MEETING, description=f"Spotkanie kwartalne — status operacyjny — {cname}", performed_by=manager_id, activity_date=now - timedelta(days=10)),
+                ActivityLog(customer_id=customer.id, contract_id=c2.id, activity_type=ActivityType.DOCUMENT, description=f"Dodano aneks nr 3 do umowy SLA — {cname}", performed_by=manager_id, activity_date=now - timedelta(days=18)),
+                ActivityLog(customer_id=customer.id, activity_type=ActivityType.NOTE, description=f"Klient zgłosił pytania dot. PPK — {cname}", performed_by=user_mateusz.id, activity_date=now - timedelta(days=22)),
+                # Last 90 days
+                ActivityLog(customer_id=customer.id, contract_id=c1.id, activity_type=ActivityType.VERIFICATION, description=f"Weryfikacja danych fakturowych — {cname}", performed_by=manager_id, activity_date=now - timedelta(days=45)),
+                ActivityLog(customer_id=customer.id, activity_type=ActivityType.MEETING, description=f"Prezentacja wyników Q1 — {cname}", performed_by=user_asia.id if idx % 3 == 0 else manager_id, activity_date=now - timedelta(days=60)),
+                ActivityLog(customer_id=customer.id, activity_type=ActivityType.EMAIL, description=f"Potwierdzenie warunków waloryzacji — {cname}", performed_by=manager_id, activity_date=now - timedelta(days=75)),
+                ActivityLog(customer_id=customer.id, activity_type=ActivityType.SYSTEM, description=f"Automatyczna weryfikacja spójności danych — {cname}", performed_by=None, activity_date=now - timedelta(days=88)),
             ]
             session.add_all(activities)
 
