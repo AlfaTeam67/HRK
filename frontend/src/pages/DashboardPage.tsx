@@ -187,7 +187,7 @@ export function DashboardPage() {
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <div style={{ fontSize: 12, color: '#9e9389', textTransform: 'capitalize' }}>{today}</div>
+          <div style={{ fontSize: 12, color: '#7a6f67', textTransform: 'capitalize' }}>{today}</div>
           {isConnected && (
             <div
               style={{
@@ -411,7 +411,7 @@ export function DashboardPage() {
         <h1 style={{ fontSize: 22, fontWeight: 700, color: '#1a1714', margin: 0, marginBottom: 4 }}>
           Dzień dobry, {firstName}
         </h1>
-        <p style={{ fontSize: 12.5, color: '#9e9389', margin: 0 }}>
+        <p style={{ fontSize: 12.5, color: '#7a6f67', margin: 0 }}>
           Masz {alerts.length} alerty wymagające uwagi dzisiaj.
         </p>
       </div>
@@ -426,7 +426,7 @@ export function DashboardPage() {
               style={{
                 fontSize: 10,
                 fontWeight: 700,
-                color: '#9e9389',
+                color: '#7a6f67',
                 letterSpacing: '0.07em',
                 marginBottom: 8,
               }}

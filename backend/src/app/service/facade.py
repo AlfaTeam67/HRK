@@ -3,6 +3,7 @@
 import logging
 import uuid
 from datetime import datetime
+from decimal import Decimal
 from typing import Any
 
 from fastapi import HTTPException, status
@@ -12,7 +13,7 @@ from app.models.activity import ActivityLog
 from app.models.contract import Contract
 from app.models.contract_service import ContractService as ContractServiceModel
 from app.models.customer import ContactPerson, Customer
-from app.models.enums import ValorizationStatus
+from app.models.enums import ContractStatus, IndexType, ValorizationStatus
 from app.models.note import Note
 from app.models.rate import CustomerRate, Valorization
 from app.models.service import Service
@@ -39,12 +40,20 @@ from app.schemas.notes import NoteCreate, NoteUpdate
 from app.schemas.service_groups import ServiceGroupCreate, ServiceGroupUpdate
 from app.schemas.services import ServiceCreate, ServiceUpdate
 from app.schemas.timeline import TimelineEventRead, TimelineEventType
-from app.schemas.valorizations import ValorizationCreate, ValorizationUpdate
+from app.schemas.valorizations import (
+    ValorizationAutoRequest,
+    ValorizationAutoResponse,
+    ValorizationAutoSkipped,
+    ValorizationCreate,
+    ValorizationRead,
+    ValorizationUpdate,
+)
 from app.service.contact_persons import ContactPersonService
 from app.service.contract_services import ContractServiceRelationService
 from app.service.contracts import ContractCrudService
 from app.service.customer_rates import CustomerRateCrudService
 from app.service.customers import CustomerService
+from app.service.gus import GUSService
 from app.service.notes import NoteService
 from app.service.service_groups import ServiceGroupCrudService
 from app.service.services import ServiceCrudService
@@ -88,6 +97,8 @@ class CRMService:
         self.note_service = NoteService(note_repo, lookup_repo)
         self.contact_person_service = ContactPersonService(contact_person_repo, lookup_repo)
         self.timeline_service = TimelineService(TimelineRepository(db))
+        self.contract_repo = contract_repo
+        self.valorization_repo = val_repo
 
     async def list_customers(self, **kwargs: Any) -> list[Customer]:
         return await self.customer_service.list_customers(**kwargs)
@@ -429,6 +440,121 @@ class CRMService:
         except Exception:
             await self.db.rollback()
             raise
+
+    async def generate_valorizations(
+        self, payload: ValorizationAutoRequest
+    ) -> ValorizationAutoResponse:
+        try:
+            result = await self._generate_valorizations(payload)
+            await self.db.commit()
+            return result
+        except Exception:
+            await self.db.rollback()
+            raise
+
+    async def _generate_valorizations(
+        self, payload: ValorizationAutoRequest
+    ) -> ValorizationAutoResponse:
+        planned_date = payload.planned_date
+        year = planned_date.year
+        created: list[Valorization] = []
+        skipped: list[ValorizationAutoSkipped] = []
+
+        gus_value: Decimal | None = None
+        if any(item.index_type == IndexType.GUS_CPI for item in payload.items):
+            gus_service = GUSService(self.db)
+            snapshot = await gus_service.get_latest_snapshot()
+            gus_value = Decimal(str(snapshot.value))
+
+        for item in payload.items:
+            contract = await self.contract_repo.get(item.contract_id)
+            if not contract:
+                skipped.append(
+                    ValorizationAutoSkipped(
+                        contract_id=item.contract_id, reason="contract_not_found"
+                    )
+                )
+                continue
+            if contract.status != ContractStatus.ACTIVE:
+                skipped.append(
+                    ValorizationAutoSkipped(
+                        contract_id=item.contract_id, reason="contract_not_active"
+                    )
+                )
+                continue
+            if item.index_type is None:
+                skipped.append(
+                    ValorizationAutoSkipped(
+                        contract_id=item.contract_id, reason="missing_rule"
+                    )
+                )
+                continue
+            existing = await self.valorization_repo.get_by_contract_year(
+                contract.id, year
+            )
+            if existing:
+                skipped.append(
+                    ValorizationAutoSkipped(contract_id=item.contract_id, reason="duplicate")
+                )
+                continue
+
+            index_value: Decimal | None = None
+            rule_label = ""
+            if item.index_type == IndexType.GUS_CPI:
+                if gus_value is None:
+                    skipped.append(
+                        ValorizationAutoSkipped(
+                            contract_id=item.contract_id, reason="gus_unavailable"
+                        )
+                    )
+                    continue
+                index_value = gus_value
+                rule_label = "CPI GUS"
+            else:
+                if item.index_value is None:
+                    skipped.append(
+                        ValorizationAutoSkipped(
+                            contract_id=item.contract_id, reason="missing_index_value"
+                        )
+                    )
+                    continue
+                index_value = item.index_value
+                rule_label = (
+                    "Stały %"
+                    if item.index_type == IndexType.FIXED_PCT
+                    else "Indywidualna"
+                )
+
+            notes = f"Wygenerowano automatem. Reguła: {rule_label} ({index_value}%)."
+            data = {
+                "contract_id": contract.id,
+                "year": year,
+                "index_type": item.index_type,
+                "index_value": index_value,
+                "planned_date": planned_date,
+                "applied_date": None,
+                "status": ValorizationStatus.PENDING,
+                "notes": notes,
+                "additional_data": {
+                    "automation": {
+                        "source": "manual",
+                        "rule": item.index_type.value,
+                        "gus_value": str(gus_value) if gus_value is not None else None,
+                    }
+                },
+            }
+            orm = await self.valorization_repo.create(data)
+            created.append(orm)
+
+        return ValorizationAutoResponse(
+            planned_date=planned_date,
+            year=year,
+            gus_value=gus_value,
+            created=[
+                ValorizationRead.model_validate(v) for v in created
+            ],
+            skipped=skipped,
+        )
 
     # --- Notes ---
 

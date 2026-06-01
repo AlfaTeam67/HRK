@@ -52,16 +52,16 @@ const IcoReports = () => (
 )
 
 const NAV_MAIN = [
-  { to: '/',                   label: 'Pulpit główny', icon: IcoDashboard,    badge: 0,  end: true  },
-  { to: '/managed-dashboard',  label: 'Mój pulpit',    icon: IcoDashboard,    badge: 0,  end: false },
-  { to: '/clients',            label: 'Klienci',       icon: IcoClients,      badge: 19, end: false },
-  { to: '/contracts',          label: 'Umowy',         icon: IcoContracts,    badge: 0,  end: false },
-  { to: '/valorization',       label: 'Waloryzacja',   icon: IcoValorization, badge: 0,  end: false },
+  { to: '/',                   label: 'Pulpit główny', icon: IcoDashboard,    badge: 0, end: true  },
+  { to: '/managed-dashboard',  label: 'Mój pulpit',    icon: IcoDashboard,    badge: 0, end: false },
+  { to: '/clients',            label: 'Klienci',       icon: IcoClients,      badge: 0, end: false },
+  { to: '/contracts',          label: 'Umowy',         icon: IcoContracts,    badge: 0, end: false },
+  { to: '/valorization',       label: 'Waloryzacja',   icon: IcoValorization, badge: 0, end: false },
 ]
 const NAV_AI    = [{ to: '/assistant', label: 'Chat z asystentem', icon: IcoAI,      end: false }]
 const NAV_ADMIN = [
   { to: '/access',  label: 'Dostępy i role', icon: IcoSettings, end: false },
-  { to: '/reports', label: 'Raporty',        icon: IcoReports,  end: false },
+  { to: '/reports', label: 'Aktywności',     icon: IcoReports,  end: false },
 ]
 
 function NavItem({ to, label, icon: Icon, badge = 0, end = false }: {
@@ -75,7 +75,7 @@ function NavItem({ to, label, icon: Icon, badge = 0, end = false }: {
         display: 'flex', alignItems: 'center', gap: 8,
         padding: '7px 10px', borderRadius: 6,
         fontSize: 13, fontWeight: 500,
-        color: isActive ? '#e85c04' : '#9e9389',
+        color: isActive ? '#e85c04' : '#a09080',
         background: isActive ? 'rgba(232,92,4,0.13)' : 'transparent',
         textDecoration: 'none', marginBottom: 1,
         transition: 'color 0.12s, background 0.12s',
@@ -98,7 +98,7 @@ function SectionLabel({ children }: { children: string }) {
   return (
     <div style={{
       fontSize: 9.5, fontWeight: 700, letterSpacing: '0.1em',
-      textTransform: 'uppercase', color: '#4a4340',
+      textTransform: 'uppercase', color: '#8c8278',
       padding: '0 10px', marginBottom: 3, marginTop: 18,
     }}>{children}</div>
   )
@@ -136,7 +136,7 @@ export function AppSidebar() {
         <HrkLogo size={26} />
         <div style={{
           fontSize: 9, fontWeight: 700, letterSpacing: '0.12em',
-          color: '#4a4340', marginTop: 6, textTransform: 'uppercase',
+          color: '#8c8278', marginTop: 6, textTransform: 'uppercase',
         }}>
           Payroll · System CRM
         </div>
@@ -173,7 +173,7 @@ export function AppSidebar() {
             }}>
               {user?.displayName ?? '—'}
             </div>
-            <div style={{ fontSize: 10, color: '#4a4340' }}>
+            <div style={{ fontSize: 10, color: '#8c8278' }}>
               {user?.department ?? 'HRK'}
             </div>
           </div>
@@ -182,13 +182,13 @@ export function AppSidebar() {
             title="Wyloguj się"
             style={{
               background: 'none', border: 'none', cursor: 'pointer',
-              color: '#4a4340', padding: 4, borderRadius: 4,
+              color: '#8c8278', padding: 4, borderRadius: 4,
               display: 'flex', alignItems: 'center',
               transition: 'color 0.12s',
               flexShrink: 0,
             }}
             onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.color = '#e85c04' }}
-            onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.color = '#4a4340' }}
+            onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.color = '#8c8278' }}
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>

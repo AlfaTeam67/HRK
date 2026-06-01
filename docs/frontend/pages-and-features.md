@@ -54,17 +54,22 @@ gdy szukasz „gdzie jest formularz X" albo „skąd wziąć logikę Y".
 - Lewa kolumna: lista klientów (filtry: `q`, `manager_id`, `statuses`,
   `created_from/to`).
 - Prawa kolumna: detal klienta — zakładki:
-  - **Profil** — dane firmy, opiekun, segment.
-  - **Osoby kontaktowe** — `GET/POST/PATCH/DELETE
-    /api/v1/customers/{id}/contacts`.
-  - **Umowy** — lista umów klienta (link do `ContractsPage`).
+  - **Informacje** — dane firmy, opiekun, segment, AI summary (SSE stream).
+  - **Umowy** — drzewo umów (`ContractTreeList`): macierzyste z
+    zagnieżdżonymi aneksami i powiązanymi (SLA/DPA/PPK). Klik → `ContractModal`.
+  - **Dokumenty** — `DocumentsTab` z quick filters
+    (`Wszystkie | Klient | Umowy | Wymaga akcji`), dropdown typu,
+    kolumna „Pochodzenie" (klikalna), akcja „Otwórz umowę →".
   - **Notatki** — `GET /api/v1/notes?customer_id=...`, edycja inline.
-  - **Aktywność** — timeline (`GET .../timeline`).
-  - **Dokumenty** — feature `DocumentsTab` (drafts AI + załączniki).
-  - **AI Summary** — przycisk → SSE stream do
-    `GET /customers/{id}/ai-summary/stream`. Tokeny dopisywane na żywo.
+  - **Oś czasu** — timeline (`GET .../timeline`).
 - Hook'i: `useCustomers`, `useCustomer`, `useCustomerTimeline`,
-  `useCustomerNotes`, `useContactPersons`, `useCreateNote`, ...
+  `useContracts`, `useDocumentsQuery`, `useContactPersons`, `useCreateNote`, ...
+- Komponenty wydzielone:
+  - `features/contracts/ContractTreeList.tsx` — drzewo umów.
+  - `features/documentGeneration/DocumentsTab.tsx` — zakładka dokumentów.
+  - `features/documentGeneration/originHelpers.ts` — helpery `groupContractsByParent`, `buildOrigin`.
+
+Szczegółowy opis zakładek: [`clients-page-tabs.md`](clients-page-tabs.md).
 
 ---
 
@@ -94,8 +99,9 @@ gdy szukasz „gdzie jest formularz X" albo „skąd wziąć logikę Y".
 
 - Plik: `src/pages/AdvisorPage.tsx` — największa strona aplikacji
   (~44 KB).
-- **Lewa kolumna**: lista klientów + ich dokumentów (z `?exclude_draft=true`,
-  bo drafty AI nie są w RAG).
+- **Lewa kolumna**: lista klientów + ich dokumentów (z
+  `?exclude_draft=true&include_in_ai_assistant_only=true` — pomija drafty AI
+  oraz dokumenty wyłączone przełącznikiem przez opiekuna).
 - **Środek**: chat — pytanie wpisane przez użytkownika trafia do
   `POST /api/v1/rag/search` z `customer_id` i `ai_mode` (switch).
 - **Prawa kolumna**: PDF preview (`PdfPreviewModal`) z podświetlonym
@@ -159,13 +165,19 @@ Flow:
 1. Wybór pliku (`<input type="file">`) — walidacja MIME / rozmiaru
    (10 MB).
 2. Wybór typu (`DocumentType`), customer/contract/company.
-3. `POST /api/v1/documents` (multipart) z `uploaded_by={user.id}`.
-4. Po sukcesie: invalidate `['documents', ...]`, toast.
-5. Background na backendzie: chunking + embedding (zob.
+3. Checkbox **„Załącz dla asystenta AI (zalecane)"** — domyślnie ON.
+   Odznaczenie powoduje, że plik trafia do S3 i DB, ale `ocr_status='skipped'`
+   i background indeksacja nie startuje. Można włączyć później przełącznikiem
+   na karcie dokumentu.
+4. `POST /api/v1/documents` (multipart) z `uploaded_by={user.id}` i
+   `include_in_ai_assistant=<bool>`.
+5. Po sukcesie: invalidate `['documents', ...]`, toast.
+6. Background na backendzie: chunking + embedding (zob.
    [`../workflows/document-upload.md`](../workflows/document-upload.md)).
 
 UI dba, by **nie blokować** użytkownika — odpowiedź wraca natychmiast.
-Status indeksowania widać w `OcrStatusBadge`.
+Status indeksowania widać w `OcrStatusBadge` + `AiAssistantToggle`
+(zob. [`../ai/ai-assistant-toggle.md`](../ai/ai-assistant-toggle.md)).
 
 ---
 

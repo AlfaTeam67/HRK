@@ -453,7 +453,7 @@ class DocumentGenerationService:
         )
         await self._session.commit()
 
-    async def update_draft_data(
+    async def update_draft_data(  # noqa: C901
         self,
         generation_id: uuid.UUID,
         *,

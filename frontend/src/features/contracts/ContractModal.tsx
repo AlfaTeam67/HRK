@@ -22,7 +22,7 @@ const C = {
   border: '#e8e5e0',
   orange: '#e85c04',
   text: '#1a1714',
-  muted: '#9e9389',
+  muted: '#7a6f67',
   subtle: '#6b6361',
   green: '#276749',
   greenBg: '#f0fff4',
@@ -58,7 +58,7 @@ const GEN_STATUS_META: Record<string, { l: string; bg: string; fg: string }> = {
   finalized:  { l: 'Sfinalizowany', bg: '#f0fff4', fg: '#276749' },
   accepted:   { l: 'Zaakceptowany', bg: '#f0fff4', fg: '#276749' },
   sent:       { l: 'Wysłany',       bg: '#eff6ff', fg: '#1d4ed8' },
-  superseded: { l: 'Zastąpiony',    bg: '#f0eeeb', fg: '#9e9389' },
+  superseded: { l: 'Zastąpiony',    bg: '#f0eeeb', fg: '#7a6f67' },
   rejected:   { l: 'Odrzucony',     bg: '#fff5f0', fg: '#c94f02' },
 }
 
@@ -632,7 +632,6 @@ function HistoriaOsiTab({
 }
 
 /* ─── Status transition rules ─────────────────────────────────── */
-// UX labels map backend statuses to business-meaningful names
 const STATUS_LABELS: Record<ContractStatus, string> = {
   draft:      'Utworzona',
   signed:     'Wysłana do klienta',
@@ -641,7 +640,6 @@ const STATUS_LABELS: Record<ContractStatus, string> = {
   terminated: 'Zakończona',
 }
 
-// Allowed transitions from each status
 const STATUS_TRANSITIONS: Record<ContractStatus, { to: ContractStatus; label: string; danger?: boolean }[]> = {
   draft:      [{ to: 'signed',     label: 'Wyślij do klienta' },
                { to: 'terminated', label: 'Anuluj umowę', danger: true }],
@@ -654,7 +652,6 @@ const STATUS_TRANSITIONS: Record<ContractStatus, { to: ContractStatus; label: st
   terminated: [],
 }
 
-// Full lifecycle steps for the progress stepper
 const LIFECYCLE_STEPS: { status: ContractStatus; label: string }[] = [
   { status: 'draft',      label: 'Utworzona' },
   { status: 'signed',     label: 'Wysłana' },
@@ -985,7 +982,7 @@ function DocRow({ doc, isPrimary, onPreview, onDownload, onDelete, onSetPrimary 
   onSetPrimary?: () => void
 }) {
   return (
-    <div style={{ ...rowStyle, borderLeft: isPrimary ? `3px solid ${C.orange}` : `3px solid #9e9389` }}>
+    <div style={{ ...rowStyle, borderLeft: isPrimary ? `3px solid ${C.orange}` : `3px solid #7a6f67` }}>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
           {isPrimary && <span style={{ fontSize: 9, fontWeight: 700, color: C.orange, background: '#fff8f4', border: `1px solid #fdd5b8`, borderRadius: 4, padding: '1px 6px', textTransform: 'uppercase' as const }}>GŁÓWNY</span>}

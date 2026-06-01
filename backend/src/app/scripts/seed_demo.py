@@ -29,35 +29,45 @@ from app.models.service import Service
 from app.models.service_group import ServiceGroup
 from app.models.user import User
 
+_USER_DEPARTMENTS = {
+    "asia": "Specjalista HR",
+    "mateusz": "Administrator IT",
+    "tomek": "Handlowy",
+    "kasia": "Opiekun klienta",
+}
+
 
 async def seed() -> None:  # noqa: C901
     async with AsyncSessionLocal() as session:
-        # 1. Idempotency check (Expand to check more CKKs)
-        seed_ckks = {f"C{i:03d}" for i in range(1, 11)}
-        stmt = select(Customer.id).where(Customer.ckk.in_(seed_ckks))
-        existing = await session.execute(stmt)
-        if existing.first():
-            print("docker-seed: demo data already exists. Skipping.")
-            return
-
-        # 2. Create Users (Ensure Asia, Mateusz and Kasia exist in DB)
-        # We search for them first to avoid duplicates if they were created by login
+        # 1. Always ensure users exist and have correct departments (runs even on re-seed)
         user_stmt = select(User).where(or_(User.login == "asia", User.login == "mateusz", User.login == "kasia", User.login == "tomek"))
         res = await session.execute(user_stmt)
         existing_users = {u.login: u for u in res.scalars().all()}
 
-        def get_or_create_user(login: str, email: str) -> User:
+        def get_or_create_user(login: str, email: str, department: str) -> User:
             if login in existing_users:
-                return existing_users[login]
-            u = User(login=login, email=email)
+                u = existing_users[login]
+                u.department = department
+                return u
+            u = User(login=login, email=email, department=department)
             session.add(u)
             return u
 
-        user_asia = get_or_create_user("asia", "asia@hrk.eu")
-        user_tomek = get_or_create_user("tomek", "tomek@hrk.eu")
-        user_kasia = get_or_create_user("kasia", "kasia@hrk.pl")
+        user_asia = get_or_create_user("asia", "asia@hrk.eu", "Specjalista HR")
+        user_mateusz = get_or_create_user("mateusz", "mateusz@hrk.eu", "Administrator IT")
+        user_tomek = get_or_create_user("tomek", "tomek@hrk.eu", "Handlowy")
+        user_kasia = get_or_create_user("kasia", "kasia@hrk.pl", "Opiekun klienta")
 
         await session.flush()
+
+        # 2. Idempotency check — skip bulk data if already seeded
+        seed_ckks = {f"C{i:03d}" for i in range(1, 11)}
+        stmt = select(Customer.id).where(Customer.ckk.in_(seed_ckks))
+        existing = await session.execute(stmt)
+        if existing.first():
+            await session.commit()
+            print("docker-seed: demo data already exists. Updated user departments only.")
+            return
 
         # 3. Create Companies
         company_names = [
@@ -217,21 +227,74 @@ async def seed() -> None:  # noqa: C901
             ]
             session.add_all(notes)
 
-            # Timeline Activities
+            # Timeline Activities — varied types, users, time spread
+            now = datetime.now(UTC)
+            cname = companies[idx - 1].name
             activities = [
-                ActivityLog(customer_id=customer.id, activity_type=ActivityType.CALL, description="Rozmowa o przedłużeniu umowy", performed_by=manager_id, activity_date=datetime.now(UTC) - timedelta(days=2)),
-                ActivityLog(customer_id=customer.id, activity_type=ActivityType.MEETING, description="Spotkanie kwartalne - status operacyjny", performed_by=manager_id, activity_date=datetime.now(UTC) - timedelta(days=15)),
-                ActivityLog(customer_id=customer.id, activity_type=ActivityType.EMAIL, description="Wysłano projekt aneksu waloryzacyjnego", performed_by=manager_id, activity_date=datetime.now(UTC) - timedelta(hours=5)),
+                # Last 7 days
+                ActivityLog(customer_id=customer.id, contract_id=c1.id, activity_type=ActivityType.CALL, description=f"Rozmowa o przedłużeniu umowy — {cname}", performed_by=manager_id, activity_date=now - timedelta(days=1)),
+                ActivityLog(customer_id=customer.id, activity_type=ActivityType.EMAIL, description=f"Wysłano projekt aneksu waloryzacyjnego — {cname}", performed_by=manager_id, activity_date=now - timedelta(days=3)),
+                ActivityLog(customer_id=customer.id, activity_type=ActivityType.SYSTEM, description=f"Alert: zbliżający się koniec umowy — {cname}", performed_by=None, activity_date=now - timedelta(days=5)),
+                # Last 30 days
+                ActivityLog(customer_id=customer.id, activity_type=ActivityType.MEETING, description=f"Spotkanie kwartalne — status operacyjny — {cname}", performed_by=manager_id, activity_date=now - timedelta(days=10)),
+                ActivityLog(customer_id=customer.id, contract_id=c2.id, activity_type=ActivityType.DOCUMENT, description=f"Dodano aneks nr 3 do umowy SLA — {cname}", performed_by=manager_id, activity_date=now - timedelta(days=18)),
+                ActivityLog(customer_id=customer.id, activity_type=ActivityType.NOTE, description=f"Klient zgłosił pytania dot. PPK — {cname}", performed_by=user_mateusz.id, activity_date=now - timedelta(days=22)),
+                # Last 90 days
+                ActivityLog(customer_id=customer.id, contract_id=c1.id, activity_type=ActivityType.VERIFICATION, description=f"Weryfikacja danych fakturowych — {cname}", performed_by=manager_id, activity_date=now - timedelta(days=45)),
+                ActivityLog(customer_id=customer.id, activity_type=ActivityType.MEETING, description=f"Prezentacja wyników Q1 — {cname}", performed_by=user_asia.id if idx % 3 == 0 else manager_id, activity_date=now - timedelta(days=60)),
+                ActivityLog(customer_id=customer.id, activity_type=ActivityType.EMAIL, description=f"Potwierdzenie warunków waloryzacji — {cname}", performed_by=manager_id, activity_date=now - timedelta(days=75)),
+                ActivityLog(customer_id=customer.id, activity_type=ActivityType.SYSTEM, description=f"Automatyczna weryfikacja spójności danych — {cname}", performed_by=None, activity_date=now - timedelta(days=88)),
             ]
             session.add_all(activities)
 
-            # Valorization for some
-            if idx % 2 == 1:
-                session.add(Valorization(
-                    contract_id=c1.id, year=today.year, index_type=IndexType.GUS_CPI,
-                    index_value=Decimal("4.5"), planned_date=today + timedelta(days=15),
-                    status=ValorizationStatus.PENDING, created_by=manager_id
-                ))
+            # Valorization data — current + next year for each customer
+            current_year = today.year
+            next_year = today.year + 1
+            status_cycle = idx % 4
+            if status_cycle == 0:
+                current_status = ValorizationStatus.APPLIED
+            elif status_cycle == 1:
+                current_status = ValorizationStatus.APPROVED
+            elif status_cycle == 2:
+                current_status = ValorizationStatus.REJECTED
+            else:
+                current_status = ValorizationStatus.PENDING
+
+            current_index_type = IndexType.GUS_CPI if idx % 2 == 0 else IndexType.FIXED_PCT
+            current_index_value = Decimal("4.6") if idx % 2 == 0 else Decimal("5.2")
+            current_planned_date = date(current_year, 1, 15)
+
+            session.add(
+                Valorization(
+                    contract_id=c1.id,
+                    year=current_year,
+                    index_type=current_index_type,
+                    index_value=current_index_value,
+                    planned_date=current_planned_date,
+                    applied_date=today - timedelta(days=30)
+                    if current_status == ValorizationStatus.APPLIED
+                    else None,
+                    approved_by=manager_id
+                    if current_status in (ValorizationStatus.APPROVED, ValorizationStatus.APPLIED)
+                    else None,
+                    status=current_status,
+                    notes="Seedowana waloryzacja dla historii umowy.",
+                    created_by=manager_id,
+                )
+            )
+
+            session.add(
+                Valorization(
+                    contract_id=c1.id,
+                    year=next_year,
+                    index_type=IndexType.GUS_CPI,
+                    index_value=Decimal("4.3"),
+                    planned_date=date(next_year, 1, 15),
+                    status=ValorizationStatus.PENDING,
+                    notes="Waloryzacja zaplanowana na kolejny rok.",
+                    created_by=manager_id,
+                )
+            )
 
         await session.commit()
         print(f"docker-seed completed: Generated 10 customers, {len(customers)*2} contracts and assigned to Kasia and others.")

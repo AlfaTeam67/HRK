@@ -55,6 +55,7 @@ export function DraftDataEditModal({ gen, isOpen, onClose, onSaved }: Props) {
   useEffect(() => {
     if (!isOpen) return
     const arts = gen.ai_artifacts as Record<string, unknown>
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setCoverLetter((arts.cover_letter_text as string | null | undefined) ?? '')
     setBullets(
       Array.isArray(arts.rationale_bullets) ? (arts.rationale_bullets as string[]) : []

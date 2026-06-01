@@ -1,5 +1,5 @@
 .PHONY: help install run test test-docker lint format typecheck security migrate makemigration migration seed check \
-	up docker-up docker-down docker-build docker-logs docker-logs-ad docker-logs-schema-manager docker-migrate minio-init
+	up docker-up docker-down docker-build docker-logs docker-logs-ad docker-logs-schema-manager docker-migrate docker-seed reseed minio-init
 
 help:
 	@echo "HRK Backend - Available commands:"
@@ -28,6 +28,7 @@ help:
 	@echo "  make docker-logs-schema-manager - Tail Schema Manager logs"
 	@echo "  make docker-migrate - Run alembic migrations inside the api container"
 	@echo "  make docker-seed    - Seed demo data inside api container"
+	@echo "  make reseed         - Recreate volumes, migrate, seed, then rebuild images"
 	@echo "  make minio-init     - Create default S3 bucket in MinIO (auto-run on docker-up)"
 
 install:
@@ -95,6 +96,13 @@ docker-migrate:
 
 docker-seed:
 	docker compose exec api python -m app.scripts.seed_demo
+
+reseed:
+	docker compose down -v
+	docker compose up -d
+	$(MAKE) docker-migrate
+	$(MAKE) docker-seed
+	$(MAKE) docker-build
 
 minio-init:
 	docker compose run --rm minio-init

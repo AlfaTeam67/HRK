@@ -26,9 +26,13 @@ class ADLoginService:
         existing_user = await repo.get_by_login(login)
 
         if existing_user:
+            if ad_user.groups:
+                new_department = ad_user.groups[0]
+                if existing_user.department != new_department:
+                    await repo.update(existing_user, {"department": new_department})
             return UserRead.model_validate(existing_user)
 
-        user = await repo.create(self._build_user_payload(login))
+        user = await repo.create(self._build_user_payload(login, ad_user.groups))
         return UserRead.model_validate(user)
 
     async def _fetch_ad_user(self, username: str) -> ADUserRead:
@@ -68,12 +72,11 @@ class ADLoginService:
             body: bytes = response.read()
             return body.decode("utf-8")
 
-    def _build_user_payload(self, login: str) -> dict[str, object]:
-        email = f"{login}@hrk.eu"
-
+    def _build_user_payload(self, login: str, groups: list[str]) -> dict[str, object]:
         return {
             "login": login,
-            "email": email,
+            "email": f"{login}@hrk.eu",
+            "department": groups[0] if groups else None,
         }
 
     def _extract_login(self, identity: str) -> str:

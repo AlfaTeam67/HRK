@@ -34,7 +34,7 @@ const CONFIGS: Record<string, Config> = {
   },
   skipped: {
     label: 'Nie przetworzone',
-    fg: '#9e9389', bg: '#fafaf9', border: '#e3e0db',
+    fg: '#7a6f67', bg: '#fafaf9', border: '#e3e0db',
     icon: '—',
   },
 }
