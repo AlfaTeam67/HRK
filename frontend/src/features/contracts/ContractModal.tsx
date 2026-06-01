@@ -5,6 +5,8 @@ import { useDocumentsQuery, useDocumentDownloadUrl, useDeleteDocument } from '@/
 import { useDocumentGenerations, useAcceptGeneration, useRejectGeneration } from '@/hooks/documentGenerations'
 import { useNotes, useCreateNote } from '@/hooks/notes'
 import { useAppSelector } from '@/hooks/store'
+import { useActivities } from '@/hooks/activities'
+import { useUser } from '@/hooks/auth'
 import { UploadWizard } from '@/features/documents/UploadWizard'
 import { DraftDataEditModal } from '@/features/documentGeneration/DraftDataEditModal'
 import { PdfPreviewModal } from '@/components/ui/PdfPreviewModal'
@@ -65,7 +67,7 @@ function fmtDate(v?: string | null) {
   return new Date(v).toLocaleDateString('pl-PL', { day: '2-digit', month: 'short', year: 'numeric' })
 }
 
-type Tab = 'dane' | 'dokumenty' | 'notatki'
+type Tab = 'dane' | 'historia' | 'dokumenty' | 'notatki'
 
 interface Props {
   contractId: string
@@ -82,6 +84,7 @@ export function ContractModal({ contractId, customerId, onClose, autoEdit = fals
   const { data: attachments = [] } = useDocumentsQuery({ contract_id: contractId })
   const { data: allGenerations = [] } = useDocumentGenerations(customerId)
   const { data: notes = [] } = useNotes({ contract_id: contractId })
+  const { data: activities = [] } = useActivities({ contract_id: contractId, limit: 50 })
   const generations = allGenerations.filter((g) => g.contract_id === contractId)
 
   const updateContract = useUpdateContract()
@@ -263,6 +266,7 @@ export function ContractModal({ contractId, customerId, onClose, autoEdit = fals
           <div style={{ display: 'flex', gap: 0 }}>
             {([
               ['dane', 'Dane umowy'],
+              ['historia', 'Historia'],
               ['dokumenty', `Dokumenty (${attachments.length})`],
               ['notatki', `Notatki (${notes.length})`],
             ] as [Tab, string][]).map(([k, label]) => (
@@ -296,6 +300,14 @@ export function ContractModal({ contractId, customerId, onClose, autoEdit = fals
               onCancelEdit={() => setEditing(false)}
               onSave={saveEdit}
               onFormChange={(k, v) => setForm((p) => ({ ...p, [k]: v }))}
+            />
+          )}
+
+          {activeTab === 'historia' && (
+            <HistoriaOsiTab
+              contract={contract}
+              activities={activities}
+              generations={allGenerations.filter((g) => g.contract_id === contractId)}
             />
           )}
 
@@ -355,6 +367,312 @@ export function ContractModal({ contractId, customerId, onClose, autoEdit = fals
           onSaved={() => setEditGeneration(null)}
         />
       )}
+    </div>
+  )
+}
+
+/* ─── Contract Event Timeline ─────────────────────────────────── */
+
+interface TimelineEntry {
+  date: string
+  label: string
+  detail?: string
+  icon: string
+  color: string
+  bg: string
+}
+
+function ContractEventTimeline({
+  contract,
+  generations,
+}: {
+  contract: ReturnType<typeof useContract>['data']
+  generations: ReturnType<typeof useDocumentGenerations>['data'] & object[]
+}) {
+  if (!contract) return null
+
+  const entries: TimelineEntry[] = []
+
+  // 1. Utworzona
+  entries.push({
+    date: contract.created_at,
+    label: 'Umowa utworzona',
+    detail: `Nr ${contract.contract_number} · typ: ${contract.contract_type}`,
+    icon: '📋',
+    color: '#276749',
+    bg: '#f0fff4',
+  })
+
+  // 2. Ostatnia modyfikacja (jeśli updated_at różni się od created_at o więcej niż minutę)
+  const createdMs = new Date(contract.created_at).getTime()
+  const updatedMs = new Date(contract.updated_at).getTime()
+  if (updatedMs - createdMs > 60_000) {
+    entries.push({
+      date: contract.updated_at,
+      label: 'Ostatnia modyfikacja',
+      detail: 'Zaktualizowano dane umowy',
+      icon: '✏️',
+      color: '#92400e',
+      bg: '#fffbeb',
+    })
+  }
+
+  // 3. Aktywna od (status signed lub active) — używamy start_date z jasną etykietą
+  if (contract.status === 'signed' || contract.status === 'active' || contract.status === 'expiring' || contract.status === 'terminated') {
+    entries.push({
+      date: contract.start_date + 'T00:00:00',
+      label: 'Umowa aktywna od',
+      detail: `Obowiązuje od ${fmtDate(contract.start_date)}${contract.end_date ? ` do ${fmtDate(contract.end_date)}` : ' (bezterminowo)'}`,
+      icon: '✍️',
+      color: '#4338ca',
+      bg: '#eef2ff',
+    })
+  }
+
+  // 4. Aneksy — zaakceptowane/wysłane generacje
+  const annexes = generations.filter(
+    (g) => g.status === 'accepted' || g.status === 'sent' || g.status === 'finalized'
+  )
+  annexes.forEach((g, idx) => {
+    entries.push({
+      date: g.created_at,
+      label: `Aneks nr ${idx + 1}`,
+      detail: `${g.template_key} · ${GEN_STATUS_META[g.status]?.l ?? g.status}`,
+      icon: '📎',
+      color: '#1d4ed8',
+      bg: '#eff6ff',
+    })
+  })
+
+  // 5. Zakończona — używamy end_date jeśli jest, inaczej updated_at
+  if (contract.status === 'terminated') {
+    entries.push({
+      date: contract.end_date ? contract.end_date + 'T00:00:00' : contract.updated_at,
+      label: 'Umowa zakończona',
+      detail: contract.end_date ? `Data zakończenia: ${fmtDate(contract.end_date)}` : 'Status zmieniony na: zakończona',
+      icon: '🏁',
+      color: '#c94f02',
+      bg: '#fff5f0',
+    })
+  }
+
+  // Sortuj chronologicznie
+  entries.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+
+  return (
+    <div style={{ position: 'relative', paddingLeft: 28 }}>
+      {/* vertical line */}
+      <div style={{
+        position: 'absolute', left: 10, top: 6, bottom: 6,
+        width: 2, background: 'linear-gradient(to bottom, #e3e0db 0%, #f2f0ed 100%)', borderRadius: 2,
+      }} />
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+        {entries.map((entry, idx) => (
+          <div key={idx} style={{ position: 'relative', paddingBottom: idx < entries.length - 1 ? 12 : 0 }}>
+            {/* dot */}
+            <div style={{
+              position: 'absolute', left: -24, top: 12,
+              width: 14, height: 14, borderRadius: '50%',
+              background: entry.bg,
+              border: `2px solid ${entry.color}`,
+              zIndex: 1,
+            }} />
+            {/* card */}
+            <div style={{
+              background: 'white', border: `1px solid ${C.border}`,
+              borderLeft: `3px solid ${entry.color}`,
+              borderRadius: 8, padding: '10px 14px',
+              display: 'flex', alignItems: 'flex-start', gap: 10,
+            }}>
+              <span style={{ fontSize: 16, flexShrink: 0, marginTop: 1 }}>{entry.icon}</span>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 12.5, fontWeight: 700, color: C.text, marginBottom: 2 }}>
+                  {entry.label}
+                </div>
+                {entry.detail && (
+                  <div style={{ fontSize: 11, color: C.muted, marginBottom: 3 }}>{entry.detail}</div>
+                )}
+                <div style={{ fontSize: 10.5, color: entry.color, fontWeight: 600 }}>
+                  {new Date(entry.date).toLocaleDateString('pl-PL', { day: '2-digit', month: 'long', year: 'numeric' })}
+                </div>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+/* ─── Tab: Historia / Oś czasu ────────────────────────────────── */
+
+const STATUS_LIFECYCLE: { status: ContractStatus; label: string; color: string; bg: string }[] = [
+  { status: 'draft',      label: 'Szkic',        color: '#6b6b6b', bg: '#f2f0ed' },
+  { status: 'signed',     label: 'Podpisana',    color: '#4338ca', bg: '#eef2ff' },
+  { status: 'active',     label: 'Aktywna',      color: '#276749', bg: '#f0fff4' },
+  { status: 'expiring',   label: 'Wygasająca',   color: '#92400e', bg: '#fffbeb' },
+  { status: 'terminated', label: 'Zakończona',   color: '#c94f02', bg: '#fff5f0' },
+]
+
+const ACTIVITY_ICON: Record<string, string> = {
+  meeting: '🤝',
+  email: '✉️',
+  note: '📝',
+  document: '📄',
+  verification: '✅',
+  call: '📞',
+  system: '⚙️',
+}
+
+function HistoriaOsiTab({
+  contract,
+  activities,
+  generations,
+}: {
+  contract: ReturnType<typeof useContract>['data']
+  activities: import('@/hooks/activities').ActivityLog[]
+  generations: ReturnType<typeof useDocumentGenerations>['data'] & object[]
+}) {
+  const { data: accountManager } = useUser(contract?.account_manager_id ?? null)
+
+  if (!contract) return <p style={{ color: C.muted, fontSize: 13 }}>Ładowanie…</p>
+
+  const currentStatusIdx = STATUS_LIFECYCLE.findIndex((s) => s.status === contract.status)
+
+  /* ── Oś czasu statusów ── */
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+
+      {/* Sekcja: Osoba odpowiedzialna */}
+      <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 10, padding: '14px 16px' }}>
+        <div style={{ fontSize: 10.5, fontWeight: 700, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>
+          Osoba odpowiedzialna
+        </div>
+        {contract.account_manager_id ? (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{
+              width: 36, height: 36, borderRadius: 10,
+              background: 'linear-gradient(135deg, #e85c04, #c94f02)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: 13, fontWeight: 800, color: 'white', flexShrink: 0,
+            }}>
+              {accountManager ? accountManager.login.slice(0, 2).toUpperCase() : '?'}
+            </div>
+            <div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: C.text }}>
+                {accountManager ? accountManager.login : 'Ładowanie…'}
+              </div>
+              <div style={{ fontSize: 11, color: C.muted }}>
+                {accountManager ? accountManager.email : ''}
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div style={{ fontSize: 13, color: C.muted }}>Brak przypisanego opiekuna</div>
+        )}
+      </div>
+
+      {/* Sekcja: Cykl życia — oś statusów */}
+      <div>
+        <div style={{ fontSize: 10.5, fontWeight: 700, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 12 }}>
+          Cykl życia umowy
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 0 }}>
+          {STATUS_LIFECYCLE.map((step, idx) => {
+            const isDone = idx < currentStatusIdx
+            const isCurrent = idx === currentStatusIdx
+            const isLast = idx === STATUS_LIFECYCLE.length - 1
+            return (
+              <div key={step.status} style={{ display: 'flex', alignItems: 'center', flex: isLast ? 0 : 1 }}>
+                {/* Node */}
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
+                  <div style={{
+                    width: isCurrent ? 32 : 24,
+                    height: isCurrent ? 32 : 24,
+                    borderRadius: '50%',
+                    background: isCurrent ? step.color : isDone ? '#c6f6d5' : '#f2f0ed',
+                    border: isCurrent ? `3px solid ${step.color}` : isDone ? '2px solid #38a169' : `2px solid ${C.border}`,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    transition: 'all 0.2s',
+                    boxShadow: isCurrent ? `0 0 0 4px ${step.color}22` : 'none',
+                  }}>
+                    {isDone && <span style={{ fontSize: 11, color: '#276749' }}>✓</span>}
+                    {isCurrent && <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'white', display: 'block' }} />}
+                  </div>
+                  <div style={{
+                    fontSize: 10, fontWeight: isCurrent ? 700 : 500,
+                    color: isCurrent ? step.color : isDone ? '#276749' : C.muted,
+                    whiteSpace: 'nowrap', textAlign: 'center',
+                  }}>
+                    {step.label}
+                  </div>
+                </div>
+                {/* Connector */}
+                {!isLast && (
+                  <div style={{
+                    flex: 1, height: 2, marginBottom: 22,
+                    background: isDone ? '#38a169' : '#e3e0db',
+                    transition: 'background 0.2s',
+                  }} />
+                )}
+              </div>
+            )
+          })}
+        </div>
+      </div>
+
+      {/* Sekcja: Oś czasu wydarzeń */}
+      <div>
+        <div style={{ fontSize: 10.5, fontWeight: 700, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 12 }}>
+          Oś czasu
+        </div>
+        <ContractEventTimeline contract={contract} generations={generations} />
+      </div>
+
+      {/* Sekcja: Ostatnia aktywność */}
+      <div>
+        <div style={{ fontSize: 10.5, fontWeight: 700, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>
+          Ostatnia aktywność
+        </div>
+        {activities.length === 0 ? (
+          <Empty>Brak zarejestrowanej aktywności dla tej umowy.</Empty>
+        ) : (
+          <div style={{ position: 'relative', paddingLeft: 24 }}>
+            {/* vertical line */}
+            <div style={{
+              position: 'absolute', left: 8, top: 8, bottom: 8,
+              width: 2, background: 'linear-gradient(to bottom, #e3e0db, #f2f0ed)', borderRadius: 2,
+            }} />
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {activities.slice(0, 10).map((act) => (
+                <div key={act.id} style={{ position: 'relative', display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+                  {/* dot */}
+                  <div style={{
+                    position: 'absolute', left: -20, top: 10,
+                    width: 10, height: 10, borderRadius: '50%',
+                    background: '#e85c04', border: '2px solid white',
+                    boxShadow: '0 0 0 2px #e3e0db',
+                  }} />
+                  <div style={{
+                    background: C.surface, border: `1px solid ${C.border}`, borderRadius: 8,
+                    padding: '9px 12px', flex: 1,
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 3 }}>
+                      <span style={{ fontSize: 14 }}>{ACTIVITY_ICON[act.activity_type] ?? '📌'}</span>
+                      <span style={{ fontSize: 12.5, fontWeight: 700, color: C.text }}>{act.description}</span>
+                    </div>
+                    <div style={{ fontSize: 11, color: C.muted }}>
+                      {new Date(act.activity_date).toLocaleString('pl-PL', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
     </div>
   )
 }

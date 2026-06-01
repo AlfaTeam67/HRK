@@ -1,4 +1,4 @@
-import { useMutation } from '@tanstack/react-query'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import { useDispatch } from 'react-redux'
 
 import { apiClient } from '@/lib/axios'
@@ -55,3 +55,15 @@ export function useLogin() {
 }
 
 export { AD_PROFILES }
+
+export function useUser(id: string | null | undefined) {
+  return useQuery({
+    queryKey: ['users', id],
+    queryFn: async () => {
+      const { data } = await apiClient.get<User>(`/api/v1/users/${id}`)
+      return data
+    },
+    enabled: !!id,
+    staleTime: 5 * 60 * 1000, // 5 min — user data rarely changes
+  })
+}
