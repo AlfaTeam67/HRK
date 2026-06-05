@@ -20,6 +20,13 @@ from app.models.base import (
     TimestampMixin,
 )
 
+# Tier 0 — Custom Data
+from app.models.custom_data import (
+    CustomColumnDefinition,
+    CustomFieldDefinition,
+    CustomTableDefinition,
+)
+
 # Tier 1 — Core
 from app.models.company import Company
 
@@ -121,4 +128,8 @@ __all__ = [
     "AuditLog",
     # Tier 7
     "GusCpiSnapshot",
+    # Custom Data
+    "CustomFieldDefinition",
+    "CustomTableDefinition",
+    "CustomColumnDefinition",
 ]
