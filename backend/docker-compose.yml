@@ -100,6 +100,7 @@ services:
       AD_SERVICE_URL: http://ad:8001
       API_AD_DOMAIN: ${API_AD_DOMAIN:-HRK}
       RERANKER_URL: http://reranker:8003
+      SCHEMA_MANAGER_URL: http://schema-manager:8002
     ports:
       - "8000:8000"
     networks:
@@ -200,8 +201,6 @@ services:
     container_name: hrk-schema-manager
     environment:
       DATABASE_URL: postgresql://hrk:hrk_secret@db:5432/hrk_db
-    ports:
-      - "8002:8002"
     networks:
       - hrk-network
     depends_on:
