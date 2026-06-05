@@ -200,7 +200,7 @@ services:
       dockerfile: Dockerfile
     container_name: hrk-schema-manager
     environment:
-      DATABASE_URL: postgresql://hrk:hrk_secret@db:5432/hrk_db
+      DATABASE_URL: postgresql://${POSTGRES_USER:-hrk}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-hrk_db}
     networks:
       - hrk-network
     depends_on:

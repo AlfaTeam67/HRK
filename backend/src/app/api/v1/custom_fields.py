@@ -18,20 +18,21 @@ from app.service.custom_data import CustomDataService
 
 router = APIRouter()
 
+DbDep = Annotated[AsyncSession, Depends(get_db)]
 
-def _get_service(db: Annotated[AsyncSession, Depends(get_db)]) -> CustomDataService:
+
+def _svc(db: DbDep) -> CustomDataService:
     return CustomDataService(db, schema_manager_url=settings.schema_manager_url)
+
+SvcDep = Annotated[CustomDataService, Depends(_svc)]
 
 
 @router.get(
     "/{customer_id}/custom-fields/definitions",
     response_model=list[CustomFieldDefinitionRead],
 )
-async def list_field_definitions(
-    customer_id: uuid.UUID,
-    service: Annotated[CustomDataService, Depends(_get_service)],
-) -> Any:
-    return await service.list_field_definitions(customer_id)
+async def list_field_definitions(customer_id: uuid.UUID, svc: SvcDep) -> Any:
+    return await svc.list_field_definitions(customer_id)
 
 
 @router.post(
@@ -40,11 +41,11 @@ async def list_field_definitions(
     status_code=status.HTTP_201_CREATED,
 )
 async def create_field_definition(
-    customer_id: uuid.UUID,
-    payload: CustomFieldDefinitionCreate,
-    service: Annotated[CustomDataService, Depends(_get_service)],
+    customer_id: uuid.UUID, payload: CustomFieldDefinitionCreate, svc: SvcDep, db: DbDep
 ) -> Any:
-    return await service.create_field_definition(customer_id, payload)
+    result = await svc.create_field_definition(customer_id, payload)
+    await db.commit()
+    return result
 
 
 @router.delete(
@@ -52,27 +53,22 @@ async def create_field_definition(
     status_code=status.HTTP_204_NO_CONTENT,
 )
 async def delete_field_definition(
-    customer_id: uuid.UUID,
-    field_id: uuid.UUID,
-    service: Annotated[CustomDataService, Depends(_get_service)],
+    customer_id: uuid.UUID, field_id: uuid.UUID, svc: SvcDep, db: DbDep
 ) -> None:
-    await service.delete_field_definition(field_id, customer_id)
+    await svc.delete_field_definition(field_id, customer_id)
+    await db.commit()
 
 
 @router.get("/{customer_id}/custom-fields", response_model=CustomFieldValuesRead)
-async def get_field_values(
-    customer_id: uuid.UUID,
-    service: Annotated[CustomDataService, Depends(_get_service)],
-) -> Any:
-    values = await service.get_field_values(customer_id)
+async def get_field_values(customer_id: uuid.UUID, svc: SvcDep) -> Any:
+    values = await svc.get_field_values(customer_id)
     return CustomFieldValuesRead(values=values)
 
 
 @router.patch("/{customer_id}/custom-fields", response_model=CustomFieldValuesRead)
 async def update_field_values(
-    customer_id: uuid.UUID,
-    payload: CustomFieldValuesUpdate,
-    service: Annotated[CustomDataService, Depends(_get_service)],
+    customer_id: uuid.UUID, payload: CustomFieldValuesUpdate, svc: SvcDep, db: DbDep
 ) -> Any:
-    values = await service.update_field_values(customer_id, payload)
+    values = await svc.update_field_values(customer_id, payload)
+    await db.commit()
     return CustomFieldValuesRead(values=values)

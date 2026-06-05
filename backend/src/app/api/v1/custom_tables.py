@@ -20,17 +20,18 @@ from app.service.custom_data import CustomDataService
 
 router = APIRouter()
 
+DbDep = Annotated[AsyncSession, Depends(get_db)]
 
-def _get_service(db: Annotated[AsyncSession, Depends(get_db)]) -> CustomDataService:
+
+def _svc(db: DbDep) -> CustomDataService:
     return CustomDataService(db, schema_manager_url=settings.schema_manager_url)
+
+SvcDep = Annotated[CustomDataService, Depends(_svc)]
 
 
 @router.get("/{customer_id}/custom-tables", response_model=list[CustomTableRead])
-async def list_tables(
-    customer_id: uuid.UUID,
-    service: Annotated[CustomDataService, Depends(_get_service)],
-) -> Any:
-    return await service.list_table_definitions(customer_id)
+async def list_tables(customer_id: uuid.UUID, svc: SvcDep) -> Any:
+    return await svc.list_table_definitions(customer_id)
 
 
 @router.post(
@@ -39,11 +40,11 @@ async def list_tables(
     status_code=status.HTTP_201_CREATED,
 )
 async def create_table(
-    customer_id: uuid.UUID,
-    payload: CustomTableCreate,
-    service: Annotated[CustomDataService, Depends(_get_service)],
+    customer_id: uuid.UUID, payload: CustomTableCreate, svc: SvcDep, db: DbDep
 ) -> Any:
-    return await service.create_table(customer_id, payload)
+    result = await svc.create_table(customer_id, payload)
+    await db.commit()
+    return result
 
 
 @router.delete(
@@ -51,11 +52,10 @@ async def create_table(
     status_code=status.HTTP_204_NO_CONTENT,
 )
 async def delete_table(
-    customer_id: uuid.UUID,
-    table_id: uuid.UUID,
-    service: Annotated[CustomDataService, Depends(_get_service)],
+    customer_id: uuid.UUID, table_id: uuid.UUID, svc: SvcDep, db: DbDep
 ) -> None:
-    await service.delete_table(table_id, customer_id)
+    await svc.delete_table(table_id, customer_id)
+    await db.commit()
 
 
 @router.post(
@@ -63,12 +63,10 @@ async def delete_table(
     status_code=status.HTTP_201_CREATED,
 )
 async def add_column(
-    customer_id: uuid.UUID,
-    table_id: uuid.UUID,
-    payload: CustomColumnCreate,
-    service: Annotated[CustomDataService, Depends(_get_service)],
+    customer_id: uuid.UUID, table_id: uuid.UUID, payload: CustomColumnCreate, svc: SvcDep, db: DbDep
 ) -> None:
-    await service.add_column(table_id, customer_id, payload)
+    await svc.add_column(table_id, customer_id, payload)
+    await db.commit()
 
 
 @router.delete(
@@ -76,26 +74,24 @@ async def add_column(
     status_code=status.HTTP_204_NO_CONTENT,
 )
 async def delete_column(
-    customer_id: uuid.UUID,
-    table_id: uuid.UUID,
-    col_id: uuid.UUID,
-    service: Annotated[CustomDataService, Depends(_get_service)],
+    customer_id: uuid.UUID, table_id: uuid.UUID, col_id: uuid.UUID, svc: SvcDep, db: DbDep
 ) -> None:
-    await service.delete_column(table_id, col_id, customer_id)
+    await svc.delete_column(table_id, col_id, customer_id)
+    await db.commit()
 
 
-# ── Row CRUD ───────────────────────────────────────────────────────────────────
+# ── Row CRUD (proxied to Schema Manager — no ORM session writes) ───────────────
 
 
 @router.get("/{customer_id}/custom-tables/{table_id}/rows", response_model=RowsListRead)
 async def get_rows(
     customer_id: uuid.UUID,
     table_id: uuid.UUID,
-    service: Annotated[CustomDataService, Depends(_get_service)],
+    svc: SvcDep,
     skip: int = Query(default=0, ge=0),
     limit: int = Query(default=100, ge=1, le=500),
 ) -> Any:
-    return await service.get_rows(table_id, customer_id, skip, limit)
+    return await svc.get_rows(table_id, customer_id, skip, limit)
 
 
 @router.post(
@@ -103,23 +99,16 @@ async def get_rows(
     status_code=status.HTTP_201_CREATED,
 )
 async def insert_row(
-    customer_id: uuid.UUID,
-    table_id: uuid.UUID,
-    payload: RowCreate,
-    service: Annotated[CustomDataService, Depends(_get_service)],
+    customer_id: uuid.UUID, table_id: uuid.UUID, payload: RowCreate, svc: SvcDep
 ) -> Any:
-    return await service.insert_row(table_id, customer_id, payload.data)
+    return await svc.insert_row(table_id, customer_id, payload.data)
 
 
 @router.patch("/{customer_id}/custom-tables/{table_id}/rows/{row_id}")
 async def update_row(
-    customer_id: uuid.UUID,
-    table_id: uuid.UUID,
-    row_id: int,
-    payload: RowUpdate,
-    service: Annotated[CustomDataService, Depends(_get_service)],
+    customer_id: uuid.UUID, table_id: uuid.UUID, row_id: int, payload: RowUpdate, svc: SvcDep
 ) -> Any:
-    return await service.update_row(table_id, customer_id, row_id, payload.data)
+    return await svc.update_row(table_id, customer_id, row_id, payload.data)
 
 
 @router.delete(
@@ -127,9 +116,6 @@ async def update_row(
     status_code=status.HTTP_204_NO_CONTENT,
 )
 async def delete_row(
-    customer_id: uuid.UUID,
-    table_id: uuid.UUID,
-    row_id: int,
-    service: Annotated[CustomDataService, Depends(_get_service)],
+    customer_id: uuid.UUID, table_id: uuid.UUID, row_id: int, svc: SvcDep
 ) -> None:
-    await service.delete_row(table_id, customer_id, row_id)
+    await svc.delete_row(table_id, customer_id, row_id)

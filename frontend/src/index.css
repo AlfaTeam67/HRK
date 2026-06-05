@@ -239,6 +239,45 @@
   transform: translateY(-1px);
   box-shadow: 0 4px 16px rgba(232, 92, 4, 0.4);
 }
+.cp-btn-sm {
+  background: white;
+  border: 1px solid #e3e0db;
+  border-radius: 7px;
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+  font-family: inherit;
+  color: #1a1714;
+}
+.cp-btn-sm:hover {
+  border-color: #e85c04;
+  color: #e85c04;
+}
+.cp-btn-sm:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.cp-btn-sm.primary {
+  background: #e85c04;
+  color: white;
+  border-color: #e85c04;
+}
+.cp-btn-sm.primary:hover {
+  background: #c94f02;
+  border-color: #c94f02;
+  color: white;
+}
+.cp-btn-sm.danger {
+  color: #c53030;
+  border-color: #feb2b2;
+  background: #fff5f5;
+}
+.cp-btn-sm.danger:hover {
+  background: #fed7d7;
+  border-color: #fc8181;
+}
 .cp-grid {
   display: grid;
   grid-template-columns: 320px 1fr;

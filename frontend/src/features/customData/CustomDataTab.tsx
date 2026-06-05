@@ -16,6 +16,16 @@ import {
 
 const FIELD_TYPES = ['TEXT', 'INTEGER', 'BOOLEAN', 'DATE', 'FLOAT'] as const
 
+function toSlug(name: string): string {
+  return name
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_|_$/g, '')
+    .slice(0, 40)
+}
+
 interface Props {
   customerId: string
 }
@@ -25,21 +35,14 @@ export function CustomDataTab({ customerId }: Props) {
 
   return (
     <div>
-      <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
-        <button
-          className={`cp-tab${section === 'fields' ? ' active' : ''}`}
-          onClick={() => setSection('fields')}
-        >
-          Pola własne
+      <div className="cp-tabs" style={{ marginBottom: 16 }}>
+        <button className={`cp-tab${section === 'fields' ? ' active' : ''}`} onClick={() => setSection('fields')}>
+          Dodatkowe pola
         </button>
-        <button
-          className={`cp-tab${section === 'tables' ? ' active' : ''}`}
-          onClick={() => setSection('tables')}
-        >
-          Tabele własne
+        <button className={`cp-tab${section === 'tables' ? ' active' : ''}`} onClick={() => setSection('tables')}>
+          Dodatkowe tabele
         </button>
       </div>
-
       {section === 'fields' && <CustomFieldsSection customerId={customerId} />}
       {section === 'tables' && <CustomTablesSection customerId={customerId} />}
     </div>
@@ -49,14 +52,14 @@ export function CustomDataTab({ customerId }: Props) {
 // ── Custom Fields Section ─────────────────────────────────────────────────────
 
 function CustomFieldsSection({ customerId }: { customerId: string }) {
-  const { data: definitions = [], isLoading: defsLoading } = useCustomFieldDefinitions(customerId)
+  const { data: definitions = [], isLoading } = useCustomFieldDefinitions(customerId)
   const { data: valuesData } = useCustomFieldValues(customerId)
   const createDef = useCreateCustomFieldDefinition(customerId)
   const deleteDef = useDeleteCustomFieldDefinition(customerId)
   const updateValues = useUpdateCustomFieldValues(customerId)
 
   const [showAddForm, setShowAddForm] = useState(false)
-  const [newField, setNewField] = useState({ field_name: '', display_name: '', field_type: 'TEXT' })
+  const [newField, setNewField] = useState({ display_name: '', field_type: 'TEXT' })
   const [editValues, setEditValues] = useState<Record<string, string>>({})
   const [editing, setEditing] = useState(false)
 
@@ -64,9 +67,7 @@ function CustomFieldsSection({ customerId }: { customerId: string }) {
 
   function startEditing() {
     const initial: Record<string, string> = {}
-    for (const def of definitions) {
-      initial[def.field_name] = String(values[def.field_name] ?? '')
-    }
+    for (const def of definitions) initial[def.field_name] = String(values[def.field_name] ?? '')
     setEditValues(initial)
     setEditing(true)
   }
@@ -84,62 +85,51 @@ function CustomFieldsSection({ customerId }: { customerId: string }) {
   }
 
   function handleAddField() {
-    if (!newField.field_name || !newField.display_name) return
-    createDef.mutate(newField, {
-      onSuccess: () => {
-        setNewField({ field_name: '', display_name: '', field_type: 'TEXT' })
-        setShowAddForm(false)
-      },
+    if (!newField.display_name.trim()) return
+    const field_name = toSlug(newField.display_name)
+    if (!field_name) return
+    createDef.mutate({ field_name, display_name: newField.display_name, field_type: newField.field_type }, {
+      onSuccess: () => { setNewField({ display_name: '', field_type: 'TEXT' }); setShowAddForm(false) },
     })
   }
 
-  if (defsLoading) return <p style={{ color: '#6b7280' }}>Ładowanie...</p>
+  if (isLoading) return <p style={{ color: '#7a6f67', fontSize: 13 }}>Ładowanie...</p>
 
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-        <h4 style={{ margin: 0, fontSize: 14, fontWeight: 600 }}>Pola własne ({definitions.length}/20)</h4>
+        <span style={{ fontSize: 13, fontWeight: 600, color: '#1a1714' }}>Pola własne ({definitions.length}/20)</span>
         <div style={{ display: 'flex', gap: 8 }}>
           {definitions.length > 0 && !editing && (
             <button className="cp-btn-sm" onClick={startEditing}>Edytuj wartości</button>
           )}
-          <button className="cp-btn-sm" onClick={() => setShowAddForm(!showAddForm)}>+ Dodaj pole</button>
+          <button className="cp-btn-sm primary" onClick={() => setShowAddForm(!showAddForm)}>+ Dodaj pole</button>
         </div>
       </div>
 
       {showAddForm && (
-        <div style={{ padding: 12, background: '#f9fafb', borderRadius: 8, marginBottom: 12, display: 'flex', gap: 8, alignItems: 'end', flexWrap: 'wrap' }}>
-          <div>
-            <label style={{ fontSize: 11, fontWeight: 600, display: 'block' }}>Nazwa (slug)</label>
-            <input
-              style={{ padding: '4px 8px', border: '1px solid #d1d5db', borderRadius: 6, fontSize: 13 }}
-              value={newField.field_name}
-              onChange={(e) => setNewField({ ...newField, field_name: e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, '') })}
-              placeholder="np. numer_krs"
-            />
+        <div style={{ padding: 12, background: '#f9f7f5', borderRadius: 8, marginBottom: 12, border: '1px solid #e3e0db' }}>
+          <div className="cp-form-grid" style={{ gridTemplateColumns: '1fr auto auto', alignItems: 'end', gap: 8 }}>
+            <div className="cp-form-group">
+              <label className="cp-form-label">Nazwa pola</label>
+              <input
+                className="cp-form-input"
+                value={newField.display_name}
+                onChange={(e) => setNewField({ ...newField, display_name: e.target.value })}
+                placeholder="np. Numer KRS"
+                onKeyDown={(e) => e.key === 'Enter' && handleAddField()}
+              />
+            </div>
+            <div className="cp-form-group">
+              <label className="cp-form-label">Typ</label>
+              <select className="cp-form-input" value={newField.field_type} onChange={(e) => setNewField({ ...newField, field_type: e.target.value })}>
+                {FIELD_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
+              </select>
+            </div>
+            <button className="cp-btn-sm primary" onClick={handleAddField} disabled={createDef.isPending} style={{ marginBottom: 2 }}>
+              {createDef.isPending ? '...' : 'Dodaj'}
+            </button>
           </div>
-          <div>
-            <label style={{ fontSize: 11, fontWeight: 600, display: 'block' }}>Nazwa wyświetlana</label>
-            <input
-              style={{ padding: '4px 8px', border: '1px solid #d1d5db', borderRadius: 6, fontSize: 13 }}
-              value={newField.display_name}
-              onChange={(e) => setNewField({ ...newField, display_name: e.target.value })}
-              placeholder="np. Numer KRS"
-            />
-          </div>
-          <div>
-            <label style={{ fontSize: 11, fontWeight: 600, display: 'block' }}>Typ</label>
-            <select
-              style={{ padding: '4px 8px', border: '1px solid #d1d5db', borderRadius: 6, fontSize: 13 }}
-              value={newField.field_type}
-              onChange={(e) => setNewField({ ...newField, field_type: e.target.value })}
-            >
-              {FIELD_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
-            </select>
-          </div>
-          <button className="cp-btn-sm" onClick={handleAddField} disabled={createDef.isPending}>
-            {createDef.isPending ? '...' : 'Zapisz'}
-          </button>
         </div>
       )}
 
@@ -148,28 +138,31 @@ function CustomFieldsSection({ customerId }: { customerId: string }) {
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
           {definitions.map((def) => (
-            <div key={def.id} style={{ padding: '8px 12px', background: '#f9fafb', borderRadius: 8, border: '1px solid #e5e7eb' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontSize: 12, fontWeight: 600, color: '#374151' }}>{def.display_name}</span>
+            <div key={def.id} className="cp-info-card" style={{ padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <span style={{ fontSize: 13, fontWeight: 700, color: '#1a1714' }}>{def.display_name}</span>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                {editing ? (
+                  <input
+                    className="cp-form-input"
+                    style={{ flex: 1 }}
+                    value={editValues[def.field_name] ?? ''}
+                    onChange={(e) => setEditValues({ ...editValues, [def.field_name]: e.target.value })}
+                    type={def.field_type === 'INTEGER' || def.field_type === 'FLOAT' ? 'number' : def.field_type === 'DATE' ? 'date' : 'text'}
+                  />
+                ) : (
+                  <span style={{ fontSize: 13, color: '#374151', flex: 1 }}>
+                    {values[def.field_name] != null ? String(values[def.field_name]) : <em style={{ color: '#9ca3af' }}>—</em>}
+                  </span>
+                )}
                 <button
+                  className="cp-btn-sm danger"
+                  style={{ padding: '2px 6px', fontSize: 11, flexShrink: 0, marginLeft: 'auto' }}
+                  title={`Usuń pole "${def.display_name}"`}
                   onClick={() => { if (confirm(`Usunąć pole "${def.display_name}"?`)) deleteDef.mutate(def.id) }}
-                  style={{ fontSize: 11, color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer' }}
                 >
                   ✕
                 </button>
               </div>
-              {editing ? (
-                <input
-                  style={{ width: '100%', marginTop: 4, padding: '3px 6px', border: '1px solid #d1d5db', borderRadius: 4, fontSize: 13 }}
-                  value={editValues[def.field_name] ?? ''}
-                  onChange={(e) => setEditValues({ ...editValues, [def.field_name]: e.target.value })}
-                  type={def.field_type === 'INTEGER' || def.field_type === 'FLOAT' ? 'number' : def.field_type === 'DATE' ? 'date' : 'text'}
-                />
-              ) : (
-                <div style={{ fontSize: 13, color: '#6b7280', marginTop: 2 }}>
-                  {values[def.field_name] != null ? String(values[def.field_name]) : <em>—</em>}
-                </div>
-              )}
             </div>
           ))}
         </div>
@@ -177,12 +170,10 @@ function CustomFieldsSection({ customerId }: { customerId: string }) {
 
       {editing && (
         <div style={{ marginTop: 12, display: 'flex', gap: 8 }}>
-          <button className="cp-btn-sm" onClick={saveValues} disabled={updateValues.isPending}>
+          <button className="cp-btn-sm primary" onClick={saveValues} disabled={updateValues.isPending}>
             {updateValues.isPending ? 'Zapisywanie...' : 'Zapisz wartości'}
           </button>
-          <button className="cp-btn-sm" onClick={() => setEditing(false)} style={{ background: '#f3f4f6', color: '#374151' }}>
-            Anuluj
-          </button>
+          <button className="cp-btn-sm" onClick={() => setEditing(false)}>Anuluj</button>
         </div>
       )}
     </div>
@@ -197,11 +188,14 @@ function CustomTablesSection({ customerId }: { customerId: string }) {
   const deleteTable = useDeleteCustomTable(customerId)
 
   const [showAddForm, setShowAddForm] = useState(false)
-  const [newTable, setNewTable] = useState({ table_slug: '', display_name: '', columns: [{ column_name: '', column_type: 'TEXT', display_name: '' }] })
+  const [newTable, setNewTable] = useState({
+    display_name: '',
+    columns: [{ display_name: '', column_type: 'TEXT' }],
+  })
   const [expandedTableId, setExpandedTableId] = useState<string | null>(null)
 
   function addColumn() {
-    setNewTable({ ...newTable, columns: [...newTable.columns, { column_name: '', column_type: 'TEXT', display_name: '' }] })
+    setNewTable({ ...newTable, columns: [...newTable.columns, { display_name: '', column_type: 'TEXT' }] })
   }
 
   function updateColumn(idx: number, field: string, value: string) {
@@ -216,74 +210,77 @@ function CustomTablesSection({ customerId }: { customerId: string }) {
   }
 
   function handleCreateTable() {
-    if (!newTable.table_slug || !newTable.display_name || newTable.columns.some((c) => !c.column_name || !c.display_name)) return
-    createTable.mutate(newTable, {
+    if (!newTable.display_name.trim() || newTable.columns.some((c) => !c.display_name.trim())) return
+    const payload = {
+      table_slug: toSlug(newTable.display_name),
+      display_name: newTable.display_name,
+      columns: newTable.columns.map((c) => ({
+        column_name: toSlug(c.display_name),
+        column_type: c.column_type,
+        display_name: c.display_name,
+      })),
+    }
+    createTable.mutate(payload, {
       onSuccess: () => {
-        setNewTable({ table_slug: '', display_name: '', columns: [{ column_name: '', column_type: 'TEXT', display_name: '' }] })
+        setNewTable({ display_name: '', columns: [{ display_name: '', column_type: 'TEXT' }] })
         setShowAddForm(false)
       },
     })
   }
 
-  if (isLoading) return <p style={{ color: '#6b7280' }}>Ładowanie...</p>
+  if (isLoading) return <p style={{ color: '#7a6f67', fontSize: 13 }}>Ładowanie...</p>
 
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-        <h4 style={{ margin: 0, fontSize: 14, fontWeight: 600 }}>Tabele własne ({tables.length}/10)</h4>
-        <button className="cp-btn-sm" onClick={() => setShowAddForm(!showAddForm)}>+ Nowa tabela</button>
+        <span style={{ fontSize: 13, fontWeight: 600, color: '#1a1714' }}>Tabele własne ({tables.length}/10)</span>
+        <button className="cp-btn-sm primary" onClick={() => setShowAddForm(!showAddForm)}>+ Nowa tabela</button>
       </div>
 
       {showAddForm && (
-        <div style={{ padding: 12, background: '#f9fafb', borderRadius: 8, marginBottom: 12, border: '1px solid #e5e7eb' }}>
-          <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
-            <div>
-              <label style={{ fontSize: 11, fontWeight: 600, display: 'block' }}>Slug</label>
-              <input
-                style={{ padding: '4px 8px', border: '1px solid #d1d5db', borderRadius: 6, fontSize: 13 }}
-                value={newTable.table_slug}
-                onChange={(e) => setNewTable({ ...newTable, table_slug: e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, '') })}
-                placeholder="np. pracownicy"
-              />
-            </div>
-            <div>
-              <label style={{ fontSize: 11, fontWeight: 600, display: 'block' }}>Nazwa wyświetlana</label>
-              <input
-                style={{ padding: '4px 8px', border: '1px solid #d1d5db', borderRadius: 6, fontSize: 13 }}
-                value={newTable.display_name}
-                onChange={(e) => setNewTable({ ...newTable, display_name: e.target.value })}
-                placeholder="np. Pracownicy"
-              />
-            </div>
+        <div style={{ padding: 12, background: '#f9f7f5', borderRadius: 8, marginBottom: 12, border: '1px solid #e3e0db' }}>
+          <div className="cp-form-group" style={{ marginBottom: 10 }}>
+            <label className="cp-form-label">Nazwa tabeli</label>
+            <input
+              className="cp-form-input"
+              value={newTable.display_name}
+              onChange={(e) => setNewTable({ ...newTable, display_name: e.target.value })}
+              placeholder="np. Pracownicy"
+            />
           </div>
-          <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 4 }}>Kolumny:</div>
+
+          <div style={{ fontSize: 12, fontWeight: 600, color: '#1a1714', marginBottom: 6 }}>Kolumny:</div>
           {newTable.columns.map((col, idx) => (
-            <div key={idx} style={{ display: 'flex', gap: 6, marginBottom: 4, alignItems: 'center' }}>
+            <div key={idx} style={{ display: 'flex', gap: 6, marginBottom: 6, alignItems: 'center' }}>
               <input
-                style={{ padding: '3px 6px', border: '1px solid #d1d5db', borderRadius: 4, fontSize: 12, width: 100 }}
-                value={col.column_name}
-                onChange={(e) => updateColumn(idx, 'column_name', e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))}
-                placeholder="slug"
-              />
-              <input
-                style={{ padding: '3px 6px', border: '1px solid #d1d5db', borderRadius: 4, fontSize: 12, width: 120 }}
+                className="cp-form-input"
+                style={{ flex: 1 }}
                 value={col.display_name}
                 onChange={(e) => updateColumn(idx, 'display_name', e.target.value)}
-                placeholder="Nazwa"
+                placeholder="Nazwa kolumny"
               />
               <select
-                style={{ padding: '3px 6px', border: '1px solid #d1d5db', borderRadius: 4, fontSize: 12 }}
+                className="cp-form-input"
+                style={{ width: 90 }}
                 value={col.column_type}
                 onChange={(e) => updateColumn(idx, 'column_type', e.target.value)}
               >
                 {FIELD_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
               </select>
-              <button onClick={() => removeColumn(idx)} style={{ fontSize: 11, color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer' }}>✕</button>
+              <button
+                className="cp-btn-sm danger"
+                style={{ padding: '4px 8px' }}
+                onClick={() => removeColumn(idx)}
+                disabled={newTable.columns.length <= 1}
+              >
+                ✕
+              </button>
             </div>
           ))}
+
           <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-            <button className="cp-btn-sm" onClick={addColumn} style={{ background: '#f3f4f6', color: '#374151' }}>+ Kolumna</button>
-            <button className="cp-btn-sm" onClick={handleCreateTable} disabled={createTable.isPending}>
+            <button className="cp-btn-sm" onClick={addColumn}>+ Kolumna</button>
+            <button className="cp-btn-sm primary" onClick={handleCreateTable} disabled={createTable.isPending}>
               {createTable.isPending ? '...' : 'Utwórz tabelę'}
             </button>
           </div>
@@ -295,25 +292,23 @@ function CustomTablesSection({ customerId }: { customerId: string }) {
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {tables.map((table) => (
-            <div key={table.id} style={{ border: '1px solid #e5e7eb', borderRadius: 8, overflow: 'hidden' }}>
+            <div key={table.id} style={{ border: '1px solid #e3e0db', borderRadius: 8, overflow: 'hidden' }}>
               <div
-                style={{ padding: '10px 12px', background: '#f9fafb', display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer' }}
+                style={{ padding: '10px 14px', background: '#f9f7f5', display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer' }}
                 onClick={() => setExpandedTableId(expandedTableId === table.id ? null : table.id)}
               >
-                <span style={{ fontSize: 13, fontWeight: 600 }}>
+                <span style={{ fontSize: 13, fontWeight: 600, color: '#1a1714' }}>
                   {table.display_name}
-                  <span style={{ fontSize: 11, color: '#9ca3af', marginLeft: 6 }}>
-                    ({table.columns.length} kol.)
-                  </span>
+                  <span style={{ fontSize: 11, color: '#7a6f67', marginLeft: 6 }}>({table.columns.length} kol.)</span>
                 </span>
                 <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                   <button
+                    className="cp-btn-sm danger"
                     onClick={(e) => { e.stopPropagation(); if (confirm(`Usunąć tabelę "${table.display_name}"?`)) deleteTable.mutate(table.id) }}
-                    style={{ fontSize: 11, color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer' }}
                   >
                     Usuń
                   </button>
-                  <span style={{ fontSize: 12 }}>{expandedTableId === table.id ? '▲' : '▼'}</span>
+                  <span style={{ fontSize: 11, color: '#7a6f67' }}>{expandedTableId === table.id ? '▲' : '▼'}</span>
                 </div>
               </div>
               {expandedTableId === table.id && (
@@ -334,6 +329,7 @@ function TableRowsView({ customerId, table }: { customerId: string; table: Custo
   const insertRow = useInsertRow(customerId, table.id)
   const deleteRow = useDeleteRow(customerId, table.id)
   const [newRow, setNewRow] = useState<Record<string, string>>({})
+  const [showNewRow, setShowNewRow] = useState(false)
 
   const rows = data?.items ?? []
 
@@ -347,69 +343,82 @@ function TableRowsView({ customerId, table }: { customerId: string; table: Custo
       else if (col.column_type === 'BOOLEAN') payload[col.column_name] = raw === 'true'
       else payload[col.column_name] = raw || null
     }
-    insertRow.mutate(payload, { onSuccess: () => setNewRow({}) })
+    insertRow.mutate(payload, { onSuccess: () => { setNewRow({}); setShowNewRow(false) } })
   }
 
-  if (isLoading) return <div style={{ padding: 12, fontSize: 13, color: '#6b7280' }}>Ładowanie wierszy...</div>
+  if (isLoading) return <div style={{ padding: 12, fontSize: 13, color: '#7a6f67' }}>Ładowanie wierszy...</div>
 
   return (
     <div style={{ padding: 12 }}>
       <div style={{ overflowX: 'auto' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
           <thead>
-            <tr>
-              <th style={{ padding: '4px 8px', textAlign: 'left', borderBottom: '1px solid #e5e7eb', fontWeight: 600 }}>#</th>
+            <tr style={{ borderBottom: '1px solid #e3e0db' }}>
+              <th style={{ padding: '6px 8px', textAlign: 'left', fontWeight: 600, color: '#7a6f67', fontSize: 11 }}>#</th>
               {table.columns.map((col) => (
-                <th key={col.id} style={{ padding: '4px 8px', textAlign: 'left', borderBottom: '1px solid #e5e7eb', fontWeight: 600 }}>
+                <th key={col.id} style={{ padding: '6px 8px', textAlign: 'left', fontWeight: 600, color: '#7a6f67', fontSize: 11 }}>
                   {col.display_name}
                 </th>
               ))}
-              <th style={{ padding: '4px 8px', borderBottom: '1px solid #e5e7eb' }}></th>
+              <th style={{ padding: '6px 8px', width: 32 }} />
             </tr>
           </thead>
           <tbody>
             {rows.map((row, idx) => (
-              <tr key={row.id != null ? String(row.id) : idx}>
-                <td style={{ padding: '4px 8px', borderBottom: '1px solid #f3f4f6', color: '#9ca3af' }}>{idx + 1}</td>
+              <tr key={row.id != null ? String(row.id) : idx} style={{ borderBottom: '1px solid #f2f0ed' }}>
+                <td style={{ padding: '6px 8px', color: '#9ca3af' }}>{idx + 1}</td>
                 {table.columns.map((col) => (
-                  <td key={col.id} style={{ padding: '4px 8px', borderBottom: '1px solid #f3f4f6' }}>
-                    {row[col.column_name] != null ? String(row[col.column_name]) : '—'}
+                  <td key={col.id} style={{ padding: '6px 8px', color: '#1a1714' }}>
+                    {row[col.column_name] != null ? String(row[col.column_name]) : <span style={{ color: '#9ca3af' }}>—</span>}
                   </td>
                 ))}
-                <td style={{ padding: '4px 8px', borderBottom: '1px solid #f3f4f6' }}>
+                <td style={{ padding: '6px 8px' }}>
                   <button
+                    className="cp-btn-sm danger"
+                    style={{ padding: '2px 6px', fontSize: 11 }}
                     onClick={() => { if (row.id != null && confirm('Usunąć wiersz?')) deleteRow.mutate(Number(row.id)) }}
-                    style={{ fontSize: 11, color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer' }}
                   >
                     ✕
                   </button>
                 </td>
               </tr>
             ))}
-            {/* New row input */}
-            <tr>
-              <td style={{ padding: '4px 8px', color: '#9ca3af' }}>+</td>
-              {table.columns.map((col) => (
-                <td key={col.id} style={{ padding: '4px 8px' }}>
-                  <input
-                    style={{ width: '100%', padding: '2px 4px', border: '1px solid #d1d5db', borderRadius: 4, fontSize: 12 }}
-                    value={newRow[col.column_name] ?? ''}
-                    onChange={(e) => setNewRow({ ...newRow, [col.column_name]: e.target.value })}
-                    placeholder={col.display_name}
-                    type={col.column_type === 'INTEGER' || col.column_type === 'FLOAT' ? 'number' : col.column_type === 'DATE' ? 'date' : 'text'}
-                  />
+
+            {showNewRow && (
+              <tr style={{ borderTop: '1px solid #e3e0db', background: '#faf9f8' }}>
+                <td style={{ padding: '5px 8px', color: '#9ca3af', fontSize: 11 }}>nowy</td>
+                {table.columns.map((col) => (
+                  <td key={col.id} style={{ padding: '4px 6px' }}>
+                    <input
+                      className="cp-form-input"
+                      style={{ padding: '3px 6px', fontSize: 12 }}
+                      value={newRow[col.column_name] ?? ''}
+                      onChange={(e) => setNewRow({ ...newRow, [col.column_name]: e.target.value })}
+                      placeholder={col.display_name}
+                      type={col.column_type === 'INTEGER' || col.column_type === 'FLOAT' ? 'number' : col.column_type === 'DATE' ? 'date' : 'text'}
+                    />
+                  </td>
+                ))}
+                <td style={{ padding: '4px 6px', whiteSpace: 'nowrap' }}>
+                  <div style={{ display: 'flex', gap: 4 }}>
+                    <button className="cp-btn-sm primary" style={{ padding: '3px 8px' }} onClick={handleInsert} disabled={insertRow.isPending}>
+                      {insertRow.isPending ? '…' : 'Zapisz'}
+                    </button>
+                    <button className="cp-btn-sm" style={{ padding: '3px 6px' }} onClick={() => { setShowNewRow(false); setNewRow({}) }}>✕</button>
+                  </div>
                 </td>
-              ))}
-              <td style={{ padding: '4px 8px' }}>
-                <button className="cp-btn-sm" onClick={handleInsert} disabled={insertRow.isPending} style={{ fontSize: 11 }}>
-                  {insertRow.isPending ? '...' : '+'}
-                </button>
-              </td>
-            </tr>
+              </tr>
+            )}
           </tbody>
         </table>
       </div>
-      {rows.length === 0 && <p style={{ color: '#9ca3af', fontSize: 12, marginTop: 8 }}>Brak wierszy.</p>}
+
+      {!showNewRow && (
+        <button className="cp-btn-sm" style={{ marginTop: 10, display: 'flex', alignItems: 'center', gap: 5 }} onClick={() => setShowNewRow(true)}>
+          <span style={{ fontSize: 14, lineHeight: 1 }}>+</span> Dodaj wiersz
+        </button>
+      )}
+      {rows.length === 0 && !showNewRow && <p style={{ color: '#9ca3af', fontSize: 12, marginTop: 4 }}>Brak wierszy.</p>}
     </div>
   )
 }

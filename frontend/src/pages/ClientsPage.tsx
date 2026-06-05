@@ -718,7 +718,7 @@ export function ClientsPageApi() {
                         ['documents', 'Dokumenty'],
                         ['notes', `Notatki (${notes.length})`],
                         ['timeline', 'Oś czasu'],
-                        ['custom_data', 'Dane własne'],
+                        ['custom_data', 'Dodatkowe dane'],
                       ] as [TabKey, string][]
                     ).map(([k, label]) => (
                       <button
