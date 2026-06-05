@@ -26,6 +26,13 @@ from app.models.company import Company
 # Tier 2 — Contracts
 from app.models.contract import Contract, ContractAmendment
 from app.models.contract_service import ContractService
+
+# Tier 0 — Custom Data
+from app.models.custom_data import (
+    CustomColumnDefinition,
+    CustomFieldDefinition,
+    CustomTableDefinition,
+)
 from app.models.customer import ContactPerson, Customer
 from app.models.document_chunk import DocumentChunk
 from app.models.document_generation import DocumentGeneration
@@ -121,4 +128,8 @@ __all__ = [
     "AuditLog",
     # Tier 7
     "GusCpiSnapshot",
+    # Custom Data
+    "CustomFieldDefinition",
+    "CustomTableDefinition",
+    "CustomColumnDefinition",
 ]

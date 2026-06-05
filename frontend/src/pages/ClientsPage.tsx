@@ -21,6 +21,7 @@ import { DocumentsTab } from '@/features/documentGeneration/DocumentsTab'
 import { ContractModal } from '@/features/contracts/ContractModal'
 import { ContractTreeList } from '@/features/contracts/ContractTreeList'
 import { UploadWizard } from '@/features/documents/UploadWizard'
+import { CustomDataTab } from '@/features/customData/CustomDataTab'
 import {
   CUSTOMER_STATUS_PL,
   NOTE_TYPE_LABELS,
@@ -32,7 +33,7 @@ import {
 } from '@/lib/customerConstants'
 import type { BillingCycle, ContractCreate, ContractType } from '@/types/models'
 
-type TabKey = 'info' | 'contracts' | 'documents' | 'notes' | 'timeline'
+type TabKey = 'info' | 'contracts' | 'documents' | 'notes' | 'timeline' | 'custom_data'
 
 interface TLEvent {
   id: string
@@ -717,6 +718,7 @@ export function ClientsPageApi() {
                         ['documents', 'Dokumenty'],
                         ['notes', `Notatki (${notes.length})`],
                         ['timeline', 'Oś czasu'],
+                        ['custom_data', 'Dodatkowe dane'],
                       ] as [TabKey, string][]
                     ).map(([k, label]) => (
                       <button
@@ -929,6 +931,10 @@ export function ClientsPageApi() {
 
                 {tab === 'timeline' && (
                   <Timeline events={timelineEvents} loading={timelineLoading} />
+                )}
+
+                {tab === 'custom_data' && selectedId && (
+                  <CustomDataTab customerId={selectedId} />
                 )}
               </div>
             </>
