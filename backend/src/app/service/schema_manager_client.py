@@ -36,7 +36,8 @@ class SchemaManagerClient:
                 f"{self.base_url}/crud/{table_name}", params={"skip": skip, "limit": limit}
             )
             self._check_response(resp)
-            return resp.json()
+            result: dict[str, Any] = resp.json()
+            return result
 
     async def update_row(
         self, table_name: str, row_id: int, data: dict[str, Any]
@@ -46,7 +47,8 @@ class SchemaManagerClient:
                 f"{self.base_url}/crud/{table_name}/{row_id}", json={"data": data}
             )
             self._check_response(resp)
-            return resp.json()
+            result: dict[str, Any] = resp.json()
+            return result
 
     async def delete_row(self, table_name: str, row_id: int) -> None:
         async with httpx.AsyncClient() as client:
@@ -57,7 +59,8 @@ class SchemaManagerClient:
         async with httpx.AsyncClient() as client:
             resp = await client.post(f"{self.base_url}{path}", json=json_data)
             self._check_response(resp)
-            return resp.json()
+            result: dict[str, Any] = resp.json()
+            return result
 
     async def _delete(self, path: str, json_data: dict) -> None:
         async with httpx.AsyncClient() as client:
