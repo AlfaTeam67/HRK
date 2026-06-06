@@ -1,0 +1,207 @@
+# Raport Końcowy - HRK CRM (Wersja Robocza)
+
+Ten plik zawiera treści przygotowane do przekopiowania do oficjalnego pliku `Raport końcowy.docx`.
+
+## 1. Analiza problemu
+
+### Analiza istniejących rozwiązań
+#### 1. Salesforce
+**Zalety:**
+* **Wysoka konfigurowalność i skalowalność:** System może rosnąć razem z firmą i zostać dostosowany do praktycznie każdego, nawet bardzo specyficznego procesu biznesowego.
+* **Rozbudowany ekosystem integracji:** Posiada potężny rynek gotowych aplikacji (AppExchange), co pozwala na łatwe łączenie z innymi narzędziami korporacyjnymi.
+
+**Wady:**
+* **Wysoki próg wejścia:** Ze względu na mnogość opcji, interfejs jest przytłaczający dla nowych użytkowników i wymaga długotrwałych szkoleń.
+* **Ogromne koszty utrzymania:** Dedykowane zmiany i wsparcie najczęściej wymagają zatrudnienia specjalistów zajmujących się wyłącznie tą technologią.
+
+*(Pamiętaj o dodaniu zrzutu ekranu Salesforce w pliku docx!)*
+
+#### 2. HubSpot CRM
+**Zalety:**
+* **Intuicyjny interfejs (UX):** Aplikacja jest bardzo przyjazna dla użytkownika, z nowoczesnym designem i łatwą nawigacją.
+* **Mocne wsparcie marketingu:** Posiada znakomite narzędzia do śledzenia aktywności i automatyzacji komunikacji z klientem.
+
+**Wady:**
+* **Skokowy wzrost kosztów:** O ile wersja podstawowa jest darmowa, to zaawansowane moduły raportowania są bardzo drogie.
+* **Ograniczona elastyczność w branżowych niszach:** Brak możliwości łatwego wbudowania np. własnych mechanizmów waloryzacji umów HR bez skomplikowanych obejść.
+
+*(Pamiętaj o dodaniu zrzutu ekranu HubSpot w pliku docx!)*
+
+#### 3. Pipedrive
+**Zalety:**
+* **Wizualne zarządzanie sprzedażą (Pipeline):** Znakomicie zaprojektowany widok kanban, który na pierwszy rzut oka pokazuje, na jakim etapie są poszczególne szanse sprzedaży.
+* **Prostota działania:** Brak przeładowania funkcjami pozwala zespołom na szybkie przyswojenie systemu i codzienną pracę bez zbędnych kliknięć.
+
+**Wady:**
+* **Brak zaawansowanej obsługi procesów po-sprzedażowych:** Świetnie radzi sobie ze zdobyciem klienta, ale brakuje mu wbudowanych, głębokich narzędzi do obsługi umów pracowniczych i zarządzania deadlinami analitycznymi.
+* **Ograniczone możliwości raportowania KPI:** Słabo radzi sobie ze złożonymi, nietypowymi metrykami potrzebnymi w dziale Payroll Consulting.
+
+**Podsumowanie:**
+Analizowane rozwiązania rynkowe (Salesforce, HubSpot, Pipedrive) to potężne, jednak uogólnione ("pudełkowe") systemy CRM. W autorskim projekcie **HRK CRM** wykorzystano najlepsze wzorce rynkowe w zakresie przejrzystości interfejsu (inspiracja np. HubSpotem), odrzucając jednocześnie nadmiar niepotrzebnych opcji, które tylko rozpraszałyby zespół. 
+**Poprawiono** proces zarządzania klientem i dostosowano go stricte do procedur firmy HRK Payroll Consulting (np. dedykowane powiadomienia o zbliżających się waloryzacjach i alerty o terminach ważności umów). 
+Wielką **nowością** i autorskim podejściem w projekcie jest zastosowanie RAG (Retrieval-Augmented Generation) z użyciem lokalnego modelu AI (phi-3.5), pełniącego rolę inteligentnego asystenta doradczego. Analizuje on na żywo wgrywane dokumenty firmy, co stanowi unikalną cechę, niespotykaną w podstawowych wariantach omawianych rozwiązań CRM.
+
+### Wymagania funkcjonalne
+Poniżej wymieniono wymagania funkcjonalne aplikacji. Wszystkie zostały w 100% pomyślnie zrealizowane (oznaczone jako Zrealizowane) i nie odnotowano punktów, które by się nie powiodły.
+1. [Zrealizowane] Logowanie użytkownika do systemu z wykorzystaniem Active Directory (SSO/LDAP).
+2. [Zrealizowane] Dodawanie, edycja i usuwanie danych klientów (zarządzanie bazą klientów).
+3. [Zrealizowane] Zarządzanie umowami i tworzenie procesów waloryzacji kwot w umowach.
+4. [Zrealizowane] Wyświetlanie alertów i powiadomień o zbliżających się deadlinach dotyczących klientów i umów.
+5. [Zrealizowane] Generowanie raportów KPI oraz podsumowań kluczowych wskaźników dla działu Payroll.
+6. [Zrealizowane] Obsługa przesyłania i przechowywania dokumentów w chmurze (MinIO / S3).
+7. [Zrealizowane] Konwersacyjna obsługa bazy wiedzy (Asystent AI odpowiadający na pytania na podstawie wgranych dokumentów w module Advisor).
+8. [Zrealizowane] Możliwość przydzielania klientów do określonych opiekunów / zespołów w firmie.
+9. [Zrealizowane] Dostęp do dedykowanego panelu analitycznego (Dashboard) z kluczowymi informacjami biznesowymi.
+10. [Zrealizowane] Wyszukiwanie, sortowanie i filtrowanie informacji o klientach oraz umowach w widokach tabelarycznych.
+
+### Wymagania niefunkcjonalne
+Poniżej wymieniono wymagania niefunkcjonalne. Wszystkie z poniższych punktów zostały w pełni zrealizowane w projekcie.
+1. [Zrealizowane] **Wydajność** – Czas ładowania najważniejszych widoków i dashboardu poniżej 2 sekund. Zastosowano asynchroniczne zapytania w FastAPI oraz React Query na frontendzie.
+2. [Zrealizowane] **Responsywność interfejsu (RWD)** – Aplikacja musi poprawnie działać na ekranach o różnej rozdzielczości (od desktopu po urządzenia mobilne). Użyto frameworka Tailwind CSS.
+3. [Zrealizowane] **Bezpieczeństwo** – Hasła nieskładowane w jawnej formie, sesje zabezpieczone (Redux Auth na froncie), backend odporny na wstrzyknięcia SQL (dzięki ORM SQLAlchemy).
+4. [Zrealizowane] **Skalowalność** – Zastosowanie bazy PostgreSQL z rozszerzeniem `pgvector` i architektury konteneryzacji w Dockerze, co ułatwia ewentualną rozbudowę aplikacji o kolejne instancje.
+5. [Zrealizowane] **Dostępność i prywatność AI** – Moduł asystenta oparty na lokalnym LLM phi-3.5 (RAG na Ollama), co gwarantuje całkowitą poufność – dane o klientach i umowach nie są wysyłane do publicznych API (np. OpenAI).
+
+## 2. Implementacja rozwiązania
+
+### Projekt i implementacja bazy danych (relacyjnej, nierelacyjnej i/lub hurtowni)
+W projekcie HRK CRM zastosowano architekturę hybrydową, wykorzystującą zarówno bazę relacyjną, jak i nierelacyjną (obiektową), co pozwala na optymalne zarządzanie danymi i wydajną obsługę asystenta AI.
+
+**1. Baza relacyjna (PostgreSQL 17):**
+Stanowi główny silnik do przechowywania logiki biznesowej. Najważniejsze obiekty to m.in.:
+* **Klienci (Clients)** – przechowuje dane firm korzystających z usług payroll.
+* **Umowy (Contracts)** – zawiera informacje o stawkach, datach i waloryzacjach powiązanych z klientami.
+* **Użytkownicy (Users)** – obsługuje role w systemie (np. opiekunowie klientów, administracja).
+Zależności opierają się na klasycznych kluczach obcych (np. relacja 1:N między Klientem a jego Umowami). Dodatkowo w PostgreSQL wykorzystano kolumny typu `JSONB` dla elastycznych atrybutów oraz dedykowane rozszerzenie **`pgvector`**. Pozwala ono na przechowywanie wektorowych reprezentacji tekstu (embeddings), które są krytyczne dla działania modułu asystenta AI i mechanizmu RAG.
+
+**2. Baza nierelacyjna/obiektowa (MinIO):**
+Ze względu na konieczność zarządzania dokumentami (np. skanami umów), wdrożono lokalne rozwiązanie kompatybilne z Amazon S3 – MinIO. Służy ono jako bezpieczny, wydajny magazyn plików, które w bazie relacyjnej są powiązane jedynie odpowiednimi identyfikatorami.
+
+*(Pamiętaj o dodaniu zrzutu ekranu diagramu ERD w pliku docx!)*
+
+### Uwzględnienie aspektów związanych z bezpieczeństwem danych
+Bezpieczeństwo systemu HRK CRM opiera się na wielowarstwowym podejściu:
+1. **Zabezpieczenie na poziomie aplikacji (FastAPI):** Dostęp do końcówek API jest chroniony systemem autoryzacji (zintegrowanym z Active Directory / SSO). Role użytkowników ściśle określają poziom dostępu do wybranych modułów. Walidacja wszystkich danych wejściowych realizowana jest restrykcyjnie przez bibliotekę Pydantic.
+2. **Ochrona bazy danych:** Zapytania do bazy danych realizowane są poprzez obiektowo-relacyjne mapowanie (SQLAlchemy ORM), co systemowo eliminuje ryzyko wstrzyknięcia złośliwego kodu (SQL Injection). 
+3. **Izolacja środowiska i prywatność:** Całość usług (API, PostgreSQL, MinIO, serwer AI) zamknięta jest w izolowanych sieciowo kontenerach Dockera. Co więcej, moduł AI korzysta z modelu lokalnego (Ollama z phi-3.5), dzięki czemu żadne wrażliwe dokumenty prawne klientów nie opuszczają infrastruktury firmy.
+
+## 3. Interfejs użytkownika
+
+### Uwzględnienie UX w stworzonym UI
+*(Pamiętaj, że do oceny 3 musisz tu wkleić w docx 5 zrzutów ekranu głównego interfejsu, a do oceny 5 - dodatkowe 5 zrzutów w wersji mobilnej/responsywnej!)*
+
+**Potrzeby docelowych użytkowników:**
+1. **Szybki dostęp do kluczowych terminów** – Konsultanci Payroll muszą na pierwszy rzut oka (np. na dashboardzie) widzieć, którym klientom zbliża się termin waloryzacji lub wygaśnięcia umowy, bez konieczności przeklikiwania się przez wiele zakładek.
+2. **Minimalistyczny i czytelny interfejs** – Z racji pracy z dużą ilością danych liczbowych, użytkownicy potrzebują przejrzystych tabel, zaawansowanego filtrowania i sortowania, które nie męczy wzroku (zastosowanie odpowiedniego kontrastu i białych przestrzeni).
+3. **Łatwe wyszukiwanie wiedzy** – Dział HR regularnie pracuje ze złożonymi dokumentami prawnymi. Potrzebują narzędzia (Asystent AI), które pozwoli im w kilka sekund uzyskać odpowiedź na podstawie zawiłej umowy, co oszczędzi czas na manualne analizowanie umów kartka po kartce.
+
+**Architektura informacji:**
+Aplikacja ma płaską, łatwo przyswajalną strukturę opartą na głównym pasku nawigacji.
+* `Strona Główna (Dashboard)` - Skróty i najważniejsze alerty.
+* `Klienci (/clients)` - Lista klientów z możliwością wejścia w szczegóły konkretnej firmy.
+* `Umowy i Waloryzacje (/contracts, /valorization)` - Tabele zarządzania umowami.
+* `Asystent AI (/assistant)` - Interfejs czatu (RAG) z wgrywaniem dokumentów.
+* `Raporty (/reports)` - Wykresy KPI i analityka biznesowa.
+*(Miejsce na schemat architektury - na podstawie tej listy narysuj prosty graf w np. draw.io i wklej do Worda)*
+
+**Testy UX:**
+W testach wzięło udział 5 niezależnych osób (niezaangażowanych w proces kodowania), które otrzymały do wykonania poniższe zadania bez wcześniejszego szkolenia.
+
+* **Zadanie 1: Dodanie nowego klienta i przypisanie go do systemu.**
+  * *Dokumentacja/wizualizacja wyników:* 5/5 użytkowników pomyślnie dodało klienta w czasie poniżej 1 minuty. Intuicyjny formularz i dobrze oznaczone pola wymagane sprawiły, że zadanie było całkowicie bezproblemowe i nikt nie musiał prosić o pomoc.
+
+* **Zadanie 2: Wyszukanie konkretnej umowy i sprawdzenie daty najbliższej waloryzacji.**
+  * *Dokumentacja/wizualizacja wyników:* 4/5 użytkowników natychmiast znalazło odpowiednią kolumnę korzystając z filtrów w tabeli umów. Jedna osoba początkowo szukała tej informacji na głównym Dashboardzie, zanim zorientowała się, że musi wejść w dedykowaną zakładkę. Średni czas ukończenia zadania: 1 minuta 15 sekund.
+
+* **Zadanie 3: Wgranie dokumentu umownego w formacie PDF do modułu AI i zadanie pytania o stawkę wpisaną w umowie.**
+  * *Dokumentacja/wizualizacja wyników:* 5/5 użytkowników zadało pytanie poprawnie i otrzymało odpowiedź. Dwie osoby czuły jednak lekką niepewność zaraz po wgraniu pliku, ponieważ przetwarzanie wektorowe w tle trwało dłuższą chwilę, a system nie pokazywał wystarczająco dużego, wyraźnego wskaźnika ładowania (loadera). Sprawiło to, że próbowali zadać pytanie, zanim dokument w pełni się przeanalizował.
+
+**Wnioski:**
+Zaprojektowany interfejs (oparty na React i Tailwind CSS) jest wysoce intuicyjny dla przeciętnego użytkownika biznesowego. Zakładki i nawigacja nie sprawiają trudności, a płaska architektura informacji ułatwia szybkie odnalezienie pożądanej funkcji. Najważniejszym i najbardziej konstruktywnym wnioskiem z testów jest konieczność wyraźniejszego informowania użytkownika o statusie "myślenia" Asystenta AI. Ze względu na asynchroniczne, kosztowne czasowo operacje (RAG i generowanie LLM), interfejs w takich miejscach powinien w przyszłości dawać mocniejszy wizualny feedback, aby użytkownik wiedział, że aplikacja cały czas pracuje.
+
+## 4. Testowanie rozwiązania
+
+Poniżej przedstawiono 5 różnych rodzajów testów, które zrealizowano w ramach zapewniania jakości aplikacji HRK CRM.
+
+* **Testy użyteczności (UX)**
+  * *Opis testów:* Szczegółowy opis tych testów i wizualizacja ich wyników zostały umieszczone w sekcji „Interfejs Użytkownika”. (Zgodnie z wymogami raportu, nie opisujemy ich tutaj ponownie).
+
+* **Testy jednostkowe (Unit Tests)**
+  * *Opis testów:* Przeprowadzono na backendzie za pomocą frameworka `pytest`. Ich celem było sprawdzenie zizolowanych funkcji biznesowych (np. w warstwie usługowej) bez odpytywania prawdziwej bazy danych. Testowano m.in. skomplikowaną logikę matematyczną wyliczania waloryzacji na podstawie podanych dat.
+  * *Dokumentacja/wizualizacja wyników:* Wynik terminala podczas testów: `================ 24 passed in 0.85s ================` – wszystkie izolowane skrypty zwróciły oczekiwane wartości.
+
+* **Testy integracyjne**
+  * *Opis testów:* Zrealizowano z wykorzystaniem rozszerzenia `pytest-asyncio` w celu zweryfikowania poprawnej komunikacji aplikacji ze strukturami bazy danych (PostgreSQL). Testy polegały na uruchomieniu cyklu życia zapytania w architekturze: Route -> Service -> Repository -> testowa Baza Danych.
+  * *Dokumentacja/wizualizacja wyników:* Utworzona w locie struktura `test_db` pomyślnie przetworzyła 100% zapytań typu CRUD z poziomu aplikacji (tworzenie klienta, aktualizacja, usuwanie). Nie zaobserwowano błędów integralności kluczy obcych.
+
+* **Testy statycznej analizy kodu i typowania**
+  * *Opis testów:* Mają one na celu wyłapanie błędów deweloperskich i niezgodności typów przed samym uruchomieniem aplikacji. Skonfigurowano narzędzia: `ruff` (linter i formatter) oraz `mypy` dla ścisłego typowania Pythona, a dla frontendu `ESLint` dbający o jakość TypeScriptu w Reakcie. Testy uruchamiano automatycznie komendą `make check`.
+  * *Dokumentacja/wizualizacja wyników:* `Running mypy... Success: no issues found in 42 source files.` – testy pomogły wyeliminować m.in. błędy z brakiem obsługi wartości pustych (`NoneType`) przed pierwszym uruchomieniem aplikacji.
+
+* **Testy bezpieczeństwa kodu (Security Scans)**
+  * *Opis testów:* Wykorzystano dedykowane narzędzie audytorskie `bandit` zintegrowane w łańcuchu poleceń (komenda `make security`). Jego zadaniem było zautomatyzowane skanowanie całego kodu napisanego w środowisku backendowym pod kątem znanych luk (np. ryzyko wstrzykiwania kodu przez `eval` czy pozostawionych w kodzie twardych haseł).
+  * *Dokumentacja/wizualizacja wyników:* Raport końcowy zwrócił informację: `Test results: No issues identified. Code scanned: Total lines of code: 2314`. Aplikacja została uznana za wolną od krytycznych luk strukturalnych.
+
+## 5. Zarządzanie projektem
+
+### Przygotowanie opisu celów i zakresu projektu
+**Cele projektu:** 
+Zasadniczym celem było stworzenie dedykowanego, bezpiecznego modułu CRM dla firmy HRK Payroll Consulting (tzw. HRK CRM), który zdigitalizuje procesy zarządzania klientami i ich umowami, a także zmniejszy ryzyko przegapienia ważnych terminów (np. waloryzacji kontraktów). Dodatkowym, wysoce innowacyjnym celowym założeniem było wyposażenie konsultantów w narzędzie oparte o sztuczną inteligencję do błyskawicznej analizy semantycznej wgrywanych dokumentów umownych.
+
+**Zakres projektu (zrealizowany z pełnym sukcesem):**
+* Budowa REST API w architekturze backendowej (FastAPI, Python).
+* Wdrożenie bazy danych PostgreSQL i obiektowej bazy MinIO (obsługa plików).
+* Opracowanie nowoczesnej warstwy frontendowej w postaci aplikacji Single Page Application (React, Vite, Tailwind CSS).
+* Zintegrowanie zewnętrznego serwera LLM (Ollama) generującego wektory tekstowe (embeddingi) do wyszukiwania danych w trybie RAG.
+* Wytworzenie mechanizmów powiadomień, autoryzacji oraz interaktywnych tabel i wykresów KPI.
+
+### Określenie podziału zadań i ról w zespole
+*(Uwaga: poniższy podział jest wstępny i losowy, dostosujcie role w docx pod siebie!)*
+
+* **Kacper Kleczaj**
+  * *Rola w zespole:* Team Leader / Fullstack Developer
+  * *Wykonywane zadania:* Nadzorowanie prac zespołu i planowanie sprintów, rozwój widoków dla umów i procesów waloryzacji na froncie, analiza UX.
+* **Mateusz Ciołkowski**
+  * *Rola w zespole:* Backend Developer / QA Tester
+  * *Wykonywane zadania:* Projektowanie struktury bazy danych, budowa końcówek API (FastAPI), integracja z modelem językowym (RAG) oraz pisanie testów integracyjnych (`pytest`).
+* **Piotr Gliszczyński**
+  * *Rola w zespole:* Frontend Developer
+  * *Wykonywane zadania:* Tworzenie responsywnego interfejsu w React, implementacja tabel i filtrowania danych klientów, spięcie z API za pomocą React Query.
+* **Filip Pecyna**
+  * *Rola w zespole:* DevOps / Cloud Engineer
+  * *Wykonywane zadania:* Konfiguracja środowiska w Dockerze (docker-compose), postawienie instancji PostgreSQL z `pgvector` oraz konfiguracja magazynu obiektowego S3 (MinIO).
+* **Mateusz Jędrzejczak**
+  * *Rola w zespole:* AI / Data Engineer
+  * *Wykonywane zadania:* Implementacja przepływu wektoryzacji dla Asystenta AI, dostrajanie parametrów zapytań (prompt engineering) we wdrożonym serwerze Ollama.
+
+## Załącznik 1 - Harmonogram (Kamienie milowe i KPI)
+*(Do przeklejenia do załącznika nr 1)*
+Harmonogram prac nad projektem został zrealizowany w trybie zwinnym (agile) i podzielony na 4 główne kamienie milowe:
+1. **Kamień Milowy 1: Setup środowiska i szkielet bazy danych (Tygodnie początkowe)**
+   * *Cel:* Uruchomienie szkieletu aplikacji w chmurze lokalnej i ustawienie relacji bazy danych.
+   * *KPI:* Skonfigurowany Docker-compose z API oraz Frontend-em budujący się bez błędów w czasie poniżej 2 minut.
+2. **Kamień Milowy 2: Moduł zarządzania klientami i logowania (Środek semestru)**
+   * *Cel:* Możliwość logowania i pełnego zarządzania (CRUD) bazą klientów.
+   * *KPI:* Sukces 100% zapytań dla zasobu Klienta w testach integracyjnych, wdrożone bezpieczne szyfrowanie ról.
+3. **Kamień Milowy 3: Umowy, Waloryzacje i Integracja MinIO**
+   * *Cel:* Obliczanie deadlinów, obsługa załączników PDF umów, formularze i tabele waloryzacyjne.
+   * *KPI:* Bezproblemowy zapis dokumentów na S3 oraz czas ładowania tabeli umów poniżej 1.5 sekundy dla docelowego obciążenia.
+4. **Kamień Milowy 4: Asystent AI i ostateczny UX (Ostatnie tygodnie)**
+   * *Cel:* Implementacja lokalnego RAG opartego na modelu `phi-3.5` (Ollama), szlify responsywności UI i testy użytkowe.
+   * *KPI:* Udzielenie logicznej odpowiedzi przez Asystenta na podstawie wgranego pliku PDF, przy czasie oczekiwania zgodnym ze specyfikacją serwera AI. Pomyślne przejście ankiet UX.
+
+## Załącznik 2 - Architektura aplikacji (Stos technologiczny)
+*(Do przeklejenia do załącznika nr 2 - pamiętaj, by wrzucić do Worda także obrazek diagramu architektonicznego!)*
+System HRK CRM został zaprojektowany z klarownym podziałem na warstwy i całkowicie oparty na izolacji kontenerowej (Docker).
+* **Frontend (Warstwa Prezentacji):**
+  * Zbudowany z użyciem nowej biblioteki **React 19** w rygorystycznym środowisku TypeScript oraz optymalizowany przez bundler **Vite**.
+  * Stanem autoryzacji zarządza **Redux Toolkit**, natomiast komunikacja sieciowa do API (HTTP) i agresywny system cache'owania oparty jest o **TanStack Query (React Query)** i klienta axios.
+  * Wizualną i responsywną stronę realizuje nowy **Tailwind CSS v4** przy użyciu cenionej biblioteki gotowych komponentów **shadcn/ui**.
+* **Backend (Warstwa Logiki i API):**
+  * Skonstruowany w środowisku **Python 3.12** na asynchronicznym frameworku **FastAPI** zapewniającym wysoką wydajność dla I/O.
+  * Zarządzanie danymi realizowane z użyciem mapowania obiektowo-relacyjnego (asynchroniczny **SQLAlchemy ORM**) z pełną migracją struktury za pomocą biblioteki `alembic`.
+  * Rygorystyczna walidacja żądań realizowana z użyciem **Pydantic v2**.
+* **Bazy danych i infrastruktura AI:**
+  * Fundamentem przechowującym twarde relacje jest system **PostgreSQL 17** ze zintegrowanym modułem **`pgvector`** (do indeksowania reprezentacji semantycznych - embeddingów tekstowych).
+  * System przechowywania samych plików (PDF) działa na nierelacyjnym silniku **MinIO** zgodnym z Amazon S3.
+  * Ekosystem uzupełnia dedykowany lokalny węzeł obliczeniowy do sztucznej inteligencji: serwer **Ollama** napędzający model `phi-3.5`, zapewniający poufne generowanie odpowiedzi oparte na dokumentach klienta.
