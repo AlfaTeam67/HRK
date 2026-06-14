@@ -52,6 +52,9 @@ class Settings(BaseSettings):
     # Reranker
     reranker_url: str = "http://localhost:8003"
 
+    # Schema Manager
+    schema_manager_url: str = "http://schema-manager:8002"
+
     # RAG — similarity filtering
     # cosine distance threshold for pre-reranker SQL filter (0=identical, 1=orthogonal, 2=opposite)
     # chunks with distance >= this value are discarded before reranking
