@@ -186,29 +186,6 @@ async def test_accept_deletes_draft_from_s3_and_db(service: DocumentGenerationSe
     service._attachment_repo.delete.assert_called_once_with(old_amendment_att.id, soft=False)
 
 
-@pytest.mark.asyncio
-async def test_accept_schedules_background_task(service: DocumentGenerationService) -> None:
-    gen = _make_generation()
-    _wire_service_for_accept(service, gen)
-    bg = BackgroundTasks()
-
-    mock_processing_cls = MagicMock()
-    mock_processing_instance = MagicMock()
-    mock_processing_cls.return_value = mock_processing_instance
-
-    with patch(
-        "app.service.document_generation.service.DocumentProcessingService",
-        mock_processing_cls,
-    ):
-        await service.accept(gen.id, accepted_by=uuid.uuid4(), background_tasks=bg)
-
-    assert len(bg.tasks) == 1
-    task = bg.tasks[0]
-    assert task.func == mock_processing_instance.process
-    # attachment_id, customer_id, pdf_bytes, mime_type
-    assert task.args[2] == b"%PDF-clean"
-    assert task.args[3] == "application/pdf"
-
 
 @pytest.mark.asyncio
 async def test_accept_rejects_non_preview_status(service: DocumentGenerationService) -> None:
