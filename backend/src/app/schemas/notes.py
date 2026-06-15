@@ -16,6 +16,10 @@ class NoteCreate(BaseModel):
     contract_id: uuid.UUID | None = None
     note_type: NoteType
     content: str = Field(min_length=1)
+    deadline_at: datetime | None = Field(
+        default=None,
+        description="Optional deadline for required reaction/follow-up",
+    )
 
     @model_validator(mode="after")
     def check_customer_or_contract(self) -> "NoteCreate":
@@ -37,6 +41,8 @@ class NoteUpdate(BaseModel):
 
     note_type: NoteType | None = None
     content: str | None = Field(default=None, min_length=1)
+    deadline_at: datetime | None = None
+    is_resolved: bool | None = None
 
 
 class NoteRead(ORMBaseSchema):
@@ -47,6 +53,8 @@ class NoteRead(ORMBaseSchema):
     contract_id: uuid.UUID | None
     note_type: NoteType
     content: str
+    deadline_at: datetime | None
+    is_resolved: bool
     created_by: uuid.UUID | None
     created_at: datetime
     updated_at: datetime

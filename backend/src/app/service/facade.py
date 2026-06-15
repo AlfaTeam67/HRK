@@ -18,6 +18,7 @@ from app.models.note import Note
 from app.models.rate import CustomerRate, Valorization
 from app.models.service import Service
 from app.models.service_group import ServiceGroup
+from app.models.price_list import PriceListTemplate
 from app.repo.activity import ActivityLogRepository
 from app.repo.contact_persons import ContactPersonRepository
 from app.repo.contract_services import ContractServiceRepository
@@ -26,6 +27,7 @@ from app.repo.customer_rates import CustomerRateRepository
 from app.repo.customers import CustomerRepository
 from app.repo.lookups import LookupRepository
 from app.repo.notes import NoteRepository
+from app.repo.price_list import PriceListRepository
 from app.repo.service_groups import ServiceGroupRepository
 from app.repo.services import ServiceRepository
 from app.repo.timeline import TimelineRepository
@@ -37,6 +39,7 @@ from app.schemas.contracts import ContractCreate, ContractUpdate
 from app.schemas.customer_rates import CustomerRateCreate, CustomerRateUpdate
 from app.schemas.customers import CustomerCreate, CustomerUpdate
 from app.schemas.notes import NoteCreate, NoteUpdate
+from app.schemas.price_list import PriceListTemplateCreate, PriceListTemplateUpdate
 from app.schemas.service_groups import ServiceGroupCreate, ServiceGroupUpdate
 from app.schemas.services import ServiceCreate, ServiceUpdate
 from app.schemas.timeline import TimelineEventRead, TimelineEventType
@@ -99,6 +102,7 @@ class CRMService:
         self.timeline_service = TimelineService(TimelineRepository(db))
         self.contract_repo = contract_repo
         self.valorization_repo = val_repo
+        self.price_list_repo = PriceListRepository(db)
 
     async def list_customers(self, **kwargs: Any) -> list[Customer]:
         return await self.customer_service.list_customers(**kwargs)
@@ -640,6 +644,70 @@ class CRMService:
     async def delete_contact_person(self, customer_id: uuid.UUID, contact_id: uuid.UUID) -> None:
         try:
             await self.contact_person_service.delete_contact(customer_id, contact_id)
+            await self.db.commit()
+        except Exception:
+            await self.db.rollback()
+            raise
+
+    # --- Price List Templates ---
+
+    async def list_price_list(
+        self,
+        *,
+        active_only: bool = False,
+        skip: int = 0,
+        limit: int = 200,
+    ) -> list[PriceListTemplate]:
+        return await self.price_list_repo.get_multi(active_only=active_only, skip=skip, limit=limit)
+
+    async def get_price_list_entry(self, entry_id: uuid.UUID) -> PriceListTemplate:
+        entry = await self.price_list_repo.get(entry_id)
+        if not entry:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Price list entry not found",
+            )
+        return entry
+
+    async def create_price_list_entry(
+        self, payload: PriceListTemplateCreate
+    ) -> PriceListTemplate:
+        # Ensure service exists
+        if not await self.lookup_repo.service_exists(payload.service_id):
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="Service not found"
+            )
+        # Check unique constraint
+        existing = await self.price_list_repo.get_by_service(payload.service_id)
+        if existing:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="A price list entry for this service already exists. Use PATCH to update.",
+            )
+        try:
+            result = await self.price_list_repo.create(payload.model_dump())
+            await self.db.commit()
+            return result
+        except Exception:
+            await self.db.rollback()
+            raise
+
+    async def update_price_list_entry(
+        self, entry_id: uuid.UUID, payload: PriceListTemplateUpdate
+    ) -> PriceListTemplate:
+        entry = await self.get_price_list_entry(entry_id)
+        try:
+            result = await self.price_list_repo.update(entry, payload.model_dump(exclude_unset=True))
+            await self.db.commit()
+            return result
+        except Exception:
+            await self.db.rollback()
+            raise
+
+    async def delete_price_list_entry(self, entry_id: uuid.UUID) -> None:
+        entry = await self.get_price_list_entry(entry_id)
+        try:
+            await self.price_list_repo.delete(entry)
             await self.db.commit()
         except Exception:
             await self.db.rollback()

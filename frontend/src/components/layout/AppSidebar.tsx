@@ -32,6 +32,12 @@ const IcoValorization = () => (
     <polyline points="17 6 23 6 23 12"/>
   </svg>
 )
+const IcoPriceList = () => (
+  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <line x1="12" y1="1" x2="12" y2="23"/>
+    <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+  </svg>
+)
 const IcoAI = () => (
   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
@@ -50,6 +56,13 @@ const IcoReports = () => (
     <line x1="6" y1="20" x2="6" y2="14"/>
   </svg>
 )
+const IcoFaq = () => (
+  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="12" cy="12" r="10"/>
+    <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
+    <line x1="12" y1="17" x2="12.01" y2="17"/>
+  </svg>
+)
 
 const NAV_MAIN = [
   { to: '/',                   label: 'Pulpit główny', icon: IcoDashboard,    badge: 0, end: true  },
@@ -57,11 +70,13 @@ const NAV_MAIN = [
   { to: '/clients',            label: 'Klienci',       icon: IcoClients,      badge: 0, end: false },
   { to: '/contracts',          label: 'Umowy',         icon: IcoContracts,    badge: 0, end: false },
   { to: '/valorization',       label: 'Waloryzacja',   icon: IcoValorization, badge: 0, end: false },
+  { to: '/price-list',         label: 'Cennik bazowy',  icon: IcoPriceList,    badge: 0, end: false },
 ]
 const NAV_AI    = [{ to: '/assistant', label: 'Chat z asystentem', icon: IcoAI,      end: false }]
 const NAV_ADMIN = [
   { to: '/access',  label: 'Dostępy i role', icon: IcoSettings, end: false },
   { to: '/reports', label: 'Aktywności',     icon: IcoReports,  end: false },
+  { to: '/faq',     label: 'Centrum pomocy', icon: IcoFaq,      end: false },
 ]
 
 function NavItem({ to, label, icon: Icon, badge = 0, end = false }: {
