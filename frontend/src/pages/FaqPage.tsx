@@ -64,6 +64,28 @@ const FAQ_SECTIONS: FaqSection[] = [
     ],
   },
   {
+    title: 'Cennik bazowy',
+    emoji: '💰',
+    items: [
+      {
+        q: 'Co to jest cennik bazowy?',
+        a: 'Cennik bazowy (Administracja → Cennik bazowy) zawiera standardowe stawki katalogowe dla każdej usługi HRK. Są one punktem startowym przy ustalaniu stawek indywidualnych dla klientów (CustomerRate).',
+      },
+      {
+        q: 'Jak dodać cenę dla usługi?',
+        a: 'Na stronie Cennik bazowy kliknij „Dodaj cenę". Podaj UUID usługi (dostępny przez API GET /api/v1/services), wpisz cenę netto w PLN i opcjonalnie dodaj etykietę (np. „2026") i opis. Jeden wpis per usługa.',
+      },
+      {
+        q: 'Czym różni się cena katalogowa od stawki klienta?',
+        a: 'Cena katalogowa (PriceListTemplate) to stawka bazowa — standard dla danej usługi. Stawka klienta (CustomerRate) to cena negocjowana dla konkretnej umowy, uwzględniająca rabat i waloryzacje. Cena katalogowa to punkt odniesienia, nie wymuszenie.',
+      },
+      {
+        q: 'Jak dezaktywować cenę?',
+        a: 'Kliknij „Dezaktywuj" przy danym wpisie. Dezaktywacja ukrywa wpis w widokach aktywnych, ale nie usuwa go z historii. Możesz filtrować „Tylko aktywne" żeby zobaczyć bieżące stawki.',
+      },
+    ],
+  },
+  {
     title: 'Klienci',
     emoji: '👥',
     items: [
@@ -82,7 +104,7 @@ const FAQ_SECTIONS: FaqSection[] = [
       },
       {
         q: 'Czym jest segment i branża?',
-        a: 'Segment to wewnętrzna klasyfikacja klienta (np. Enterprise, SMB). Branża określa sektor gospodarki (np. IT, Handel, Produkcja). Oba pola służą do filtrowania i raportowania.',
+        a: 'Segment to wewnętrzna klasyfikacja klienta (Enterprise, Mid-market, SMB, Startup, Klient strategiczny, Klient pilotażowy). Branża to sektor gospodarki (np. IT / Technologia, Finanse / Bankowość, Produkcja). Oba pola to listy rozwijane — wybierasz z predefiniowanej listy. Oba służą do filtrowania i raportowania.',
       },
     ],
   },
