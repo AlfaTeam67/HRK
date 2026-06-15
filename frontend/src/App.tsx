@@ -8,6 +8,7 @@ import { AdvisorPage } from '@/pages/AdvisorPage'
 import { ClientsPageApi } from '@/pages/ClientsPage'
 import { ContractsPage } from '@/pages/ContractsPage'
 import { DashboardPage } from '@/pages/DashboardPage'
+import { FaqPage } from '@/pages/FaqPage'
 import { LoginPage } from '@/pages/LoginPage'
 import { ManagerDashboardPage } from '@/pages/ManagerDashboardPage'
 import { ReportsPage } from '@/pages/ReportsPage'
@@ -55,6 +56,7 @@ function App() {
           <Route path="assistant" element={<AdvisorPage />} />
           <Route path="access" element={<SettingsPage />} />
           <Route path="reports" element={<ReportsPage />} />
+          <Route path="faq" element={<FaqPage />} />
         </Route>
       </Route>
 

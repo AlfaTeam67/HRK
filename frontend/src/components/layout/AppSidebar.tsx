@@ -50,6 +50,13 @@ const IcoReports = () => (
     <line x1="6" y1="20" x2="6" y2="14"/>
   </svg>
 )
+const IcoFaq = () => (
+  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="12" cy="12" r="10"/>
+    <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
+    <line x1="12" y1="17" x2="12.01" y2="17"/>
+  </svg>
+)
 
 const NAV_MAIN = [
   { to: '/',                   label: 'Pulpit główny', icon: IcoDashboard,    badge: 0, end: true  },
@@ -62,6 +69,7 @@ const NAV_AI    = [{ to: '/assistant', label: 'Chat z asystentem', icon: IcoAI, 
 const NAV_ADMIN = [
   { to: '/access',  label: 'Dostępy i role', icon: IcoSettings, end: false },
   { to: '/reports', label: 'Aktywności',     icon: IcoReports,  end: false },
+  { to: '/faq',     label: 'Centrum pomocy', icon: IcoFaq,      end: false },
 ]
 
 function NavItem({ to, label, icon: Icon, badge = 0, end = false }: {
