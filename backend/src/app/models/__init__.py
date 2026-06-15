@@ -64,6 +64,7 @@ from app.models.gus import GusCpiSnapshot
 
 # Tier 4 — Documents & Notes
 from app.models.note import Note
+from app.models.price_list import PriceListTemplate
 from app.models.rate import CustomerRate, CustomerRateMonth, Valorization
 from app.models.score import CustomerRelationScore
 from app.models.service import Service
@@ -117,6 +118,7 @@ __all__ = [
     "Valorization",
     # Tier 4
     "Note",
+    "PriceListTemplate",
     "Attachment",
     "DocumentChunk",
     "DocumentGeneration",
