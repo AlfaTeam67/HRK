@@ -6,7 +6,7 @@
 ![Team](https://img.shields.io/badge/team-AlfaTeam-7c3aed)
 ![Backend](https://img.shields.io/badge/backend-FastAPI-10b981)
 ![Database](https://img.shields.io/badge/database-PostgreSQL%20%2B%20pgvector%20%2B%20JSONB-0ea5e9)
-![AI](https://img.shields.io/badge/AI-Gemma%204%20%2B%20RAG%20%40%20Ollama-f59e0b)
+![AI](https://img.shields.io/badge/AI-Bielik%20%2B%20RAG%20%40%20Ollama-f59e0b)
 
 ## ✨ O projekcie
 
@@ -33,14 +33,14 @@ System ma wspierać zespół w codziennej obsłudze klientów:
 | --- | --- |
 | API (Python/FastAPI) | logika biznesowa CRM, role, workflow umów, alerty |
 | PostgreSQL + pgvector | dane relacyjne + `JSONB` (`additional_data`) + wyszukiwanie wektorowe |
-| Warstwa AI | Embedding: `nomic-embed-text` + LLM: `Gemma 4` na Ollama |
+| Warstwa AI | Embedding: `nomic-embed-text` + LLM: `Bielik` (SpeakLeash) na Ollama |
 | Integracje | Active Directory (autoryzacja), dane inflacyjne (np. GUS) |
 
 ## 🛠️ Stack technologiczny
 
 - **Backend:** Python + **FastAPI**, REST API
 - **Baza danych:** PostgreSQL + **pgvector** + `JSONB`
-- **AI/LLM:** `nomic-embed-text` (embedding) + `Gemma 4` (tryb AI) przez Ollama
+- **AI/LLM:** `nomic-embed-text` (embedding) + `Bielik` (polski LLM od SpeakLeash, tryb AI) przez Ollama
 - **Infrastruktura:** środowisko intranetowe z Active Directory (SSO/LDAP do doprecyzowania)
 
 ## 🧩 Kluczowe funkcjonalności
@@ -60,7 +60,7 @@ System ma wspierać zespół w codziennej obsłudze klientów:
 - pytania naturalne o klienta i umowę (RAG po dokumentach),
 - wskazanie źródła odpowiedzi (dokument/strona),
 - tryb domyślny: szybki retrieval bez LLM,
-- tryb AI (switch): interpretacja i synteza na `Gemma 4`,
+- tryb AI (switch): interpretacja i synteza na `Bielik` (polski LLM),
 - weryfikacja spójności danych pracownika na podstawie dokumentów.
 
 ### Alerty i raporty
