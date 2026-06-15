@@ -252,13 +252,11 @@ function AccordionItem({ item }: { item: FaqItem }) {
 
 function FaqSection({ section }: { section: FaqSection }) {
   return (
-    <div style={{ ...cardStyle, marginBottom: 16 }}>
+    <div style={{ ...cardStyle, marginBottom: 16, width: '100%' }}>
       <div style={{
         padding: '12px 16px',
         borderBottom: '1px solid #f0ece7',
-        display: 'flex', alignItems: 'center', gap: 8,
       }}>
-        <span style={{ fontSize: 18 }}>{section.emoji}</span>
         <h2 style={{ margin: 0, fontSize: 14, fontWeight: 700, color: '#1a1714' }}>
           {section.title}
         </h2>
@@ -287,7 +285,7 @@ export function FaqPage() {
     : FAQ_SECTIONS
 
   return (
-    <div style={{ padding: '28px 32px', maxWidth: 820, margin: '0 auto' }}>
+    <div style={{ padding: '28px 32px', width: '100%', boxSizing: 'border-box' }}>
       {/* Header */}
       <div style={{ marginBottom: 24 }}>
         <h1 style={{ fontSize: 22, fontWeight: 800, color: '#1a1714', margin: 0, marginBottom: 6 }}>
