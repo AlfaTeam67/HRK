@@ -25,7 +25,9 @@ import { CustomDataTab } from '@/features/customData/CustomDataTab'
 import { HelpTooltip } from '@/components/ui/HelpTooltip'
 import {
   CUSTOMER_STATUS_PL,
+  INDUSTRY_OPTIONS,
   NOTE_TYPE_LABELS,
+  SEGMENT_OPTIONS,
   validateCustomerForm,
   type CustomerForm,
   type CustomerStatus,
@@ -89,13 +91,12 @@ type FormFieldKey =
   | 'employee_count'
   | 'payment_period_days'
 
+/** Pola renderowane jako <input>. Segment i industry mają osobne <select>. */
 const FORM_FIELDS: ReadonlyArray<readonly [FormFieldKey, string, 'text' | 'email' | 'number', string?]> = [
   ['ckk', 'CKK / Identyfikator', 'text', 'Unikalny identyfikator klienta w systemie HRK (np. CKK-0001). Nadawany automatycznie lub wpisywany ręcznie.'],
   ['invoice_nip', 'NIP', 'text', 'Numer Identyfikacji Podatkowej klienta. Używany do weryfikacji w GUS i do generowania dokumentów.'],
   ['billing_email', 'Email bilingowy', 'email', 'Adres e-mail do wysyłki faktur i dokumentów finansowych.'],
   ['phone', 'Telefon', 'text'],
-  ['segment', 'Segment', 'text', 'Wewnętrzna klasyfikacja klienta (np. Enterprise, SMB, Startup). Używana do filtrowania i raportowania.'],
-  ['industry', 'Branża', 'text', 'Sektor gospodarki, w którym działa klient (np. IT, Finanse, Produkcja).'],
   ['employee_count', 'Liczba pracowników', 'number', 'Przybliżona liczba zatrudnionych — wpływa na wycenę usług payrollowych.'],
   ['payment_period_days', 'Termin płatności (dni)', 'number', 'Liczba dni od wystawienia faktury do terminu płatności (standardowo 14 lub 21 dni).'],
 ]
@@ -1088,6 +1089,44 @@ export function ClientsPageApi() {
                 )}
               </div>
             ))}
+
+            {/* Segment — controlled select */}
+            <div className="cp-form-group">
+              <label style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, fontWeight: 700, color: '#4a4340', marginBottom: 4 }}>
+                Segment
+                <HelpTooltip text="Wewnętrzna klasyfikacja klienta. Używana do filtrowania i raportowania." />
+              </label>
+              <select
+                className="cp-form-input"
+                value={form.segment}
+                onChange={(e) => setForm({ ...form, segment: e.target.value })}
+                style={{ width: '100%', padding: '8px 12px', borderRadius: 6, border: '1px solid #e3e0db', fontSize: 13, outline: 'none', background: 'white' }}
+              >
+                <option value="">— wybierz —</option>
+                {SEGMENT_OPTIONS.map((s) => (
+                  <option key={s} value={s}>{s}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Branża — controlled select */}
+            <div className="cp-form-group">
+              <label style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, fontWeight: 700, color: '#4a4340', marginBottom: 4 }}>
+                Branża
+                <HelpTooltip text="Sektor gospodarki, w którym działa klient." />
+              </label>
+              <select
+                className="cp-form-input"
+                value={form.industry}
+                onChange={(e) => setForm({ ...form, industry: e.target.value })}
+                style={{ width: '100%', padding: '8px 12px', borderRadius: 6, border: '1px solid #e3e0db', fontSize: 13, outline: 'none', background: 'white' }}
+              >
+                <option value="">— wybierz —</option>
+                {INDUSTRY_OPTIONS.map((ind) => (
+                  <option key={ind} value={ind}>{ind}</option>
+                ))}
+              </select>
+            </div>
 
             <div className="cp-form-group">
               <label
