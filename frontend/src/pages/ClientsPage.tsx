@@ -22,6 +22,7 @@ import { ContractModal } from '@/features/contracts/ContractModal'
 import { ContractTreeList } from '@/features/contracts/ContractTreeList'
 import { UploadWizard } from '@/features/documents/UploadWizard'
 import { CustomDataTab } from '@/features/customData/CustomDataTab'
+import { HelpTooltip } from '@/components/ui/HelpTooltip'
 import {
   CUSTOMER_STATUS_PL,
   NOTE_TYPE_LABELS,
@@ -88,15 +89,15 @@ type FormFieldKey =
   | 'employee_count'
   | 'payment_period_days'
 
-const FORM_FIELDS: ReadonlyArray<readonly [FormFieldKey, string, 'text' | 'email' | 'number']> = [
-  ['ckk', 'CKK / Identyfikator', 'text'],
-  ['invoice_nip', 'NIP', 'text'],
-  ['billing_email', 'Email bilingowy', 'email'],
+const FORM_FIELDS: ReadonlyArray<readonly [FormFieldKey, string, 'text' | 'email' | 'number', string?]> = [
+  ['ckk', 'CKK / Identyfikator', 'text', 'Unikalny identyfikator klienta w systemie HRK (np. CKK-0001). Nadawany automatycznie lub wpisywany ręcznie.'],
+  ['invoice_nip', 'NIP', 'text', 'Numer Identyfikacji Podatkowej klienta. Używany do weryfikacji w GUS i do generowania dokumentów.'],
+  ['billing_email', 'Email bilingowy', 'email', 'Adres e-mail do wysyłki faktur i dokumentów finansowych.'],
   ['phone', 'Telefon', 'text'],
-  ['segment', 'Segment', 'text'],
-  ['industry', 'Branża', 'text'],
-  ['employee_count', 'Liczba pracowników', 'number'],
-  ['payment_period_days', 'Termin płatności (dni)', 'number'],
+  ['segment', 'Segment', 'text', 'Wewnętrzna klasyfikacja klienta (np. Enterprise, SMB, Startup). Używana do filtrowania i raportowania.'],
+  ['industry', 'Branża', 'text', 'Sektor gospodarki, w którym działa klient (np. IT, Finanse, Produkcja).'],
+  ['employee_count', 'Liczba pracowników', 'number', 'Przybliżona liczba zatrudnionych — wpływa na wycenę usług payrollowych.'],
+  ['payment_period_days', 'Termin płatności (dni)', 'number', 'Liczba dni od wystawienia faktury do terminu płatności (standardowo 14 lub 21 dni).'],
 ]
 
 function ini(n: string) {
@@ -879,9 +880,13 @@ export function ClientsPageApi() {
                           fontWeight: 700,
                           marginBottom: 10,
                           color: '#1a1714',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 6,
                         }}
                       >
                         Nowa notatka
+                        <HelpTooltip text="Notatki służą do dokumentowania kontaktów z klientem. Wybierz typ, wpisz treść i opcjonalnie ustaw termin wymaganej reakcji." />
                       </div>
 
                       <div className="cp-note-types">
@@ -1042,11 +1047,13 @@ export function ClientsPageApi() {
               gap: '12px 16px',
             }}
           >
-            {FORM_FIELDS.map(([field, label, type]) => (
+            {FORM_FIELDS.map(([field, label, type, tooltip]) => (
               <div key={field} className="cp-form-group">
                 <label
                   style={{
-                    display: 'block',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 5,
                     fontSize: 12,
                     fontWeight: 700,
                     color: '#4a4340',
@@ -1054,6 +1061,7 @@ export function ClientsPageApi() {
                   }}
                 >
                   {label}
+                  {tooltip && <HelpTooltip text={tooltip} />}
                 </label>
                 <input
                   className="cp-form-input"
