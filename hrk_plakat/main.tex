@@ -73,8 +73,8 @@ Uprawnienia konfigurowane są na poziomie klienta i umowy. Dostęp do platformy 
 Zastosowano architekturę klient-serwer opartą na bezstanowym REST API. Całość uruchamiana jest z wykorzystaniem konteneryzacji \textbf{Docker}, co ułatwia replikację środowisk i wdrożenia. Stack \textbf{Docker Compose} obejmuje trzy niezależne serwisy: główne API, mikroserwis Active Directory do uwierzytelniania oraz Schema Manager zarządzający strukturą bazy danych. Schemat bazy ewoluuje przez migracje \textbf{Alembic}, zachowując spójność między środowiskami. Podział na izolowane serwisy zapewnia odporność na błędy i gotowość do skalowania horyzontalnego.
 
 \begin{itemize}
-\item \textbf{Interfejs użytkownika:} Aplikacja webowa w \textbf{React~19} (TypeScript) ze stylowaniem przez \textbf{Tailwind CSS} i komponentami \textbf{Radix~UI / shadcn}. Stanem serwera zarządza \textbf{TanStack Query}, a globalnym -- \textbf{Redux Toolkit}. Typy żądań i odpowiedzi generowane są automatycznie z~OpenAPI serwera.
-\item \textbf{Logika serwera:} API w \textbf{Pythonie} z frameworkiem \textbf{FastAPI} i ORM \textbf{SQLAlchemy}. Kod strukturyzowany jest w warstwy api -> service -> repo -> models. Weryfikowany testami (\texttt{pytest})).
+\item \textbf{Interfejs użytkownika:} Aplikacja webowa w \textbf{React} (TypeScript) ze stylowaniem przez \textbf{Tailwind CSS} i komponentami \textbf{Radix~UI / shadcn}. Stanem serwera zarządza \textbf{TanStack Query}, a globalnym -- \textbf{Redux Toolkit}. Typy żądań i odpowiedzi generowane są automatycznie z~OpenAPI serwera.
+\item \textbf{Logika serwera:} API w \textbf{Pythonie} z frameworkiem \textbf{FastAPI} i ORM \textbf{SQLAlchemy}. Kod strukturyzowany jest w warstwy api -> service -> repo -> models. Weryfikowany testami (\texttt{pytest}).
 \item \textbf{Składowanie danych:} Relacyjna baza \textbf{PostgreSQL} rozszerzona o \texttt{pgvector} i kolumny \texttt{JSONB} dla danych niestandardowych klienta. Pliki PDF umów przechowywane są w \textbf{MinIO} z szyfrowaniem SSE i dostępem przez presigned URL; podgląd dokumentów w przegladarce realizuje biblioteka \texttt{react-pdf}.
 \end{itemize}
 
@@ -105,7 +105,7 @@ System wykorzystuje architekturę \textbf{Retrieval-Augmented Generation (RAG)}:
 \hfill
 \begin{subfigure}{0.49\textwidth}
     \includegraphics[width=\textwidth]{figures/ui-valorization.png}
-    \subcaption{Moduł waloryzacji}
+    \subcaption{Moduł asystenta AI}
 \end{subfigure}
 \caption{Widoki interfejsu użytkownika systemu HRK CRM.}
 \label{fig:ui}
@@ -123,7 +123,7 @@ HRK CRM łączy wymogi bezpiecznego oprogramowania biznesowego z innowacjami szt
 
 \begin{block}{Podziękowania}
 
-Serdecznie dziękujemy firmie HRK Payroll Consulting za cenną współpracę i możliwość realizacji projektu. Wyrazy wdzięczności kierujemy również do prowadzących przedmiot Zespołowy Projekt Programistyczny za wsparcie merytoryczne.
+Serdecznie dziękujemy firmie HRK Payroll Consulting za cenną współpracę i możliwość realizacji projektu. Wyrazy wdzięczności kierujemy również do prowadzących przedmiot Moduł Sumatywny za wsparcie merytoryczne.
 
 \end{block}
 
