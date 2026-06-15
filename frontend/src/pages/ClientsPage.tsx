@@ -13,7 +13,7 @@ import {
   useUpdateCustomer,
 } from '@/hooks/customers'
 import { useCustomerTimeline } from '@/hooks/timeline'
-import { useCreateNote, useNotes } from '@/hooks/notes'
+import { useCreateNote, useNotes, useUpdateNote } from '@/hooks/notes'
 import { useAppSelector } from '@/hooks/store'
 import { useDocumentsQuery } from '@/hooks/documents'
 import { DocumentWizard } from '@/features/documentGeneration/DocumentWizard'
@@ -22,9 +22,12 @@ import { ContractModal } from '@/features/contracts/ContractModal'
 import { ContractTreeList } from '@/features/contracts/ContractTreeList'
 import { UploadWizard } from '@/features/documents/UploadWizard'
 import { CustomDataTab } from '@/features/customData/CustomDataTab'
+import { HelpTooltip } from '@/components/ui/HelpTooltip'
 import {
   CUSTOMER_STATUS_PL,
+  INDUSTRY_OPTIONS,
   NOTE_TYPE_LABELS,
+  SEGMENT_OPTIONS,
   validateCustomerForm,
   type CustomerForm,
   type CustomerStatus,
@@ -88,15 +91,14 @@ type FormFieldKey =
   | 'employee_count'
   | 'payment_period_days'
 
-const FORM_FIELDS: ReadonlyArray<readonly [FormFieldKey, string, 'text' | 'email' | 'number']> = [
-  ['ckk', 'CKK / Identyfikator', 'text'],
-  ['invoice_nip', 'NIP', 'text'],
-  ['billing_email', 'Email bilingowy', 'email'],
+/** Pola renderowane jako <input>. Segment i industry mają osobne <select>. */
+const FORM_FIELDS: ReadonlyArray<readonly [FormFieldKey, string, 'text' | 'email' | 'number', string?]> = [
+  ['ckk', 'CKK / Identyfikator', 'text', 'Unikalny identyfikator klienta w systemie HRK (np. CKK-0001). Nadawany automatycznie lub wpisywany ręcznie.'],
+  ['invoice_nip', 'NIP', 'text', 'Numer Identyfikacji Podatkowej klienta. Używany do weryfikacji w GUS i do generowania dokumentów.'],
+  ['billing_email', 'Email bilingowy', 'email', 'Adres e-mail do wysyłki faktur i dokumentów finansowych.'],
   ['phone', 'Telefon', 'text'],
-  ['segment', 'Segment', 'text'],
-  ['industry', 'Branża', 'text'],
-  ['employee_count', 'Liczba pracowników', 'number'],
-  ['payment_period_days', 'Termin płatności (dni)', 'number'],
+  ['employee_count', 'Liczba pracowników', 'number', 'Przybliżona liczba zatrudnionych — wpływa na wycenę usług payrollowych.'],
+  ['payment_period_days', 'Termin płatności (dni)', 'number', 'Liczba dni od wystawienia faktury do terminu płatności (standardowo 14 lub 21 dni).'],
 ]
 
 function ini(n: string) {
@@ -234,6 +236,7 @@ export function ClientsPageApi() {
   const [formErrors, setFormErrors] = useState<ValidationErrors>({})
   const [noteText, setNoteText] = useState('')
   const [noteType, setNoteType] = useState<NoteType>('internal')
+  const [noteDeadline, setNoteDeadline] = useState('')
   const [wizardOpen, setWizardOpen] = useState(false)
   const [uploadWizardOpen, setUploadWizardOpen] = useState(false)
   const [contractModalId, setContractModalId] = useState<string | null>(null)
@@ -264,6 +267,7 @@ export function ClientsPageApi() {
   const updateCustomer = useUpdateCustomer()
   const deleteCustomer = useDeleteCustomer()
   const createNote = useCreateNote()
+  const updateNote = useUpdateNote()
   const createContract = useCreateContract()
   const aiSummary = useCustomerAiSummaryStream()
   const { reset: resetAiSummary, trigger: triggerAiSummary } = aiSummary
@@ -394,8 +398,10 @@ export function ClientsPageApi() {
         content: noteText.trim(),
         customer_id: selectedId,
         note_type: noteType,
+        ...(noteDeadline ? { deadline_at: new Date(noteDeadline).toISOString() } : {}),
       })
       setNoteText('')
+      setNoteDeadline('')
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Nieznany błąd'
       console.error('[ClientsPage] addNote failed:', err)
@@ -875,9 +881,13 @@ export function ClientsPageApi() {
                           fontWeight: 700,
                           marginBottom: 10,
                           color: '#1a1714',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 6,
                         }}
                       >
                         Nowa notatka
+                        <HelpTooltip text="Notatki służą do dokumentowania kontaktów z klientem. Wybierz typ, wpisz treść i opcjonalnie ustaw termin wymaganej reakcji." />
                       </div>
 
                       <div className="cp-note-types">
@@ -899,6 +909,34 @@ export function ClientsPageApi() {
                         onChange={(e) => setNoteText(e.target.value)}
                       />
 
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+                        <label style={{ fontSize: 12, color: '#5a5248', whiteSpace: 'nowrap' }}>
+                          Termin reakcji:
+                        </label>
+                        <input
+                          type="datetime-local"
+                          value={noteDeadline}
+                          onChange={(e) => setNoteDeadline(e.target.value)}
+                          style={{
+                            fontSize: 12, border: '1px solid #d4cfc9', borderRadius: 5,
+                            padding: '4px 8px', color: '#1a1714', background: '#faf9f7',
+                            flex: 1,
+                          }}
+                        />
+                        {noteDeadline && (
+                          <button
+                            onClick={() => setNoteDeadline('')}
+                            title="Usuń termin"
+                            style={{
+                              background: 'none', border: 'none', cursor: 'pointer',
+                              color: '#9c8e84', fontSize: 14, padding: '0 4px',
+                            }}
+                          >
+                            ×
+                          </button>
+                        )}
+                      </div>
+
                       <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
                         <button
                           className="cp-btn-submit"
@@ -914,18 +952,53 @@ export function ClientsPageApi() {
                       <p style={{ color: '#7a6f67', fontSize: 13 }}>Brak notatek.</p>
                     )}
 
-                    {notes.map((n) => (
-                      <div key={n.id} className="cp-note-item">
+                    {notes.map((n) => {
+                      const isOverdue = n.deadline_at && !n.is_resolved && new Date(n.deadline_at) < new Date()
+                      return (
+                      <div
+                        key={n.id}
+                        className="cp-note-item"
+                        style={n.is_resolved ? { opacity: 0.55 } : undefined}
+                      >
                         <div
                           style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}
                         >
                           <span className="cp-note-author">{n.created_by || 'System'}</span>
                           <span className="cp-note-date">{fmtDate(n.created_at)}</span>
                           {n.note_type && <span className="cp-note-type-tag">{n.note_type}</span>}
+                          {n.deadline_at && (
+                            <span
+                              title="Termin reakcji"
+                              style={{
+                                fontSize: 11, padding: '1px 7px', borderRadius: 10,
+                                fontWeight: 600,
+                                background: isOverdue ? '#fee2e2' : '#fef3c7',
+                                color: isOverdue ? '#dc2626' : '#92400e',
+                                border: `1px solid ${isOverdue ? '#fca5a5' : '#fcd34d'}`,
+                              }}
+                            >
+                              ⏰ {new Date(n.deadline_at).toLocaleString('pl-PL', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                          )}
+                          {n.deadline_at && (
+                            <label
+                              title={n.is_resolved ? 'Zrealizowano' : 'Oznacz jako zrealizowane'}
+                              style={{ display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer', marginLeft: 'auto', fontSize: 11, color: n.is_resolved ? '#16a34a' : '#5a5248' }}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={!!n.is_resolved}
+                                onChange={() => updateNote.mutate({ id: n.id, is_resolved: !n.is_resolved })}
+                                style={{ cursor: 'pointer', accentColor: '#16a34a' }}
+                              />
+                              {n.is_resolved ? 'Zrealizowano' : 'Zrealizuj'}
+                            </label>
+                          )}
                         </div>
-                        <p className="cp-note-content">{n.content}</p>
+                        <p className="cp-note-content" style={n.is_resolved ? { textDecoration: 'line-through' } : undefined}>{n.content}</p>
                       </div>
-                    ))}
+                      )
+                    })}
                   </div>
                 )}
 
@@ -975,11 +1048,13 @@ export function ClientsPageApi() {
               gap: '12px 16px',
             }}
           >
-            {FORM_FIELDS.map(([field, label, type]) => (
+            {FORM_FIELDS.map(([field, label, type, tooltip]) => (
               <div key={field} className="cp-form-group">
                 <label
                   style={{
-                    display: 'block',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 5,
                     fontSize: 12,
                     fontWeight: 700,
                     color: '#4a4340',
@@ -987,6 +1062,7 @@ export function ClientsPageApi() {
                   }}
                 >
                   {label}
+                  {tooltip && <HelpTooltip text={tooltip} />}
                 </label>
                 <input
                   className="cp-form-input"
@@ -1013,6 +1089,44 @@ export function ClientsPageApi() {
                 )}
               </div>
             ))}
+
+            {/* Segment — controlled select */}
+            <div className="cp-form-group">
+              <label style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, fontWeight: 700, color: '#4a4340', marginBottom: 4 }}>
+                Segment
+                <HelpTooltip text="Wewnętrzna klasyfikacja klienta. Używana do filtrowania i raportowania." />
+              </label>
+              <select
+                className="cp-form-input"
+                value={form.segment}
+                onChange={(e) => setForm({ ...form, segment: e.target.value })}
+                style={{ width: '100%', padding: '8px 12px', borderRadius: 6, border: '1px solid #e3e0db', fontSize: 13, outline: 'none', background: 'white' }}
+              >
+                <option value="">— wybierz —</option>
+                {SEGMENT_OPTIONS.map((s) => (
+                  <option key={s} value={s}>{s}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Branża — controlled select */}
+            <div className="cp-form-group">
+              <label style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, fontWeight: 700, color: '#4a4340', marginBottom: 4 }}>
+                Branża
+                <HelpTooltip text="Sektor gospodarki, w którym działa klient." />
+              </label>
+              <select
+                className="cp-form-input"
+                value={form.industry}
+                onChange={(e) => setForm({ ...form, industry: e.target.value })}
+                style={{ width: '100%', padding: '8px 12px', borderRadius: 6, border: '1px solid #e3e0db', fontSize: 13, outline: 'none', background: 'white' }}
+              >
+                <option value="">— wybierz —</option>
+                {INDUSTRY_OPTIONS.map((ind) => (
+                  <option key={ind} value={ind}>{ind}</option>
+                ))}
+              </select>
+            </div>
 
             <div className="cp-form-group">
               <label

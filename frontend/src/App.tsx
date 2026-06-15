@@ -8,11 +8,13 @@ import { AdvisorPage } from '@/pages/AdvisorPage'
 import { ClientsPageApi } from '@/pages/ClientsPage'
 import { ContractsPage } from '@/pages/ContractsPage'
 import { DashboardPage } from '@/pages/DashboardPage'
+import { FaqPage } from '@/pages/FaqPage'
 import { LoginPage } from '@/pages/LoginPage'
 import { ManagerDashboardPage } from '@/pages/ManagerDashboardPage'
 import { ReportsPage } from '@/pages/ReportsPage'
 import { SettingsPage } from '@/pages/SettingsPage'
 import { ValorizationPage } from '@/pages/ValorizationPage'
+import { PriceListPage } from '@/pages/PriceListPage'
 
 function RequireAuth() {
   const user = useAppSelector((s) => s.auth.user)
@@ -55,6 +57,8 @@ function App() {
           <Route path="assistant" element={<AdvisorPage />} />
           <Route path="access" element={<SettingsPage />} />
           <Route path="reports" element={<ReportsPage />} />
+          <Route path="faq" element={<FaqPage />} />
+          <Route path="price-list" element={<PriceListPage />} />
         </Route>
       </Route>
 

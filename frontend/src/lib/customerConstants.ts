@@ -19,6 +19,51 @@ export const NOTE_TYPE_LABELS = {
 
 export type NoteType = keyof typeof NOTE_TYPE_LABELS
 
+/**
+ * Predefiniowane sektory / branże klientów.
+ * Wartości są przechowywane w kolumnie `industry` (VARCHAR 100) w bazie.
+ * Zmiana wartości na liście nie wymaga migracji — jest wstecznie kompatybilna.
+ */
+export const INDUSTRY_OPTIONS = [
+  'IT / Technologia',
+  'Finanse / Bankowość',
+  'Ubezpieczenia',
+  'Handel detaliczny',
+  'Handel hurtowy',
+  'E-commerce',
+  'Produkcja',
+  'Logistyka / Transport',
+  'Budownictwo',
+  'Nieruchomości',
+  'Ochrona zdrowia / Farmacja',
+  'Edukacja',
+  'Media / Reklama',
+  'Telekomunikacja',
+  'Energetyka',
+  'Usługi profesjonalne',
+  'HoReCa (Gastronomia / Hotele)',
+  'Sektor publiczny',
+  'NGO / Fundacje',
+  'Inne',
+] as const
+
+export type Industry = (typeof INDUSTRY_OPTIONS)[number]
+
+/**
+ * Predefiniowane segmenty klientów.
+ * Wartości przechowywane w kolumnie `segment` (VARCHAR 50).
+ */
+export const SEGMENT_OPTIONS = [
+  'Enterprise',
+  'Mid-market',
+  'SMB',
+  'Startup',
+  'Klient strategiczny',
+  'Klient pilotażowy',
+] as const
+
+export type Segment = (typeof SEGMENT_OPTIONS)[number]
+
 export type CustomerForm = {
   ckk: string
   status: CustomerStatus
