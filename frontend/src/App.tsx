@@ -14,6 +14,7 @@ import { ManagerDashboardPage } from '@/pages/ManagerDashboardPage'
 import { ReportsPage } from '@/pages/ReportsPage'
 import { SettingsPage } from '@/pages/SettingsPage'
 import { ValorizationPage } from '@/pages/ValorizationPage'
+import { PriceListPage } from '@/pages/PriceListPage'
 
 function RequireAuth() {
   const user = useAppSelector((s) => s.auth.user)
@@ -57,6 +58,7 @@ function App() {
           <Route path="access" element={<SettingsPage />} />
           <Route path="reports" element={<ReportsPage />} />
           <Route path="faq" element={<FaqPage />} />
+          <Route path="price-list" element={<PriceListPage />} />
         </Route>
       </Route>
 

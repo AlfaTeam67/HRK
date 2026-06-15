@@ -32,6 +32,12 @@ const IcoValorization = () => (
     <polyline points="17 6 23 6 23 12"/>
   </svg>
 )
+const IcoPriceList = () => (
+  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <line x1="12" y1="1" x2="12" y2="23"/>
+    <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+  </svg>
+)
 const IcoAI = () => (
   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
@@ -64,6 +70,7 @@ const NAV_MAIN = [
   { to: '/clients',            label: 'Klienci',       icon: IcoClients,      badge: 0, end: false },
   { to: '/contracts',          label: 'Umowy',         icon: IcoContracts,    badge: 0, end: false },
   { to: '/valorization',       label: 'Waloryzacja',   icon: IcoValorization, badge: 0, end: false },
+  { to: '/price-list',         label: 'Cennik bazowy',  icon: IcoPriceList,    badge: 0, end: false },
 ]
 const NAV_AI    = [{ to: '/assistant', label: 'Chat z asystentem', icon: IcoAI,      end: false }]
 const NAV_ADMIN = [
