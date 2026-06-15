@@ -173,11 +173,12 @@ function EntryRow({
   onToggle: (e: PriceListEntry) => void
   onDelete: (id: string) => void
 }) {
+  const yearly = Number(entry.list_price) * 12
   return (
     <tr style={{ borderBottom: '1px solid #f5f3f0' }}>
-      <td style={{ padding: '10px 0', maxWidth: 180 }}>
-        <span style={{ fontSize: 11, color: '#9c8e84', fontFamily: 'monospace' }}>
-          {entry.service_id.slice(0, 8)}…
+      <td style={{ padding: '10px 0 10px 18px', maxWidth: 220 }}>
+        <span style={{ fontSize: 13, fontWeight: 600, color: '#1a1714' }}>
+          {entry.service_name ?? `${entry.service_id.slice(0, 8)}…`}
         </span>
       </td>
       <td style={{ padding: '10px 8px' }}>
@@ -190,8 +191,13 @@ function EntryRow({
           {entry.label || '—'}
         </span>
       </td>
-      <td style={{ padding: '10px 8px', fontWeight: 700, color: '#1a1714', fontSize: 14 }}>
-        {fmt(entry.list_price)} zł
+      <td style={{ padding: '10px 8px' }}>
+        <div style={{ fontWeight: 700, color: '#1a1714', fontSize: 14 }}>
+          {fmt(entry.list_price)} zł <span style={{ fontSize: 11, fontWeight: 500, color: '#9c8e84' }}>/mc</span>
+        </div>
+        <div style={{ fontSize: 11, color: '#276749', fontWeight: 600 }}>
+          {fmt(yearly)} zł / rok
+        </div>
       </td>
       <td style={{ padding: '10px 8px', fontSize: 12, color: '#4a4340', maxWidth: 200 }}>
         {entry.description || <span style={{ color: '#c8bfb7' }}>—</span>}
@@ -357,7 +363,7 @@ export function PriceListPage() {
       {editEntry && (
         <div style={{ ...cardStyle, padding: 20, marginBottom: 20, borderLeft: '3px solid #e85c04' }}>
           <div style={{ fontSize: 13, fontWeight: 700, color: '#1a1714', marginBottom: 14 }}>
-            Edycja wpisu — usługa <span style={{ fontFamily: 'monospace', color: '#e85c04' }}>{editEntry.service_id.slice(0, 8)}…</span>
+            Edycja wpisu — usługa <span style={{ fontFamily: 'monospace', color: '#e85c04' }}>{editEntry.service_name ?? `${editEntry.service_id.slice(0, 8)}…`}</span>
           </div>
           <EntryForm
             mode="edit"
@@ -389,12 +395,12 @@ export function PriceListPage() {
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
             <thead>
               <tr style={{ borderBottom: '1px solid #ede9e4' }}>
-                {['ID USŁUGI', 'ETYKIETA', 'CENA KATALOGOWA', 'OPIS', 'STATUS', 'AKTUALIZACJA', ''].map(col => (
+                {['USŁUGA', 'ETYKIETA', 'CENA KATALOGOWA', 'OPIS', 'STATUS', 'AKTUALIZACJA', ''].map(col => (
                   <th key={col} style={{
                     textAlign: col === '' ? 'right' : 'left',
                     fontSize: 10, fontWeight: 700, color: '#7a6f67',
                     letterSpacing: '0.06em', padding: '12px 8px',
-                    paddingLeft: col === 'ID USŁUGI' ? 18 : 8,
+                    paddingLeft: col === 'USŁUGA' ? 18 : 8,
                     paddingRight: col === '' ? 18 : 8,
                   }}>
                     {col}
