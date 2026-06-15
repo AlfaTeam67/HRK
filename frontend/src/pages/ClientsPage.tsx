@@ -13,7 +13,7 @@ import {
   useUpdateCustomer,
 } from '@/hooks/customers'
 import { useCustomerTimeline } from '@/hooks/timeline'
-import { useCreateNote, useNotes } from '@/hooks/notes'
+import { useCreateNote, useNotes, useUpdateNote } from '@/hooks/notes'
 import { useAppSelector } from '@/hooks/store'
 import { useDocumentsQuery } from '@/hooks/documents'
 import { DocumentWizard } from '@/features/documentGeneration/DocumentWizard'
@@ -234,6 +234,7 @@ export function ClientsPageApi() {
   const [formErrors, setFormErrors] = useState<ValidationErrors>({})
   const [noteText, setNoteText] = useState('')
   const [noteType, setNoteType] = useState<NoteType>('internal')
+  const [noteDeadline, setNoteDeadline] = useState('')
   const [wizardOpen, setWizardOpen] = useState(false)
   const [uploadWizardOpen, setUploadWizardOpen] = useState(false)
   const [contractModalId, setContractModalId] = useState<string | null>(null)
@@ -264,6 +265,7 @@ export function ClientsPageApi() {
   const updateCustomer = useUpdateCustomer()
   const deleteCustomer = useDeleteCustomer()
   const createNote = useCreateNote()
+  const updateNote = useUpdateNote()
   const createContract = useCreateContract()
   const aiSummary = useCustomerAiSummaryStream()
   const { reset: resetAiSummary, trigger: triggerAiSummary } = aiSummary
@@ -394,8 +396,10 @@ export function ClientsPageApi() {
         content: noteText.trim(),
         customer_id: selectedId,
         note_type: noteType,
+        ...(noteDeadline ? { deadline_at: new Date(noteDeadline).toISOString() } : {}),
       })
       setNoteText('')
+      setNoteDeadline('')
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Nieznany błąd'
       console.error('[ClientsPage] addNote failed:', err)
@@ -899,6 +903,34 @@ export function ClientsPageApi() {
                         onChange={(e) => setNoteText(e.target.value)}
                       />
 
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+                        <label style={{ fontSize: 12, color: '#5a5248', whiteSpace: 'nowrap' }}>
+                          Termin reakcji:
+                        </label>
+                        <input
+                          type="datetime-local"
+                          value={noteDeadline}
+                          onChange={(e) => setNoteDeadline(e.target.value)}
+                          style={{
+                            fontSize: 12, border: '1px solid #d4cfc9', borderRadius: 5,
+                            padding: '4px 8px', color: '#1a1714', background: '#faf9f7',
+                            flex: 1,
+                          }}
+                        />
+                        {noteDeadline && (
+                          <button
+                            onClick={() => setNoteDeadline('')}
+                            title="Usuń termin"
+                            style={{
+                              background: 'none', border: 'none', cursor: 'pointer',
+                              color: '#9c8e84', fontSize: 14, padding: '0 4px',
+                            }}
+                          >
+                            ×
+                          </button>
+                        )}
+                      </div>
+
                       <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
                         <button
                           className="cp-btn-submit"
@@ -914,18 +946,53 @@ export function ClientsPageApi() {
                       <p style={{ color: '#7a6f67', fontSize: 13 }}>Brak notatek.</p>
                     )}
 
-                    {notes.map((n) => (
-                      <div key={n.id} className="cp-note-item">
+                    {notes.map((n) => {
+                      const isOverdue = n.deadline_at && !n.is_resolved && new Date(n.deadline_at) < new Date()
+                      return (
+                      <div
+                        key={n.id}
+                        className="cp-note-item"
+                        style={n.is_resolved ? { opacity: 0.55 } : undefined}
+                      >
                         <div
                           style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}
                         >
                           <span className="cp-note-author">{n.created_by || 'System'}</span>
                           <span className="cp-note-date">{fmtDate(n.created_at)}</span>
                           {n.note_type && <span className="cp-note-type-tag">{n.note_type}</span>}
+                          {n.deadline_at && (
+                            <span
+                              title="Termin reakcji"
+                              style={{
+                                fontSize: 11, padding: '1px 7px', borderRadius: 10,
+                                fontWeight: 600,
+                                background: isOverdue ? '#fee2e2' : '#fef3c7',
+                                color: isOverdue ? '#dc2626' : '#92400e',
+                                border: `1px solid ${isOverdue ? '#fca5a5' : '#fcd34d'}`,
+                              }}
+                            >
+                              ⏰ {new Date(n.deadline_at).toLocaleString('pl-PL', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                          )}
+                          {n.deadline_at && (
+                            <label
+                              title={n.is_resolved ? 'Zrealizowano' : 'Oznacz jako zrealizowane'}
+                              style={{ display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer', marginLeft: 'auto', fontSize: 11, color: n.is_resolved ? '#16a34a' : '#5a5248' }}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={!!n.is_resolved}
+                                onChange={() => updateNote.mutate({ id: n.id, is_resolved: !n.is_resolved })}
+                                style={{ cursor: 'pointer', accentColor: '#16a34a' }}
+                              />
+                              {n.is_resolved ? 'Zrealizowano' : 'Zrealizuj'}
+                            </label>
+                          )}
                         </div>
-                        <p className="cp-note-content">{n.content}</p>
+                        <p className="cp-note-content" style={n.is_resolved ? { textDecoration: 'line-through' } : undefined}>{n.content}</p>
                       </div>
-                    ))}
+                      )
+                    })}
                   </div>
                 )}
 

@@ -3,14 +3,18 @@
 from __future__ import annotations
 
 import uuid
+from datetime import datetime
 from typing import TYPE_CHECKING
 
 import sqlalchemy as sa
 from sqlalchemy import (
+    Boolean,
     CheckConstraint,
+    DateTime,
     ForeignKey,
     Index,
     Text,
+    text,
 )
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -58,6 +62,12 @@ class Note(Base, TimestampMixin, SoftDeleteMixin):
         nullable=False,
     )
     content: Mapped[str] = mapped_column(Text, nullable=False)
+    deadline_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    is_resolved: Mapped[bool] = mapped_column(
+        Boolean, server_default=text("false"), nullable=False
+    )
     # 🔴 Fix: was nullable=False with ondelete="SET NULL" — impossible.
     #    Author may be deleted → keep SET NULL, make nullable.
     created_by: Mapped[uuid.UUID | None] = mapped_column(

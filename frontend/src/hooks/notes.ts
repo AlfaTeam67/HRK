@@ -3,9 +3,19 @@ import { apiClient } from '@/lib/axios'
 import type { components } from '@/types/api'
 
 type S = components['schemas']
-export type Note = S['NoteRead']
-export type NoteCreate = S['NoteCreate']
-export type NoteUpdate = S['NoteUpdate']
+
+// Extend generated types with deadline/resolved fields until types:sync regenerates api.ts
+export type Note = S['NoteRead'] & {
+  deadline_at?: string | null
+  is_resolved: boolean
+}
+export type NoteCreate = S['NoteCreate'] & {
+  deadline_at?: string | null
+}
+export type NoteUpdate = S['NoteUpdate'] & {
+  deadline_at?: string | null
+  is_resolved?: boolean
+}
 
 const BASE = '/api/v1/notes'
 
