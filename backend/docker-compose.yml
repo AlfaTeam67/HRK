@@ -93,10 +93,10 @@ services:
       S3_EXTERNAL_ENDPOINT: ${S3_EXTERNAL_ENDPOINT:-http://localhost:9000}
       FE_DOMAIN: ${FE_DOMAIN:-http://localhost:4173}
       DEBUG: ${DEBUG:-false}
-      OLLAMA_URL: ${OLLAMA_URL:-http://ollama:11434}
+      OLLAMA_URL: http://ollama:11434
       OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
       OPENROUTER_BASE_URL: ${OPENROUTER_BASE_URL:-https://openrouter.ai/api/v1}
-      OPENROUTER_MODEL: ${OPENROUTER_MODEL:-google/gemma-2-9b-it}
+      OPENROUTER_MODEL: ${OPENROUTER_MODEL:-nvidia/nemotron-3-super-120b-a12b:free}
       AD_SERVICE_URL: http://ad:8001
       API_AD_DOMAIN: ${API_AD_DOMAIN:-HRK}
       RERANKER_URL: http://reranker:8003
