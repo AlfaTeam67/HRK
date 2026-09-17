@@ -28,7 +28,7 @@ services:
 
   # ── MinIO (S3-compatible storage) ──────────────────────────────────────────
   minio:
-    image: git.hrk.pl:3000/pypi-local/minio-minio:latest
+    image: git.hrk.pl:3000/pypi-local/minio-minio:release.2025-04-22t22-12-26z
     container_name: hrk-minio
     command: server /data --console-address ":9001"
     environment:
@@ -54,7 +54,7 @@ services:
 
   # ── MinIO bucket initialiser (runs once, then exits) ──────────────────────
   minio-init:
-    image: git.hrk.pl:3000/pypi-local/minio-mc:latest
+    image: git.hrk.pl:3000/pypi-local/minio-mc:release.2025-04-16t18-13-26z
     container_name: hrk-minio-init
     depends_on:
       minio:
