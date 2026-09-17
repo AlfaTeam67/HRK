@@ -1,4 +1,4 @@
-FROM git.hrk.pl:3000/pypi-local/node:24-alpine AS builder
+FROM git.hrk.pl:3000/pypi-local/node:20-alpine AS builder
 
 WORKDIR /app
 
@@ -13,7 +13,7 @@ ENV VITE_API_URL=$VITE_API_URL
 
 RUN npm run build
 
-FROM git.hrk.pl:3000/pypi-local/node:24-alpine AS runtime
+FROM git.hrk.pl:3000/pypi-local/node:20-alpine AS runtime
 
 WORKDIR /app
 

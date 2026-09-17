@@ -1,4 +1,4 @@
-ARG PYTHON_BASE_IMAGE=public.ecr.aws/docker/library/python:3.12-slim
+ARG PYTHON_BASE_IMAGE=git.hrk.pl:3000/pypi-local/python:3.12-slim
 
 FROM ${PYTHON_BASE_IMAGE} AS base
 
