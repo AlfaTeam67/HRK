@@ -2,6 +2,8 @@ FROM git.hrk.pl:3000/pypi-local/node:20-alpine AS builder
 
 WORKDIR /app
 
+ENV npm_config_registry=https://git.hrk.pl:3000/api/packages/pypi-local/npm/
+
 COPY package*.json ./
 RUN npm ci
 
@@ -19,9 +21,8 @@ WORKDIR /app
 
 ENV NODE_ENV=production
 
-RUN npm install -g serve@14.2.4
-
 COPY --from=builder /app/dist ./dist
+COPY server.js ./server.js
 
 USER node
 
@@ -30,4 +31,4 @@ EXPOSE 4173
 HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
   CMD wget -qO- http://127.0.0.1:4173 >/dev/null || exit 1
 
-CMD ["serve", "-s", "dist", "-l", "4173"]
+CMD ["node", "server.js"]
