@@ -3,7 +3,7 @@ name: hrk-backend
 services:
   # ── PostgreSQL + pgvector ──────────────────────────────────────────────────
   db:
-    image: git.hrk.pl:3000/pypi-local/pgvector:pg17
+    image: git.hrk.pl:3000/pypi-local/pgvector-pgvector:pg17
     container_name: hrk-db
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
@@ -28,7 +28,7 @@ services:
 
   # ── MinIO (S3-compatible storage) ──────────────────────────────────────────
   minio:
-    image: git.hrk.pl:3000/pypi-local/minio:latest
+    image: git.hrk.pl:3000/pypi-local/minio-minio:latest
     container_name: hrk-minio
     command: server /data --console-address ":9001"
     environment:
@@ -54,7 +54,7 @@ services:
 
   # ── MinIO bucket initialiser (runs once, then exits) ──────────────────────
   minio-init:
-    image: git.hrk.pl:3000/pypi-local/mc:latest
+    image: git.hrk.pl:3000/pypi-local/minio-mc:latest
     container_name: hrk-minio-init
     depends_on:
       minio:
@@ -125,7 +125,7 @@ services:
 
   # ── Ollama (embedding + LLM inference) ───────────────────────────────────────
   ollama:
-    image: git.hrk.pl:3000/pypi-local/ollama
+    image: git.hrk.pl:3000/pypi-local/ollama-ollama:latest
     container_name: hrk-ollama
     volumes:
       - ollama_data:/root/.ollama
@@ -142,7 +142,7 @@ services:
 
   # ── Ollama model initialiser (pulls nomic-embed-text once, then exits) ────────
   ollama-init:
-    image: git.hrk.pl:3000/pypi-local/ollama
+    image: git.hrk.pl:3000/pypi-local/ollama-ollama:latest
     container_name: hrk-ollama-init
     depends_on:
       ollama:
