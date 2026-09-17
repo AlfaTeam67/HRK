@@ -5,7 +5,7 @@ help:
 	@echo "HRK Backend - Available commands:"
 	@echo ""
 	@echo "  Development:"
-	@echo "  make install        - Install dependencies with Poetry"
+	@echo "  make install        - Install dependencies with pip"
 	@echo "  make run            - Run the application locally"
 	@echo "  make test           - Run pytest"
 	@echo "  make test-docker    - Run pytest against Docker-backed dependencies"
@@ -32,35 +32,35 @@ help:
 	@echo "  make minio-init     - Create default S3 bucket in MinIO (auto-run on docker-up)"
 
 install:
-	poetry install
+	pip install --no-cache-dir -r requirements-dev.txt
 
 run:
-	PYTHONPATH=src poetry run uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+	PYTHONPATH=src uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 
 test:
-	PYTHONPATH=src poetry run pytest
+	PYTHONPATH=src pytest
 
 test-docker:
 	docker compose up -d db minio minio-init ad schema-manager ollama
-	PYTHONPATH=src poetry run pytest
+	PYTHONPATH=src pytest
 
 lint:
-	poetry run ruff check src
+	ruff check src
 
 format:
-	poetry run ruff format src
+	ruff format src
 
 typecheck:
-	PYTHONPATH=src poetry run mypy src/app
+	PYTHONPATH=src mypy src/app
 
 security:
-	poetry run bandit -r src/app
+	bandit -r src/app
 
 migrate:
-	PYTHONPATH=src poetry run alembic upgrade head
+	PYTHONPATH=src alembic upgrade head
 
 makemigration:
-	PYTHONPATH=src poetry run alembic revision --autogenerate -m "$(MSG)"
+	PYTHONPATH=src alembic revision --autogenerate -m "$(MSG)"
 
 migration: makemigration
 

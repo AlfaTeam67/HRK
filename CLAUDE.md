@@ -22,7 +22,7 @@ HRK/
 
 ```bash
 # Local dev
-make install        # Install dependencies via Poetry
+make install        # Install dependencies via pip (requirements.txt / requirements-dev.txt)
 make run            # Run dev server at localhost:8000 (uvicorn --reload)
 make test           # Run pytest
 make lint           # Ruff linter
@@ -64,7 +64,7 @@ All DB access must go through the repository layer; services must not import SQL
 
 ### Testing
 
-Tests live in `backend/tests/`. Run a single test file: `poetry run pytest tests/test_health.py -v`. Use `TestClient` from FastAPI for sync tests; `pytest-asyncio` for async tests (`asyncio_mode = "auto"`).
+Tests live in `backend/tests/`. Run a single test file: `PYTHONPATH=src pytest tests/test_health.py -v`. Use `TestClient` from FastAPI for sync tests; `pytest-asyncio` for async tests (`asyncio_mode = "auto"`).
 
 ---
 

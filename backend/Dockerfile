@@ -4,24 +4,16 @@ FROM ${PYTHON_BASE_IMAGE} AS base
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
-    POETRY_HOME="/opt/poetry" \
-    POETRY_VIRTUALENVS_CREATE=false \
-    POETRY_NO_INTERACTION=1
-
-ENV PATH="$POETRY_HOME/bin:$PATH"
-
-ENV PIP_INDEX_URL=https://git.hrk.pl:3000/api/packages/pypi-local/pypi/simple/
-ENV POETRY_REPOSITORIES_PYPI_URL=https://git.hrk.pl:3000/api/packages/pypi-local/pypi/simple/
-
-RUN pip install --no-cache-dir "poetry==2.1.2"
+    PIP_INDEX_URL=https://git.hrk.pl:3000/api/packages/pypi-local/pypi/simple/ \
+    PIP_NO_CACHE_DIR=1
 
 # ── builder ──────────────────────────────────────────────────────────────────
 FROM base AS builder
 
 WORKDIR /app
 
-COPY pyproject.toml poetry.lock* ./
-RUN poetry install --only=main --no-root
+COPY requirements.txt ./
+RUN pip install --no-cache-dir --prefix=/install -r requirements.txt
 
 # ── runtime ───────────────────────────────────────────────────────────────────
 FROM ${PYTHON_BASE_IMAGE} AS runtime
@@ -47,8 +39,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
-COPY --from=builder /usr/local/lib/python3.12/site-packages /usr/local/lib/python3.12/site-packages
-COPY --from=builder /usr/local/bin /usr/local/bin
+COPY --from=builder /install /usr/local
 
 COPY . .
 
