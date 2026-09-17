@@ -22,6 +22,7 @@ RUN apt-get clean && apt-get update && (DEBIAN_FRONTEND=noninteractive apt-get i
     tesseract-ocr \
     tesseract-ocr-pol \
     poppler-utils \
+    libglib2.0-0 \
     libpango-1.0-0 \
     libpangoft2-1.0-0 \
     libcairo2 \
