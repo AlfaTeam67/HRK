@@ -1,4 +1,4 @@
-FROM python:3.12-slim
+FROM git.hrk.pl:3000/pypi-local/python:3.12-slim
 
 WORKDIR /app
 
