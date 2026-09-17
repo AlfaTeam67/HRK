@@ -10,6 +10,9 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 ENV PATH="$POETRY_HOME/bin:$PATH"
 
+ENV PIP_INDEX_URL=https://git.hrk.pl:3000/api/packages/pypi-local/pypi/simple/
+ENV POETRY_REPOSITORIES_PYPI_URL=https://git.hrk.pl:3000/api/packages/pypi-local/pypi/simple/
+
 RUN pip install --no-cache-dir "poetry==2.1.2"
 
 # ── builder ──────────────────────────────────────────────────────────────────

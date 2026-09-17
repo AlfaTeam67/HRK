@@ -4,6 +4,7 @@ WORKDIR /app
 
 # Install dependencies
 COPY requirements.txt .
+ENV PIP_INDEX_URL=https://git.hrk.pl:3000/api/packages/pypi-local/pypi/simple/
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy application code
